@@ -1,0 +1,317 @@
+---
+title: "simmental_ww_hs"
+author: "Harly Durbin"
+date: "7/6/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(magrittr)
+library(tidyr)
+library(readr)
+library(purrr)
+library(tibble)
+library(forcats)
+library(readxl)
+library(stringr)
+library(viridis)
+library(cowplot)
+#library(lubridate)
+library(maps)
+
+master <- readRDS("data/master.RDS")
+```
+
+# Questions
+
+* Should I be making better use of contemporary grouping information?
+* Fall calving?? Exclude those that weaned calves before they were scored?
+* Is there a statistically kosher way to make use of the historical data on years' past calves to increase power?
+    + Could use historical data if it was compared to breeding value
+* A way to combine 2016 and 2017 observations?
+
+#Weaning weight 
+
+```{r}
+sim_dam_16 <- read_excel("data/180706.sim.Dam_Progeny_Report.xlsx") %>% 
+  janitor::clean_names() %>% 
+  #Change DOB and wean date to dates
+  mutate_at(c("calf_dob", "wean_date"), as.Date) %>% 
+  mutate(wean_yr = str_extract(wean_date, "^[:digit:]{4}")) %>% 
+  #Keep only 2017 observations
+  filter(wean_yr == 2016) %>% 
+  #Join progeny report to contemporary grouping data
+  left_join(read_excel("data/180706.sim.Anm_CG_Data.xlsx") %>%
+              janitor::clean_names() %>% 
+              rename(calf_sex = sex, 
+                     calf_asa_number = anm_nbr) %>%
+              #Change sex codes
+              mutate(calf_sex = replace(calf_sex, calf_sex == "C", "F"),
+                     calf_sex = replace(calf_sex, calf_sex == "B" | calf_sex == "S", "M")) %>% 
+              select(calf_sex, calf_asa_number)) %>% 
+  #Join to phenotype data
+  left_join(master %>% 
+              select(Farm_ID, 
+                     Reg, 
+                     Color,
+                     ends_with("2016")), 
+            by = c("dam_asa_number" = "Reg")) %>% 
+  filter(!is.na(CalvingSeason2016),
+         !is.na(HairScore2016), 
+         !is.na(calf_sex)) %>% 
+  mutate(year = "2016") %>% 
+  rename(Age = Age2016, CalvingSeason = CalvingSeason2016, ToxicFescue = ToxicFescue2016, HairScore = HairScore2016) %>% 
+  select(-Shearing2016, - Comment2016)
+```
+
+
+```{r, warning=FALSE}
+
+sim_dam_17 <- read_excel("data/180706.sim.Dam_Progeny_Report.xlsx") %>% 
+  janitor::clean_names() %>% 
+  #Change DOB and wean date to dates
+  mutate_at(c("calf_dob", "wean_date"), as.Date) %>% 
+  mutate(wean_yr = str_extract(wean_date, "^[:digit:]{4}")) %>% 
+  #Keep only 2017 observations
+  filter(wean_yr == 2017) %>% 
+  #Join progeny report to contemporary grouping data
+  left_join(read_excel("data/180706.sim.Anm_CG_Data.xlsx") %>%
+              janitor::clean_names() %>% 
+              rename(calf_sex = sex, 
+                     calf_asa_number = anm_nbr) %>%
+              #Change sex codes
+              mutate(calf_sex = replace(calf_sex, calf_sex == "C", "F"),
+                     calf_sex = replace(calf_sex, calf_sex == "B" | calf_sex == "S", "M")) %>% 
+              select(calf_sex, calf_asa_number)) %>% 
+  #Join to phenotype data
+  left_join(master %>% 
+              select(Farm_ID, 
+                     Reg, 
+                     Color,
+                     ends_with("2017")), 
+            by = c("dam_asa_number" = "Reg")) %>% 
+  filter(!is.na(CalvingSeason2017),
+         !is.na(HairScore2017), 
+         !is.na(calf_sex)) %>% 
+  mutate(year = "2017") %>% 
+  rename(Age = Age2017, CalvingSeason = CalvingSeason2017, ToxicFescue = ToxicFescue2017, HairScore = HairScore2017) %>% 
+  select(-Shearing2017, - Comment2017, -Sold2017)
+```
+
+```{r}
+sim_dam_long <- bind_rows(sim_dam_16, sim_dam_17)
+```
+
+ 
+## Using phenotypes only
+
+```{r}
+ww_ajdust_sim <- lm(adj_ww~1 + 
+                  #as.numeric(HairScore) +
+                  as.factor(Farm_ID) +
+                  as.factor(calf_sex) +
+                  as.factor(CalvingSeason) +
+                    as.factor(year),
+   data = sim_dam_long)
+
+summary(ww_ajdust_sim)
+
+#summary(ww_ajdust)
+
+bound_residuals_sim <- bind_cols(sim_dam_long, 
+                             as.data.frame(ww_ajdust_sim$residuals)) %>% 
+  rename(calf_residual = `ww_ajdust_sim$residuals`)
+
+
+#fill = c("#97B8C2")
+bound_residuals_sim %>% 
+  ggplot(aes(x = as.factor(HairScore), y = calf_residual)) +
+  geom_boxplot(fill = c("#fde725ff"), alpha = 0.75) +
+  labs(x = "Hair score", 
+       y = str_wrap("205d + sex + farm + calving season + year adjusted weaning weight", 
+                    width = 30),
+       title = str_wrap("Registered Simmental 2016-2017 (n = 1704)", 
+                        width = 45)
+       )
+
+ggsave("180917.sim_ww_boxplot.png", width = 10.5, height = 6.5, units = "in", dpi = 300)
+```
+
+```{r}
+
+model.ww_hs <- summary(lm(adj_ww~1 + 
+       as.numeric(HairScore2017) +
+       as.factor(Farm_ID) +
+       as.factor(calf_sex) +
+       as.factor(CalvingSeason2017),
+     data = sim_dam))
+
+model.ww_color <- lm(adj_ww~1 + 
+       as.factor(Color) +
+       as.factor(Farm_ID) +
+       as.factor(calf_sex) +
+       as.factor(CalvingSeason2017),
+     data = sim_dam)
+
+
+anova(model.ww_color, model.ww_hs)
+
+model_compare$`Pr(>F)`
+
+AIC(model.ww_color, model.ww_hs)
+```
+
+
+
+## Using breeding values
+
+> Pull in `sommer` generated breeding values
+
+* Call to generate breeding values: 
+
+`$fixed
+HairScore ~ 1 + DateDeviation + CalvingSeason + Sex + Age + Farm_ID + 
+    yr
+
+$random
+~g(international_id) + international_id
+<environment: 0x14b61f38>
+
+$rcov
+~units `
+
+```{r}
+pre_adjust_multi <- readRDS("../../hair_gwas/pre_adjust/180509.pre_adjust_multi.RDS")
+pre_adjust_multi$call
+```
+
+```{r}
+#Pull out BLUPs
+breeding_values <- pre_adjust_multi$u.hat[1] %>% 
+  purrr::reduce(as.data.frame) %>% 
+  #Take it from a matrix to a da
+  as.data.frame() %>% 
+  #make a column of international_id's (currently rownames)
+  mutate(international_id = rownames(.)) %>% 
+  rename(breeding_value = HairScore) 
+```
+
+> Pull in ASA calf phenotypes
+
+```{r, warning = FALSE}
+sim_legacy <- read_excel("data/180706.sim.Dam_Progeny_Report.xlsx") %>% 
+  janitor::clean_names() %>% 
+  #Change DOB and wean date to dates
+  mutate_at(c("calf_dob", "wean_date"), as.Date) %>% 
+  #Join progeny report to contemporary grouping data
+  left_join(read_excel("data/180706.sim.Anm_CG_Data.xlsx") %>%
+              janitor::clean_names() %>% 
+              rename(calf_sex = sex, 
+                     calf_asa_number = anm_nbr) %>%
+              #Change sex codes
+              mutate(calf_sex = replace(calf_sex, calf_sex == "C", "F"),
+                     calf_sex = replace(calf_sex, calf_sex == "B" | calf_sex == "S", "M")) %>% 
+              select(calf_sex, calf_asa_number)) %>% 
+  #Join to phenotype data
+  left_join(master %>% 
+              select(Farm_ID, 
+                     Reg, 
+                     international_id), 
+            by = c("dam_asa_number" = "Reg")) %>% 
+  filter(international_id %in% breeding_values$international_id) %>% 
+  #Join to breeding value data
+  left_join(breeding_values, by = c("international_id")) %>% 
+  filter(!is.na(breeding_value)) %>% 
+  #Create a column of the average ww for each dam
+  group_by(dam_asa_number) %>% 
+  mutate(dam_avg_adj_ww = mean(adj_ww)) %>% 
+  #Create a column of calf birth year
+  mutate(birth_yr = str_extract(calf_dob, "^[:digit:]{4}"))  %>% 
+  filter(!is.na(breeding_value) & !is.na(Farm_ID) & !is.na(calf_sex) & !is.na(birth_yr)) %>% 
+  filter(adj_ww != 0)
+            
+```
+
+```{r}
+
+#Linear model predicting adjusted weaning weight from dam breeding value, birth year, farm, and sex
+ww_ajdust_bv <- lm(adj_ww~1 +
+                     as.factor(Farm_ID) +
+                     as.factor(calf_sex) +
+                     as.factor(birth_yr),
+   data = sim_legacy)
+
+summary(ww_ajdust_bv)
+
+#Bind calf residuals to other data
+bound_residuals_bv <- bind_cols(sim_legacy, 
+                             as.data.frame(ww_ajdust_bv$residuals)) %>% 
+  rename(calf_residual = `ww_ajdust_bv$residuals`)
+
+bound_residuals_bv %>% 
+  ggplot(aes(x = breeding_value, y = calf_residual)) +
+  geom_point(color = c("#97B8C2")) +
+  geom_smooth()
+```
+
+
+```{r}
+#Regressing adjusted weaning weight on dam's hair shedding score breeding value
+summary(
+  lm(calf_residual~1 +
+       as.numeric(breeding_value),
+   data = bound_residuals_bv)
+  )
+
+
+
+#What's up with chunk of observations below 400?
+bound_residuals_bv %>% 
+  filter(calf_residual < -350)
+
+```
+
+
+# New distribution map:
+
+```{r}
+#Base USA map
+usa <- borders("state", regions = ".", fill = "white", colour = "black")
+```
+
+```{r}
+master %>% 
+         filter(!is.na(Breed), Breed != "CHIA", Breed != "MAAN", Breed != "BRN") %>% 
+  filter(!is.na(HairScore2016) | !is.na(HairScore2017)) %>% 
+ggplot(aes(x = LNG,
+           y= LAT,
+           colour = factor(Breed))) +
+  usa +
+  geom_count(alpha = 0.7, 
+             #Shift position of overlapping points so that they can be seen better
+             position = position_jitterdodge(dodge.width = 0.8, 
+                                             jitter.width = 0.5, 
+                                             jitter.height = -0.4)) +
+  scale_size_area(max_size = 8, 
+                  #Take off x & y axis border lines
+                  guide = 'none') +
+  scale_color_viridis(discrete = TRUE,
+                      labels = c("Angus: 2,930", "Red Angus: 693", "Charolais: 285", "Cross: 426", "Gelbvieh: 280", "Hereford: 1,273", "Shorthorn: 276", "Simmental: 1,827")) +
+  #Make the key have 4 rows and 2 columns
+  guides(col = guide_legend(nrow = 4, 
+               ncol = 2,
+               title = "Breed")) +
+  #coord_fixed() +
+  theme_map() +
+  #Set the "anchoring point" of the legend (bottom-left is 0,0; top-right is 1,1)
+  #Put bottom-left corner of legend box in bottom-left corner of graph
+  theme(legend.justification=c(0,.05), 
+        legend.position=c(0,0), 
+        legend.key.size = unit(1, "cm")) 
+
+
+ggsave("180713.breed_map.png", width = 10, height = 6.5, units = "in", dpi = 300)
+```

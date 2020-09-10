@@ -1,0 +1,721 @@
+---
+title: "Thompson field day 2018"
+author: "Harly Durbin"
+date: "9/16/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(stringi)
+library(GGally)
+library(lubridate)
+library(cowplot)
+library(viridis)
+```
+
+```{r}
+letter_yr <- tribble(~letter, ~Age2018,
+                     "A", 5,
+       "B", 4,
+       "C", 3,
+       "D", 2,
+       "E", 1,
+       "M", 16,
+       "N", 15,
+       "P", 14,
+       "R", 13,
+       "S", 12,
+       "T", 11,
+       "U", 10,
+       "W", 9,
+       "X", 8,
+       "Y", 7,
+       "Z", 6)
+```
+
+
+# Data formatting
+
+## Thompson
+
+### Hair shedding metadata: wide format
+
+```{r}
+
+#Create a list of file paths for Thompson data
+filepaths <-
+  combine(
+    list.files(
+      path = "~/Box Sync/HairShedding/ReportedData/2016",
+      pattern = "UMCT",
+      full.names = TRUE
+    ),
+    list.files(
+      path = "~/Box Sync/HairShedding/ReportedData/2017",
+      pattern = "UMCT",
+      full.names = TRUE
+    ),
+    list.files(
+      path = "~/Box Sync/HairShedding/ReportedData/2018",
+      pattern = "UMCT",
+      full.names = TRUE
+    )
+  )
+
+
+data_recording_wide <- filepaths %>%
+  #Name the elements of the list based on a stripped down version of the filepath
+  set_names(nm = (basename(.) %>%
+                    tools::file_path_sans_ext())) %>%
+  #Create a list of data frames using readxl
+  map(read_excel, sheet = 1) %>%
+  #Select the columns I need
+  map(select, Sex, Color, Animal_ID, DateScoreRecorded:ToxicFescue) %>%
+  map(
+    mutate,
+    Color = "Black",
+    CalvingSeason = "Spring",
+    ToxicFescue = "Yes"
+  ) %>%
+  #Keep only observations with hair scores, remove bulls
+  map(filter, !is.na(HairScore), Sex == "F") %>%
+  #imap uses the data frame's name in the list as y
+  #Mutate each data frame in the list to append the year to the end of a few columns based on name
+  #https://stackoverflow.com/questions/29948876/adding-prefix-or-suffix-to-most-data-frame-variable-names-in-piped-r-workflow
+  imap(~rename_at(.x,
+                    vars(
+                      one_of("DateScoreRecorded", "HairScore", "Age")
+                    ),
+                    function(i)
+                      str_c(i, str_extract(
+                        .y, "(?<=_)[[0-9]]+"
+                      )))) %>%
+  #Collapse the dataframes to one dataframe
+  reduce(full_join) %>%
+  #Remove Age2018 column
+  select(-Age2018) %>%
+  #I can't remember why I did this oops. To determine unknown ages based on the letter in their ID?
+  mutate(letter = str_extract(Animal_ID, "(?<=1)[A-Z]")) %>%
+  left_join(letter_yr, by = c("letter")) %>%
+  select(-letter) %>%
+  mutate(Age2017 = if_else(
+    is.na(Age2017) & !is.na(Age2018),
+    Age2018 - 1,
+    as.double(Age2017)
+  )) %>%
+  mutate(Age2016 = if_else(
+    is.na(Age2016) & !is.na(Age2017),
+    Age2017 - 1,
+    as.double(Age2016)
+  ))
+
+
+```
+
+
+### Hair shedding metadata: long format (one observation per year per row)
+
+
+```{r}
+
+filepaths <-
+  combine(
+    list.files(
+      path = "~/Box Sync/HairShedding/ReportedData/2016",
+      pattern = "UMCT",
+      full.names = TRUE
+    ),
+    list.files(
+      path = "~/Box Sync/HairShedding/ReportedData/2017",
+      pattern = "UMCT",
+      full.names = TRUE
+    ),
+    list.files(
+      path = "~/Box Sync/HairShedding/ReportedData/2018",
+      pattern = "UMCT",
+      full.names = TRUE
+    )
+  )
+
+
+data_recording_long <- filepaths %>%
+  #Name the elements of the list based on a stripped down version of the filepath
+  set_names(nm = (basename(.) %>%
+                    tools::file_path_sans_ext())) %>%
+  #Create a list of data frames using readxl
+  map(read_excel, sheet = 1) %>%
+  map(select, Sex, Color, Animal_ID, DateScoreRecorded:ToxicFescue) %>%
+  map(
+    mutate,
+    Color = "Black",
+    CalvingSeason = "Spring",
+    ToxicFescue = "Yes",
+    letter = str_extract(Animal_ID, "(?<=1)[A-Z]")
+  ) %>%
+  map(filter,!is.na(HairScore), Sex == "F") %>%
+  #imap uses the data frame's name in the list as y
+  imap( ~ mutate(.x, year = str_extract(.y, "(?<=_)[[0-9]]+"))) %>%
+  reduce(bind_rows) %>%
+  left_join(letter_yr, by = c("letter")) %>%
+  mutate(Age = if_else(year == "2016",
+                       Age2018 - 2,
+                       Age)) %>%
+  mutate(Age = if_else(year == "2017",
+                       Age2018 - 1,
+                       Age)) %>%
+  mutate(Age = if_else(year == "2018",
+                       Age2018,
+                       Age)) %>%
+  select(-Age2018,-letter)
+
+
+```
+
+### Pedigree & weaning weight data
+
+```{r}
+
+#Get pedigree information including BIR numbers (to be used as Reg numbers)
+#list of dataframes; a dataframe for each file
+pedigree <-
+  list.files(
+    "~/googledrive/research_extension/hair_shed/hair_shed/hair_project/data",
+    pattern = "TRC_Pedigree",
+    full.names = TRUE
+  ) %>%
+  #Name the elements of the list based on a stripped down version of the filepath
+  set_names(nm = (basename(.) %>%
+                    tools::file_path_sans_ext())) %>%
+  #Create a list of data frames using readxl
+  map_df(read_excel, sheet = 1, trim_ws = TRUE) %>%
+  janitor::clean_names() %>%
+  select(anm_tag:reg_no, sex, sire_reg_no, dam_tag, dam_reg_no) %>%
+  #Formate birth date as a date
+  mutate(anm_birth_date = mdy(anm_birth_date)) %>%
+  #Pull in historical weaning weight/growth phenotype data
+  left_join(
+    list.files(
+      "~/Box Sync/GeneMax/RawData/",
+      pattern = "Growth.*.xlsx",
+      full.names = TRUE
+    ) %>%
+      set_names(nm = (
+        basename(.) %>%
+          tools::file_path_sans_ext()
+      )) %>%
+      #Create a list of data frames using readxl
+      map_df(read_excel, sheet = 1, trim_ws = TRUE) %>%
+      janitor::clean_names() %>%
+      select(anm_tag, anm_birth_date, reg_no, sex, birth_wt:yr_ratio) %>%
+      mutate(anm_birth_date = mdy(anm_birth_date))
+  ) %>%
+  rename_at(vars(-starts_with("dam")), ~ str_c("calf", "_", .)) %>%
+  #Format sex codes
+  mutate(
+    calf_sex = replace(calf_sex, calf_sex == "C", "F"),
+    calf_sex = replace(calf_sex, calf_sex == "B" |
+                         calf_sex == "S", "M")
+  )
+    
+    
+
+```
+
+
+```{r}
+
+growth <- bind_rows(
+  left_join(
+    data_recording_long %>%
+      filter(year == "2016"),
+    pedigree %>%
+      filter(year(calf_anm_birth_date) == 2016),
+    by = c("Animal_ID" = "dam_tag")
+  ),
+  left_join(
+    data_recording_long %>%
+      filter(year == "2017"),
+    pedigree %>%
+      filter(year(calf_anm_birth_date) == 2017),
+    by = c("Animal_ID" = "dam_tag")
+  ),
+  left_join(
+    data_recording_long %>%
+      filter(year == "2018"),
+    pedigree %>%
+      filter(year(calf_anm_birth_date) == 2018),
+    by = c("Animal_ID" = "dam_tag")
+  )
+)
+```
+
+
+## Red Angus
+
+### 2016
+
+```{r}
+anr_ww_16 <- read_csv("data/180503_anr_ww.csv") %>%
+  mutate(
+    regisno = as.character(regisno),
+    dam_reg = as.character(dam_reg),
+    birth_date = mdy(birth_date),
+    wean_date = mdy(wean_date),
+    dam_dob = mdy(dam_dob),
+    year_date = mdy(year_date)
+  ) %>%
+  dplyr::select(
+    regisno,
+    prefix,
+    sex,
+    birth_date,
+    ownr,
+    breeder,
+    sire_reg,
+    dam_reg,
+    dam_dob,
+    birth_wt,
+    birth_adj,
+    wean_date,
+    wean_wt,
+    wean_adj,
+    year_date,
+    year_wt,
+    year_adj
+  ) %>%
+  left_join(master %>%
+              select(Farm_ID,
+                     Reg,
+                     Color,
+                     ends_with("2016")),
+            by = c("dam_reg" = "Reg")) %>%
+  filter(year(wean_date) == "2016") %>%
+  filter(!is.na(wean_adj)) %>%
+  rename(calf_sex = sex) %>%
+  mutate(
+    calf_sex = replace(calf_sex, calf_sex == "C", "F"),
+    calf_sex = replace(calf_sex, calf_sex == "B" |
+                         calf_sex == "S", "M")
+  ) %>%
+  mutate(year = "2016") %>%
+  rename(
+    Age = Age2016,
+    CalvingSeason = CalvingSeason2016,
+    ToxicFescue = ToxicFescue2016,
+    HairScore = HairScore2016
+  ) %>%
+  select(-Shearing2016,-Comment2016)
+```
+
+### 2017
+
+```{r}
+anr_ww_17 <- read_csv("data/180503_anr_ww.csv") %>%
+  mutate(
+    regisno = as.character(regisno),
+    dam_reg = as.character(dam_reg),
+    birth_date = mdy(birth_date),
+    wean_date = mdy(wean_date),
+    dam_dob = mdy(dam_dob),
+    year_date = mdy(year_date)
+  ) %>%
+  dplyr::select(
+    regisno,
+    prefix,
+    sex,
+    birth_date,
+    ownr,
+    breeder,
+    sire_reg,
+    dam_reg,
+    dam_dob,
+    birth_wt,
+    birth_adj,
+    wean_date,
+    wean_wt,
+    wean_adj,
+    year_date,
+    year_wt,
+    year_adj
+  ) %>%
+  left_join(master %>%
+              select(Farm_ID,
+                     Reg,
+                     Color,
+                     ends_with("2017")),
+            by = c("dam_reg" = "Reg")) %>%
+  filter(year(wean_date) == "2017") %>%
+  filter(!is.na(wean_adj)) %>%
+  rename(calf_sex = sex) %>%
+  mutate(
+    calf_sex = replace(calf_sex, calf_sex == "C", "F"),
+    calf_sex = replace(calf_sex, calf_sex == "B" |
+                         calf_sex == "S", "M")
+  ) %>%
+  mutate(year = "2017") %>%
+  rename(
+    Age = Age2017,
+    CalvingSeason = CalvingSeason2017,
+    ToxicFescue = ToxicFescue2017,
+    HairScore = HairScore2017
+  ) %>%
+  select(-Shearing2017,-Comment2017,-Sold2017)
+```
+
+### Combined
+
+```{r}
+anr_long <- bind_rows(anr_ww_16, anr_ww_17) %>%
+  filter(
+    !is.na(Farm_ID) &
+      !is.na(calf_sex) &
+      !is.na(CalvingSeason) &
+      !is.na(wean_adj) &
+      !is.na(HairScore)
+  )
+```
+
+
+
+## National-level Angus
+
+```{r}
+
+angus_adjust <- bind_rows(
+  master %>%
+    filter(
+      Breed == "AN" &
+        !is.na(HairScore2017) &
+        !is.na(CalvingSeason2017) &
+        !is.na(DateScoreRecorded2017)
+    ) %>%
+    mutate(
+      Group = "National",
+      DateDeviation2016 =  as.Date(DateScoreRecorded2016) - ymd("2016-05-01"),
+      DateDeviation2017 =  as.Date(DateScoreRecorded2017) - ymd("2017-05-01"),
+      HairScore2017 = as.numeric(HairScore2017),
+      HairScore2016 = as.numeric(HairScore2016)
+    ),
+  data_recording_wide %>%
+    mutate(
+      Group = "Thompson",
+      Farm_ID = "TRC",
+      DateDeviation2016 =  as.Date(DateScoreRecorded2016) - ymd("2016-05-01"),
+      DateDeviation2017 =  as.Date(DateScoreRecorded2017) - ymd("2017-05-01"),
+      CalvingSeason2017 = "Spring"
+    ) %>%
+    filter(
+      !is.na(HairScore2017) &
+        !is.na(CalvingSeason2017) &
+        !is.na(DateDeviation2017)
+    )
+)
+
+```
+
+
+# Explore
+
+## Thompson
+
+```{r}
+growth %>% 
+  group_by(HairScore) %>% 
+  tally()
+
+growth %>% 
+  ggplot(aes(x = HairScore)) + 
+  geom_histogram() +
+  scale_fill_viridis(discrete = TRUE)
+```
+
+## `sommer` generated breeding values
+
+```{r}
+
+pre_adjust_multi <- readRDS("pre_adjust_multi.RDS")
+
+```
+
+
+```{r}
+
+pre_adjust_multi$data %>%
+  group_by(Farm_ID) %>%
+  tally()
+
+```
+
+```{r}
+
+u.hat_multi <- pre_adjust_multi$u.hat[1] %>%
+  purrr::reduce(as.data.frame) %>%
+  as.data.frame()
+
+u.hat_multi[, 2] <- row.names(u.hat_multi)
+
+u.hat_multi <- u.hat_multi %>%
+  rename(u.hat = HairScore, international_id = V2)
+
+```
+
+```{r}
+suma <- summary(pre_adjust_multi)$var.comp.table
+
+sum(suma[1,1]/sum(suma[,1]))
+```
+
+```{r}
+
+cov_resid <- left_join(cov, u.hat_multi, by = c("international_id"))
+
+```
+
+
+# Model/pre-adjust
+
+## Thompson
+
+```{r}
+grow2 <- growth %>% 
+  filter(
+           !is.na(Age) &
+           !is.na(HairScore) &
+           !is.na(calf_sex) &
+           !is.na(year) & 
+           !is.na(calf_wn_adj_wt))
+  
+
+thompson_preadjust <- summary(lm(calf_wn_adj_wt~1 +
+             Age +
+             calf_sex +
+             year, 
+   data = grow2))
+
+```
+
+
+
+## Red Angus
+
+
+```{r}
+
+ww_ajdust_anr <- lm(
+  wean_adj ~ 1 +
+    #as.numeric(HairScore) +
+    as.factor(Farm_ID) +
+    as.factor(calf_sex) +
+    as.factor(CalvingSeason) +
+    as.factor(year),
+  data = anr_long
+)
+
+summary(ww_ajdust_anr)
+
+```
+
+
+## National-level Angus
+
+```{r}
+angus_adjust_lm <- lm(
+  as.numeric(HairScore2017) ~ 1 +
+    as.factor(CalvingSeason2017) +
+    as.numeric(DateDeviation2017) +
+    as.factor(Farm_ID),
+  data = angus_adjust
+)
+
+length(angus_adjust_lm$residuals)
+
+```
+
+# Plot
+
+## Thompson specific
+
+### Thompson adjusted weaning weight vs. dam hair shedding score
+
+```{r}
+library(colormap)
+colormap(colormap = colormaps$viridis, nshades = 8)
+
+thompson_residuals <-
+  bind_cols(grow2,                        as.data.frame(thompson_preadjust$residuals)) %>%
+  rename(calf_residual = `thompson_preadjust$residuals`)
+
+thompson_residuals %>%
+  ggplot(aes(x = as.factor(HairScore), y = calf_residual)) +
+  geom_boxplot(fill = c("#440154ff"), alpha = 0.75) +
+  labs(
+    x = "Hair score",
+    y = str_wrap("205d + sex + year adjusted weaning weight", width = 30),
+    title = "Thompson 2016-2017 (n = 312)"
+  )
+
+
+ggsave(
+  "180917.thompson_ww.png",
+  width = 10.5,
+  height = 6.5,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+## Red Angus
+
+```{r}
+
+
+bound_residuals_anr <- bind_cols(anr_long,
+                                 as.data.frame(ww_ajdust_anr$residuals)) %>%
+  rename(calf_residual = `ww_ajdust_anr$residuals`)
+
+
+#fill = c("#97B8C2")
+bound_residuals_anr %>%
+  filter(!is.na(HairScore)) %>%
+  ggplot(aes(x = as.factor(HairScore), y = calf_residual)) +
+  geom_boxplot(fill = c("#46307cff"), alpha = 0.75) +
+  labs(
+    x = "Hair score",
+    y = str_wrap(
+      "205d + sex + farm + calving season + year adjusted weaning weight",
+      width = 30
+    ),
+    title = str_wrap("Registered Red Angus 2016-2017 (n = 241)",
+                     width = 45)
+  )
+
+ggsave(
+  "180917.anr_ww_boxplot.png",
+  width = 10.5,
+  height = 6.5,
+  units = "in",
+  dpi = 300
+)
+
+```
+
+## Thompson hair shedding scores vs. national scale Angus hair shedding scores
+
+
+```{r}
+angus_residuals <- bind_cols(angus_adjust,
+                             as.data.frame(angus_adjust_lm$residuals)) %>%
+  rename(hair_residual = `angus_adjust_lm$residuals`)
+
+ggplot(data = angus_residuals, aes(x = as.numeric(hair_residual), fill = Group)) +
+  geom_density(alpha = 0.25) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(
+    title = str_wrap("Thompson Farm vs. national Angus hair scores", width = 30),
+    y = "Density",
+    x = str_wrap(
+      "Calving season + date scored + farm adjusted hair shedding score",
+      width = 45
+    )
+  )
+
+ggsave(
+  "180916.thompson_density.png",
+  width = 10.5,
+  height = 6.5,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+## Other
+
+### Hair shedding score by breed
+
+```{r}
+
+master %>%
+  filter(!is.na(Breed), Breed != "CROS") %>%
+  ggplot(aes(x = as.numeric(HairScore2017), fill = Breed)) +
+  geom_density(alpha = 0.25) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(
+    title = str_wrap("Hair shedding score by breed", width = 30),
+    y = "Density",
+    x = str_wrap(
+      "Calving season + date scored + farm adjusted hair shedding score",
+      width = 45
+    )
+  )
+
+```
+
+### Hair shedding score breeding values from `sommer` by breed
+
+## Denstiy
+
+```{r}
+
+as_data_frame(pre_adjust_multi$data) %>%
+  mutate(international_id = as.character(international_id)) %>%
+  left_join(master %>%
+              select(international_id, Breed)) %>%
+  filter(!is.na(Breed) &
+           Breed != "CHIA" & Breed != "CROS" & Breed != "MAAN") %>%
+  left_join(as_data_frame(u.hat_multi)) %>%
+  ggplot(aes(x = as.numeric(u.hat), fill = Breed)) +
+  geom_density(alpha = 0.25) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(
+    title = str_wrap("Hair shedding score EPD by breed", width = 30),
+    y = "Density",
+    x = str_wrap("Hair shedding score EPD", width = 45)
+  )
+
+ggsave(
+  "180916.thompson_epd_by_breed.png",
+  width = 10.5,
+  height = 6.5,
+  units = "in",
+  dpi = 300
+)
+
+
+```
+
+
+## Boxplot
+
+```{r}
+
+as_data_frame(pre_adjust_multi$data) %>%
+  mutate(international_id = as.character(international_id)) %>%
+  left_join(master %>%
+              select(international_id, Breed)) %>%
+  filter(!is.na(Breed) &
+           Breed != "CHIA" & Breed != "CROS" & Breed != "MAAN") %>%
+  left_join(as_data_frame(u.hat_multi)) %>% 
+  ggplot(data = test, aes(x = as.numeric(u.hat), fill = Breed)) +
+  geom_density(alpha = 0.25) +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(
+    title = str_wrap("Hair shedding score EPD by breed", width = 30),
+    y = "Density",
+    x = str_wrap("Hair shedding score EPD", width = 45)
+  )
+
+ggsave(
+  "180916.thompson_epd_by_breed.png",
+  width = 10.5,
+  height = 6.5,
+  units = "in",
+  dpi = 300
+)
+
+```
+

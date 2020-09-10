@@ -1,0 +1,296 @@
+---
+title: "Formatting data for `sommer` + intro"
+author: "Harly Durbin"
+date: "11/27/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(sommer)
+library(tidyverse)
+```
+
+# Create phenotype dataframe
+
+## Joining sample data to phenotype data/metadata
+
+```{r}
+
+
+#Read in PLINK fam file: important for sample order
+fam <-
+  read_table2("gemma_in/180506.f250.fam", col_names = FALSE) %>%
+  dplyr::select(X2, X3) %>%
+  #Trim white space
+  mutate(X2 = str_trim(X2, side = c("both")), X3 = str_trim(X3, side = c("both"))) %>%
+  #If international id == sire international id, change sire international id to 0
+  mutate(X3 = if_else(X3 == X2, "0", X3)) %>%
+  #Left join dataframe of phenotypes (gwas_master) to PLINK fam file (resulting dataframe is in order of PLINK fam file)
+  left_join(
+    gwas_master %>%
+      dplyr::select(
+        international_id,
+        Farm_ID,
+        CalvingSeason2016,
+        CalvingSeason2017,
+        Sex,
+        Age2016,
+        Age2017,
+        DateScoreRecorded2016,
+        DateScoreRecorded2017,
+        DateDeviation2016,
+        DateDeviation2017,
+        sixty_avg_16,
+        sixty_avg_17,
+        HairScore2016,
+        HairScore2017,
+        LAT
+      ),
+    by = c("X2" = "international_id")
+  ) %>%
+  distinct() %>%
+  #Change date deviation from date to integer
+  mutate(
+    DateDeviation2016 = as.integer(DateDeviation2016),
+    DateDeviation2017 = as.integer(DateDeviation2017)
+  ) %>%
+  #Make a column of row numbers for filtering
+  mutate(numb = row_number()) %>%
+  #Remove OHG duplicate (scored twice in 2017)
+  filter(numb != 4623) %>%
+  #Remove from 2017 analysis (scored twice, change its 2017 hair score to NA)
+  mutate(HairScore2017 = replace(HairScore2017, numb == 4622, NA))
+```
+
+## Impute missing phenotype values + removing duplicates
+
+```{r}
+#How many times does each international ID occur?
+n_occur_reg <- as.data.frame(table(fam$X2))
+#Pull out international IDs where # occurences > 1, make data frame of row numbers to toss
+dup_reg <-
+  as_data_frame(fam[fam$X2 %in% n_occur_reg$Var1[n_occur_reg$Freq > 1], ]) %>%
+  filter(is.na(HairScore2016))
+
+
+#Can't have missing phenotype values in order for observation to not be dropped by sommer
+#mean 2016 date deviation is 27
+mean_dev <- fam %>%
+  filter(!is.na(DateDeviation2016)) %>%
+  summarise(mean(DateDeviation2016)) %>%
+  as.integer()
+
+
+#mean 2016 age is 3
+mean_age <- fam %>%
+  filter(!is.na(Age2016)) %>%
+  summarise(mean(Age2016)) %>%
+  as.integer()
+
+#mean 2016 60d avg is 16.275
+mean_sixty_avg <- fam %>%
+  filter(!is.na(sixty_avg_16)) %>%
+  summarise(mean(sixty_avg_16)) %>%
+  as.numeric()
+
+```
+
+
+```{r, eval=FALSE, echo=TRUE}
+
+cov <- fam %>%
+  #Remove if in dup_reg
+  filter(!numb %in% dup_reg$numb) %>%
+  #Remove row number column
+  dplyr::select(-numb) %>%
+  #Can't have NAs during contemporary group creation; change relevant NAs to a U
+  mutate(Sex = replace(Sex, is.na(Sex), "U")) %>%
+  #If any males have a calving season assigned, remove it
+  mutate(
+    CalvingSeason2016 = replace(CalvingSeason2016, Sex == "M", "U"),
+    CalvingSeason2017 = replace(CalvingSeason2017, Sex == "M", "U")
+  ) %>%
+  #Change NA calving season for females and unknown sex to U
+  mutate(
+    CalvingSeason2016 = replace(CalvingSeason2016, is.na(CalvingSeason2016), "U"),
+    CalvingSeason2017 = replace(CalvingSeason2017, is.na(CalvingSeason2017), "U")
+  ) %>%
+  #Change
+  #Create contemporary groupings
+  mutate(sex_group_16 = as.factor(str_c(Sex, CalvingSeason2016)),
+         sex_group_17 = as.factor(str_c(Sex, CalvingSeason2017))) %>%
+  #Change farm to a factor
+  mutate(Farm_ID = as.factor(Farm_ID)) %>%
+  #Change hair score to numeric
+  mutate_at(vars(starts_with("Hair")), funs(as.numeric(.))) %>%
+  #mean impute DateDeviation, Age, 60d avg for 2016
+  mutate(
+    DateDeviation2016 = replace(
+      DateDeviation2016,
+      is.na(DateDeviation2016) & !is.na(HairScore2016),
+      mean_dev_16
+    ),
+    Age2016 = replace(Age2016, is.na(Age2016) &
+                        !is.na(HairScore2016), mean_age_16),
+    sixty_avg_16 = replace(
+      sixty_avg_16,
+      is.na(sixty_avg_16) & !is.na(HairScore2016),
+      mean_sixty_16
+    )
+  ) %>%
+  #mean impute DateDeviation, Age, 60d avg for 2017
+  mutate(
+    DateDeviation2017 = replace(
+      DateDeviation2017,
+      is.na(DateDeviation2017) & !is.na(HairScore2017),
+      mean_dev_17
+    ),
+    Age2017 = replace(Age2017, is.na(Age2017) &
+                        !is.na(HairScore2017), mean_age_17),
+    sixty_avg_17 = replace(
+      sixty_avg_17,
+      is.na(sixty_avg_17) & !is.na(HairScore2017),
+      mean_sixty_17
+    )
+  ) %>%
+  mutate(
+    international_id = as.factor(international_id),
+    Farm_ID = as.factor(Farm_ID),
+    CalvingSeason2016 = as.factor(CalvingSeason2016),
+    CalvingSeason2017 = as.factor(CalvingSeason2017),
+    Sex = as.factor(Sex)
+  )
+
+#Assign row names as international id (for downstream sommer analyses)
+row.names(cov) <- cov$international_id
+
+#Remove animals not in Troy's imputation run
+f250 <- read_table2("pre_adjust/227234.180430.6615.A.ID", col_names = FALSE)
+
+cov_uni <- cov %>%
+  filter(international_id %in% f250$X2)
+
+row.names(cov_uni) <- cov_uni$international_id
+
+saveRDS(cov_uni, "peqg/phenotypes_uni.RDS")
+
+```
+
+## "Long" format
+
+```{r}
+
+#Create long format dataframe with one line for each year's observation (i.e., animals with 3 years of scores will have 3 rows in the dataframe)
+#This could have been done a lot easier with dplyr::gather but didn't realize that at the time
+cov_multi <- bind_rows(cov_uni %>%
+                         filter(!is.na(HairScore2016)) %>% 
+                         rename(HairScore = HairScore2016, DateDeviation = DateDeviation2016, CalvingSeason = CalvingSeason2016, Age = Age2016, sixty_avg = sixty_avg_16, sex_group = sex_group_16, ToxicFescue = ToxicFescue2016) %>% 
+                         mutate(yr = 2016) %>% 
+                         dplyr::select(international_id, Farm_ID, CalvingSeason, Sex, Age, DateDeviation, sixty_avg, norm_30y, HairScore, LAT, yr, sex_group),
+                       cov_uni %>%
+                         filter(!is.na(HairScore2017)) %>%
+                         rename(HairScore = HairScore2017, DateDeviation = DateDeviation2017, CalvingSeason = CalvingSeason2017, Age = Age2017, sixty_avg = sixty_avg_17, sex_group = sex_group_17, ToxicFescue = ToxicFescue2017) %>%
+                         mutate(yr = 2017) %>% 
+                         dplyr::select(international_id, Farm_ID, CalvingSeason, Sex, Age, DateDeviation, sixty_avg, norm_30y, HairScore, LAT, yr, sex_group)) %>%
+  mutate(con_group = str_c(Farm_ID, CalvingSeason, yr)) %>% 
+  #could have been done easier with dplyr::mutate_at()
+  mutate(international_id = as.factor(international_id), yr = as.factor(yr), Farm_ID = as.factor(Farm_ID), CalvingSeason = as.factor(CalvingSeason), Sex = as.factor(Sex), con_group = as.factor(con_group))
+
+saveRDS(cov_multi, "peqg/phenotypes_multi.RDS")
+```
+
+# GRM
+
+```{r, eval=TRUE, echo=FALSE}
+
+grm <- read_table2("pre_adjust/180502.imputed.grm.sXX.txt", col_names = FALSE) %>%
+  #For some reason, ended up with an extra column of just NAs, remove it
+  dplyr::select(-X6453) %>% 
+  drop_na() 
+
+#Since GRM should be in same order as above .fam file and therefore cov_uni dataframe, name GRM rows and columns based on order of cov_uni
+row.names(grm) <- cov_uni$international_id
+colnames(grm) <- cov_uni$international_id
+   
+saveRDS(grm, file = "180507.grm_imputed.RDS")
+
+
+#Drop rows and columns where corresponding to rows in cov_uni where HairScore2016 is NA
+   
+grm <- base::as.matrix(grm)
+
+```
+
+# Identity matrix 
+
+```{r}
+#Diagonal matrix same dimensions as GRM
+pe <- base::diag(x = 1, nrow = 6452, ncol = 6452)
+
+row.names(pe) <- row.names(grm)
+colnames(pe) <- colnames(grm)
+```
+
+
+# `sommer`
+
+## Tool notes
+
+* `mmer2` is formula based
+    + To specify fixed effects, `1+[fixed effects]` after phenotype specification
+        - Only specify random effects inside `g()` if it has a corresponding covariance matrix (i.e., only use for animal effect/GRM)
+        - Specify : `G=(list(X1=grm))`
+* Repeatability/permanent environmental troubleshooting
+    + ~~Add repeatability component with `~g(X1)` (i.e., random effect of individual)~~
+    + Specifying a clone ID column (i.e., `g(international_id.pe)`) in random effects and an identity matrix in G does not work, also tried variations on G list formatting
+    + Possible solution: using `at()`? I.e., `at(yr,c("2016", "2017"):ID)`
+        - Or making my own repeatability matrix, whatever that entails
+
+## Create toy dataset for testing
+
+```{r}
+
+toy_data <- cov_uni %>% 
+  dplyr::filter(!is.na(HairScore2016) & !is.na(HairScore2017)) %>% 
+  sample_n(200, replace = FALSE)
+
+#filter(cov_uni, CalvingSeason2016 != CalvingSeason2017)
+
+row.names(toy_data) <- toy_data$international_id
+```
+
+## Solve MME using `mmer2()`
+
+```{r}
+#Here, use DateDeviation, CalvingSeason, Sex, Age, and Farm_ID as fixed effects
+#Each of these is a column in toy_data
+#Make sure factors are coded correctely in the source data frame
+pre_adjust_toy <- sommer::mmer2(HairScore~1 + DateDeviation + CalvingSeason + Sex + Age + Farm_ID,
+#specify individual as a random effect
+#international_id is a column in toy_data                  
+              random = ~g(international_id) + g(international_id.pe),
+              rcov = ~units,
+#Specify the dataframe where data is coming from
+              data = toy_data,
+#Include the GRM (generated by GEMMA) as a random effect
+#grm is a matrix object, this isn't coming from toy_data
+              G = list(international_id = grm, international_id.pe = pe)
+)
+
+```
+
+## Extract variance components/heritabilities 
+
+```{r}
+#Pull out the variance components and save it as an object
+suma <- summary(pre_adjust_toy)$var.comp.table
+
+
+#calculate heritability from the object you just save
+sum(suma[1,1]/sum(suma[,1]))
+```
+
+
+

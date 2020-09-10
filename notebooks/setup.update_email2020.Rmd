@@ -1,0 +1,419 @@
+---
+title: "April 2020 e-mail breeding values"
+author: "Harly Durbin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(glue)
+library(readxl)
+library(readxl)
+library(magrittr)
+library(purrr)
+library(tidylog)
+
+source(here::here("source_functions/cg_tallies.R"))
+source(here::here("source_functions/coalesce_join.R"))
+source(here::here("source_functions/three_gen.R"))
+
+```
+
+# Notes & questions
+
+# Setup 
+
+```{r}
+animal_table <- read_rds(here::here("data/derived_data/animal_table.rds"))
+```
+
+```{r}
+cleaned <- read_rds(here::here("data/derived_data/cleaned.rds"))
+```
+
+```{r}
+full_ped <- read_rds(here::here("data/derived_data/full_ped.rds"))
+```
+
+```{r}
+old_samp <- 
+  read_delim(here::here("data/raw_data/190205_sample_sheet.csv"),
+             delim = c(","),
+             col_names = TRUE,
+             guess_max = 10000) %>% 
+  rename(Lab_ID = lab_id,
+         Reg = reg)
+```
+
+# List of Lab IDs for Bob
+
+```{r, eval = FALSE}
+
+progeny <- 
+  cleaned %>% 
+  distinct(Lab_ID) %>% 
+  left_join(animal_table) %>% 
+  select(Lab_ID, Reg, lab_id_sire, Sire_Reg, lab_id_dam, Dam_Reg) 
+
+parents <- 
+  progeny %>% 
+  select(Lab_ID = lab_id_sire) %>% 
+  bind_rows(
+    progeny %>% 
+      select(Lab_ID = lab_id_dam)
+  ) %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  distinct() %>% 
+  left_join(animal_table) %>% 
+  select(Lab_ID, Reg, lab_id_sire, Sire_Reg, lab_id_dam, Dam_Reg) 
+
+
+grandparents <-
+  parents %>% 
+  select(Lab_ID = lab_id_sire) %>% 
+  bind_rows(
+    parents %>% 
+      select(Lab_ID = lab_id_dam)
+  ) %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  distinct() %>% 
+  left_join(animal_table) %>% 
+  select(Lab_ID, Reg, lab_id_sire, Sire_Reg, lab_id_dam, Dam_Reg) 
+```
+
+```{r, eval = FALSE}
+  bind_rows(progeny, parents, grandparents) %>% 
+  distinct(Lab_ID) %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  arrange(Lab_ID) %>% 
+  write_tsv(here::here("data/derived_data/200402.hairshed_dump.txt"), col_names = FALSE)
+```
+
+# Contemporary grouping
+
+```{r}
+cleaned %>% 
+  group_by(farm_id) %>% 
+  tally(sort = TRUE)
+```
+
+First, remove males
+
+```{r}
+update_dat <-
+  cleaned %>%
+  # Females only
+  filter(sex == "F") 
+```
+
+
+## Calving season
+
+1. Figure out some with Angus calving season data
+2. Then, impute using most recent calving date where possible
+3. Then, use birth date
+
+```{r}
+update_dat %<>%
+  left_join(read_excel(
+    here::here("data/derived_data/season_search.xlsx"),
+    trim_ws = TRUE,
+    skip = 1,
+    col_names = c("farm_id", "registration_number", "year", "cs2")
+  )) %>% 
+  mutate(calving_season = if_else(!is.na(cs2), cs2, calving_season)) %>% 
+  # If calving season still missing, impute using most recent
+  group_by(farm_id, temp_id) %>% 
+  arrange(date_score_recorded) %>% 
+  fill(calving_season, .direction = "downup") %>% 
+  ungroup() %>% 
+  # If calving season still missing, impute using DOB
+  mutate(
+    calving_season = 
+      case_when(
+          is.na(calving_season) & between(lubridate::month(dob), left = 1, right = 6) ~ "SPRING",
+          is.na(calving_season) & between(lubridate::month(dob), left = 7, right = 12) ~ "FALL",
+        TRUE ~ calving_season
+      )) %>% 
+  select(-cs2)
+  
+```
+
+```{r}
+update_dat %>% 
+  summarise(missing = sum(is.na(calving_season)),
+            found = sum(!is.na(calving_season)))
+```
+
+```{r}
+update_dat %>% 
+  filter(is.na(calving_season)) %>% 
+  group_by(farm_id) %>% 
+  tally()
+```
+
+
+
+## Age group
+
+* Need to add Angus pedigree age updates
+
+```{r}
+update_dat %<>%
+  mutate(age_group =
+           case_when(
+             # Heifers and yearlings
+             age == 1 ~ "yearling",
+             age == 2 ~ "fch",
+             age == 3 ~ "three",
+             age >= 4 ~ "mature"
+           ))
+```
+
+```{r}
+update_dat %>% 
+  filter(is.na(age_group)) %>% 
+  group_by(farm_id) %>% 
+  tally(sort = TRUE)
+
+```
+
+## Score group
+
+* Establish score groups
+
+```{r, eval=FALSE}
+update_dat %>% 
+  filter(!farm_id %in% c("SAV", "BAT")) %>% 
+  group_by(farm_id, year) %>% 
+  filter(n_distinct(date_score_recorded) > 1) %>% 
+  ungroup() %>% 
+  group_by(farm_id, date_score_recorded) %>% 
+  tally() %>% 
+  ungroup() %>% 
+  left_join(
+    read_excel(here::here("data/derived_data/score_windows2.xlsx")) %>% 
+      select(farm_id, date_score_recorded, score_group) %>% 
+      mutate(date_score_recorded = lubridate::ymd(date_score_recorded))
+  ) %>% 
+  mutate(year = lubridate::year(date_score_recorded)) %>% 
+  select(farm_id, year, everything()) %>% 
+  writexl::write_xlsx(here::here("data/derived_data/score_groups.xlsx"))
+```
+
+```{r, eval=FALSE}
+update_dat %>% 
+  filter(farm_id %in% c("SAV", "BAT")) %>% 
+  group_by(farm_id, year) %>% 
+  filter(n_distinct(date_score_recorded) > 1) %>% 
+  ungroup() %>% 
+  group_by(farm_id, date_score_recorded) %>% 
+  tally() %>% 
+  ungroup() %>% 
+  mutate(year = lubridate::year(date_score_recorded)) %>% 
+  select(farm_id, year, everything()) %>% 
+  writexl::write_xlsx(here::here("data/derived_data/ua_score_groups.xlsx"))
+```
+
+* Join to data
+
+```{r}
+update_dat %<>%
+  left_join(
+    bind_rows(read_excel(
+      here::here("data/derived_data/ua_score_groups.xlsx")
+    ),
+    read_excel(
+      here::here("data/derived_data/score_groups.xlsx")
+    )) %>%
+      select(farm_id, date_score_recorded, score_group) %>%
+      mutate(date_score_recorded = lubridate::ymd(date_score_recorded))
+  ) %>% 
+  mutate(score_group = tidyr::replace_na(score_group, 1))
+```
+
+## Final contemporary groupings
+
+```{r}
+update_dat %>%
+  mutate(
+    cg = glue::glue(
+      "{farm_id}{year}{calving_season}{age_group}{score_group}{toxic_fescue}"
+    ),
+    cg_num = as.integer(factor(cg))
+  ) %>%
+  cg_tallies()
+```
+
+
+```{r}
+
+update_dat %<>%
+  mutate(
+    cg = glue::glue(
+      "{farm_id}{year}{calving_season}{age_group}{score_group}{toxic_fescue}"
+    ),
+    cg_num = as.integer(factor(cg))
+  ) %>%
+  group_by(cg) %>%
+  # At least 5 animals per CG
+  filter(n() >= 5) %>%
+  # Remove CGs with no variation
+  filter(var(hair_score) != 0) %>%
+  ungroup() %>% 
+  left_join(full_ped %>%
+              distinct(Lab_ID, farm_id, animal_id, temp_id, full_reg, sire_reg, dam_reg)) %>%
+  # 200417 fit breed as random effect
+  mutate(
+    breed_effect =
+      str_extract(full_reg, "^SIM|^HER|^RAN|^BSH|^CIA|^RDP|^CHA|^BGR|^AAA|^AMGV|^GVH|^HFD|^BIR|^AAN|^AMAR|^AMXX"),
+    breed_effect =
+      case_when(
+        breed_effect %in% c("AAA", "AAN", "AN", "BIR") ~ "AN",
+        breed_effect %in% c("ANR", "AMAR", "RAN") ~ "ANR",
+        breed_effect %in% c("HER", "HFD") ~ "HFD",
+        breed_effect %in% c("AMXX", "AMGV", "GVH", "GEL") ~ "GEL",
+        breed_effect %in% c("BGR", "BG") ~ "BG",
+        breed_effect %in% c("MAAN", "RDP") ~ "MAAN",
+        breed_effect %in% c("SH", "BSH") ~ "SH",
+        breed_effect %in% c("CHIA", "CIA") ~ "CHIA",
+        is.na(breed_effect) & !is.na(breed_code) ~ breed_code,
+        TRUE ~ breed_effect
+      )
+  ) #%>% 
+  #group_by(breed_effect) %>% 
+  #filter(n() >= 50) %>% 
+  #ungroup()
+
+
+```
+
+# Matching pedigree IDs to genotype IDs 
+
+* Send Brangus duplicates to Bob & Helen
+
+```{r, eval=FALSE}
+read_table(here::here("data/raw_data/190215_hair_shedding.sample"),
+             col_names = "international_id") %>% 
+  mutate(international_id = str_remove(international_id, "1_")) %>% 
+  left_join(old_samp %>% 
+              select(international_id, Lab_ID) %>% 
+              distinct(international_id, Lab_ID)) %>% 
+  group_by(international_id) %>% 
+  #NOF Gelbvieh duplicates strike again
+  filter(Lab_ID == max(Lab_ID)) %>% 
+  ungroup() %>% 
+  left_join(full_ped %>% 
+              select(-sire_reg, -dam_reg)) %>% 
+  filter(is.na(full_reg)) %>% 
+  select(Lab_ID) %>% 
+  left_join(animal_table) %>% 
+  filter(BC == "BG") %>% 
+  select(Lab_ID1 = Lab_ID, registration_number = Reg) %>% 
+  left_join(cleaned %>% 
+              distinct(registration_number, Lab_ID)) %>% 
+  pivot_longer(cols = c("Lab_ID1", "Lab_ID")) %>% 
+  select(registration_number, Lab_ID = value) %>% 
+  left_join(animal_table) %>% 
+  writexl::write_xlsx("~/Desktop/brangus_dup.xlsx")
+```
+
+```{r}
+geno_key <-
+  read_table(here::here("data/raw_data/190215_hair_shedding.sample"),
+             col_names = "international_id") %>% 
+  mutate(international_id = str_remove(international_id, "1_")) %>% 
+  left_join(old_samp %>% 
+              select(international_id, Lab_ID) %>% 
+              distinct(international_id, Lab_ID)) %>% 
+  group_by(international_id) %>% 
+  #NOF Gelbvieh duplicates strike again
+  filter(Lab_ID == max(Lab_ID)) %>% 
+  ungroup() %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, Reg)) %>% 
+  left_join(full_ped %>% 
+              select(-sire_reg, -dam_reg)) %>% 
+  # Coalesce in Brangus duplicates
+  coalesce_join(full_ped %>% 
+                  filter(str_detect(full_reg, "^BGR")) %>% 
+                  mutate(Reg = str_remove(full_reg, "BGR")) %>% 
+                  select(Reg, full_reg, farm_id, animal_id, temp_id, Lab_ID2 = Lab_ID),
+                join = dplyr::left_join,
+                by = c("Reg")) %>% 
+  mutate(Lab_ID = if_else(!is.na(Lab_ID2), Lab_ID2, Lab_ID)) %>% 
+  select(-Reg, -Lab_ID2)
+```
+
+## Sample ID file 
+
+```{r}
+read_table(here::here("data/raw_data/190215_hair_shedding.sample"),
+             col_names = "international_id") %>% 
+  mutate(international_id = str_remove(international_id, "1_")) %>% 
+  left_join(geno_key %>% 
+              select(international_id, full_reg)) %>% 
+  mutate(full_reg = if_else(is.na(full_reg), international_id, full_reg)) %>% 
+  select(full_reg) %>% 
+  write_tsv(here::here("data/raw_data/190215_hair_shedding.geno_key"), col_names = FALSE)
+```
+
+
+
+# Match pedigree IDs to cleaned IDs, write out data
+
+
+```{r}
+update_dat %>% 
+  select(full_reg, everything()) %>% 
+  select(full_reg, cg_num, hair_score) %>% 
+  write_delim(here::here(glue::glue("data/derived_data/update_email2020/no_breed/data.txt")),
+                         delim = " ",
+                         col_names = FALSE)
+
+```
+
+```{r}
+update_dat %>% 
+  left_join(full_ped %>% 
+              distinct(Lab_ID, farm_id, animal_id, temp_id, full_reg)) %>% 
+  select(full_reg, everything()) %>% 
+  left_join(geno_key %>% 
+              mutate(genotyped = TRUE)) %>% 
+  select(-international_id) %>% 
+  write_rds(here::here("data/derived_data/update_dat.rds"))
+```
+
+
+# Make pedigree
+
+```{r}
+
+update_dat %>% 
+  left_join(full_ped %>% 
+              distinct(Lab_ID, farm_id, animal_id, temp_id, full_reg, sire_reg, dam_reg)) %>% 
+  mutate(full_reg = if_else(is.na(full_reg), as.character(glue("{farm_id}{animal_id}{temp_id}")), full_reg)) %>% 
+  select(full_reg, sire_reg, dam_reg) %>% 
+  three_gen(full_ped = full_ped) %>% 
+  write_delim(here::here(glue::glue("data/derived_data/update_email2020/no_breed/ped.txt")),
+                         delim = " ",
+                         col_names = FALSE)
+```
+
+# Map file
+
+* Pull out chromosome and position from mgf file
+    + `zcat data/raw_data/190215_hair_shedding.hard.mgf.gz | cut -d"," -f1 > data/raw_data/190215_hair_shedding.chr_pos.txt`
+
+```{r}
+read_table2(here::here("data/raw_data/190215_hair_shedding.chr_pos.txt"), col_names = FALSE, col_types = "c") %>% 
+  separate(1, into = c("chr", "pos"), sep = ":") %>% 
+  mutate(snp_number = row_number()) %>% 
+  select(snp_number, chr, pos) %>% 
+  write_tsv(here::here("data/raw_data/190215_hair_shedding.chrinfo.txt"), col_names = FALSE)
+```
+

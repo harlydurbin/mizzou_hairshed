@@ -1,0 +1,635 @@
+---
+title: "Untitled"
+author: "Harly Durbin"
+date: "4/23/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(sommer)
+library(tidyverse)
+source(here::here("source_functions/sommer_tidiers.R"))
+
+grm_metadata <- 
+  read_table(here::here("data/raw_data/190215_hair_shedding.sample"),
+             col_names = "international_id") %>% 
+  dplyr::mutate(international_id = str_remove(international_id, "1_")) %>% 
+  left_join(old_samp %>% 
+              dplyr::select(international_id, Lab_ID) %>% 
+              dplyr::distinct(international_id, Lab_ID)) %>% 
+  group_by(international_id) %>% 
+  #NOF Gelbvieh duplicates strike again
+  dplyr::filter(Lab_ID == max(Lab_ID)) %>% 
+  ungroup()
+
+old_samp <- 
+  read_delim(here::here("data/raw_data/190205_sample_sheet.csv"),
+             delim = c(","),
+             col_names = TRUE,
+             guess_max = 10000) %>% 
+  # This gets annoying so I'm renaming it
+  rename(Lab_ID = lab_id,
+         Reg = reg)
+
+grm_raw <-
+  read_rds(here::here("data/derived_data/grm_raw.rds"))
+
+
+eigenval <-
+  read_table2(here::here("data/derived_data/190417.eigenval"), col_names = "eigenval") %>% 
+  mutate(pc = map_chr(1:20, ~ str_c("PC", .x)),
+         pve = eigenval/sum(eigenval))
+
+eigenvec <-
+  read_table2(here::here("data/derived_data/190417.eigenvec"),
+              col_names = FALSE) %>% 
+  select(-X1) %>% 
+  set_names(c("international_id", map_chr(1:20, ~ str_c("PC", .x)))) %>% 
+#  reshape2::melt(id = "international_id") %>% 
+  left_join(old_samp %>% 
+              select(international_id, Lab_ID, sample_id),
+            by = c("international_id")) %>% 
+  left_join(nested_join %>%
+              select(farm_id, animal_id, registration_number, breed_code, Lab_ID),
+            by = c("Lab_ID"))
+```
+
+
+
+
+# `sommer`
+
+## Provided toy data
+
+```{r}
+
+data("DT_example")
+
+DT
+```
+
+```{r}
+ans1 <- sommer::mmer(Yield~1,
+                     # I guess : is for nested effects?
+                     random = ~ Name + Env + Env:Name + Env:Block,
+                     # no idea what this means
+                     rcov = ~ units, 
+                     data = DT)
+
+summary(ans1)$varcomp
+
+(n.env <- length(levels(DT$Env)))
+
+# I have no idea what V1-V5 are
+# I think they come from having nested effects?
+
+pin(ans1, h2 ~ V1 / ( V1 + (V3/n.env) + (V5/(2*n.env)) ) )
+```
+
+
+
+```{r}
+
+# A 4 column matrix (colnames 1, 2, 4, 5) of 599 observations
+data("DT_wheat")
+DT
+
+# Rename colnames X1:X4
+colnames(DT) <- paste0("X",1:ncol(DT)) 
+
+DT <- as.data.frame(DT)
+
+# Make a column for ID
+DT$id <- as.factor(rownames(DT)) # select environment 1 
+
+# GT is a 599 row by 1279 column matrix of who the hell knows what but not GRM
+str(GT)
+
+# Give GT same rownames as DT
+rownames(GT) <- rownames(DT) 
+
+# I think this is the GRM, 599x599 matrix
+K <- A.mat(GT) # additive relationship matrix 
+str(K)
+
+colnames(K) <- rownames(K) <- rownames(DT) # GBLUP pedigree-based approach 
+
+set.seed(12345) 
+
+# Why did you rename it
+y.trn <- DT 
+
+# Sample 120 individuals
+vv <- sample(rownames(DT), round(nrow(DT)/5)) 
+
+y.trn
+
+# Make rows that match vv NA in column X1
+y.trn[vv,"X1"] <- NA 
+
+head(y.trn)
+```
+
+```{r}
+# Predicting X1
+ans <- mmer(X1~1,
+            # K is the grm
+            random = ~vs(id, Gu = K),
+            rcov = ~units,
+            data = y.trn)
+
+
+
+```
+
+```{r}
+# Just change the BLUP values for the individual effect to a dataframe
+ans$U$`u:id`$X1 <- as.data.frame(ans$U$`u:id`$X1) 
+
+# Don't even know what this did or if it matters, I guess remove "id" from any row names
+rownames(ans$U$`u:id`$X1) <- gsub("id","",rownames(ans$U$`u:id`$X1)) 
+
+# For the 120 test (?) samples pulled, correlation between raw phenotype and breeding value?
+cor(ans$U$`u:id`$X1[vv,], DT[vv,"X1"], use="complete")
+```
+
+## Hair shedding toy data
+
+```{r}
+ 
+grm_test_long <- 
+  grm_raw %>% 
+  set_names(grm_metadata$international_id) %>% 
+  bind_cols(grm_metadata) %>% 
+  slice(1:500) %>%
+  dplyr::select(1:500, international_id, Lab_ID) %>%
+  melt(id = c("international_id", "Lab_ID")) %>% 
+  rename(ind1 = international_id, 
+         ind2 = variable) %>%  
+  mutate(ind2 = as.character(ind2))
+
+```
+
+
+```{r}
+
+# Make a test set to make sure having males won't break my model
+testset <-
+  grm_metadata %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, Sex)) %>% 
+  group_by(Sex) %>% 
+  sample_frac(.07, replace = FALSE) 
+
+# Toy grm 
+grm_test <- 
+  as_tibble(grm_raw) %>% 
+  set_names(grm_metadata$international_id)  %>% 
+  bind_cols(grm_metadata %>% 
+              dplyr::select(international_id)) %>% 
+  # Keep column if it matches what's in testset international_id
+  # Keep international_id column
+  dplyr::select(one_of(testset$international_id), international_id) %>% 
+  # Keep row if matches testset international_id
+  dplyr::filter(international_id %in% testset$international_id) %>% 
+  tibble::column_to_rownames("international_id") %>%
+  as.matrix()
+
+write_rds(grm_test, here::here("data/derived_data/grm_test.rds"))
+```
+
+```{r}
+# Toy phenotypic data
+
+test <- 
+  long %>% 
+  # Add date deviations
+    dplyr::mutate(date_deviation = 
+           case_when(
+             year == "2018" & !is.na(date_score_recorded) ~ as.integer(date_score_recorded - mdy("5/1/2018")),
+             year == "2017" & !is.na(date_score_recorded) ~ as.integer(date_score_recorded - mdy("5/1/2017")),   
+             year == "2016" & !is.na(date_score_recorded) ~ as.integer(date_score_recorded - mdy("5/1/2016")),
+             #mean impute
+             # Need to figure out how to do this without hard coding
+             year == "2016" & is.na(date_score_recorded) ~ as.integer(29),
+             year == "2017" & is.na(date_score_recorded) ~ as.integer(31),
+             year == "2018" & is.na(date_score_recorded) ~ as.integer(19)
+                     )) %>% 
+  dplyr::select(farm_id, animal_id, breed_code, Lab_ID, sex, age, calving_season, toxic_fescue, location, year, date_score_recorded, date_deviation, hair_score) %>% 
+  # Add latitude by joining to location key
+  left_join(read_csv(here::here("data/raw_data/location_key.csv")) %>% 
+              janitor::clean_names() %>% 
+              dplyr::select(location, lat) %>% 
+              dplyr::mutate(location = stringr::str_to_upper(location))) %>% 
+  dplyr::mutate(
+    # Squish together a contemporary group
+    temp_group = stringr::str_c(location, year),
+    # Remove space from temp group
+    temp_group = stringr::str_remove(temp_group, "[[:blank:]]")) %>% 
+  # Adding international ID by Lab ID
+  left_join(old_samp %>% 
+              dplyr::select(Lab_ID, international_id)) %>% 
+  # Keep only rows in testset
+  dplyr::filter(Lab_ID %in% testset$Lab_ID) %>% 
+  # Adding PCs by international_id
+  left_join(eigenvec %>% 
+              select(PC1, PC2, international_id)) %>% 
+  mutate_at(vars("sex", "calving_season", "toxic_fescue", "temp_group", "international_id", "year", "farm_id"),
+            as.factor)
+
+write_rds(test, here::here("data/derived_data/pheno_test.rds"))
+```
+
+
+```{r}
+grm_test <- read_rds(here::here("data/derived_data/grm_test.rds"))
+test <- read_rds(here::here("data/derived_data/pheno_test.rds"))
+```
+
+
+## Solve test set
+
+```{r}
+hair_ans <- 
+  mmer(hair_score~1 + sex + calving_season + date_deviation + lat + age + toxic_fescue + temp_group + PC1 + PC2,
+       # NEED to specify international ID twice: first one is relating the 
+       # GRM to individuals --> Additive genetic
+       # Second one is relating identity matrix to individual --> Permanent environment
+       random = ~vs(international_id, Gu = grm_test) + international_id,
+       # I don't know what this does
+       # I think treating repeated records individually?
+       # Covariance of residuals
+       rcov = ~ units,
+       method = "AI",
+       # Don't drop individuals that are missing phenotypes
+       na.method.X = "include", 
+       data = test)
+
+```
+
+
+```{r}
+summary(hair_ans)$beta
+
+labels(hair_ans$residuals)
+
+tibble(resid = hair_ans$residuals)
+
+length(hair_ans$residuals)
+
+hair_ans$data %>% 
+  select(international_id, hair_score) %>% 
+  bind_cols(tibble(resid = hair_ans$residuals)) %>% 
+  mutate(international_id = as.character(international_id))
+  
+```
+
+
+
+## Calculate heritability
+
+```{r}
+# Breeding value
+Vg <- vc[1, 1]
+
+# Second row is permanent environmental variance
+Vpe <- vc[2, 1]
+
+# Contemporary group
+Vcg <- vc[3, 1]
+
+# Temporary environment
+Vte <- vc[4, 1]
+
+# broad sense heritability is 0.24
+Vg/sum(Vg, Vpe, Vte, Vcg)
+
+# repeatability is 0.44
+sum(Vg, Vpe)/sum(Vg, Vpe, Vte, Vcg)
+```
+
+## Test cross validation
+
+```{r}
+
+cv_test_grps <-
+  test %>% 
+  cv_assign()
+
+```
+
+
+```{r}
+test %>% 
+  left_join(cv_test_grps) %>% 
+  group_by(cv_group) %>% 
+  tally()
+```
+
+```{r}
+cv_test <-
+  test %>% 
+  left_join(cv_test_grps)
+
+
+write_rds(cv_test, here::here("data/toy/cv_test.rds"))
+```
+
+
+```{r}
+
+# Validate in group 1
+cv_1 <-
+  cv_test %>% 
+  mutate(hair_score = 
+           case_when(
+             cv_group == 1 ~ NA_integer_,
+             TRUE ~ hair_score
+           ))
+
+
+ans_cv1 <- 
+  mmer(hair_score~1 + sex + calving_season + date_deviation + lat + age + toxic_fescue + temp_group + PC1 + PC2,
+       # NEED to specify international ID twice: first one is relating the 
+       # GRM to individuals --> Additive genetic
+       # Second one is relating identity matrix to individual --> Permanent environment
+       random = ~vs(international_id, Gu = grm_test) + international_id,
+       # I don't know what this does
+       # I think treating repeated records individually?
+       # Covariance of residuals
+       rcov = ~ units,
+       method = "AI",
+       # Don't drop individuals that are missing phenotypes
+       na.method.X = "include", 
+       data = cv_1)
+
+```
+
+
+
+## Plot
+
+```{r}
+
+# Spot check, density of breeding values
+tidy_blup(hair_ans) %>% 
+  ggplot(aes(x = blup)) +
+  geom_density()
+
+# Spot if residuals are normally distributed
+as_tibble(hair_ans$residuals) %>% 
+  ggplot(aes(x = V1)) +
+  geom_histogram()
+
+# Spot check, breeding values stratified by breed
+tidy_blup(hair_ans) %>% 
+  left_join(test %>% 
+              dplyr::select(international_id, breed_code)) %>% 
+  dplyr::distinct() %>% 
+  dplyr::filter(breed_code != "CROS") %>% 
+  ggplot(aes(x = breed_code,
+             y = blup)) +
+  geom_boxplot()
+```
+
+
+```{r}
+# How to convey confidence and/or n for each age?
+s$betas %>% 
+  janitor::clean_names() %>% 
+  mutate(effect = as.character(effect)) %>% 
+  filter(str_detect(effect, "age")) %>% 
+  mutate(effect = str_remove(effect, "age"),
+         effect = forcats::fct_inorder(effect)) %>% 
+  ggplot(aes(x = effect,
+             y = estimate,
+             color = t_value)) +
+  geom_line(group = "effect")
+```
+
+
+
+## Output summary/exploration
+
+```{r}
+
+# VarU
+# Dunno what this is, a nxn matrix
+str(as_data_frame(hair_ans$VarU$`u:international_id`$hair_score) %>% 
+  mutate(ind2 = colnames(.)))
+
+# data used
+hair_ans$data %>% 
+  View()
+
+# Fixed effect estimates
+# BLUEs
+hair_ans$Beta
+
+# 45 x 45
+# a variance-covariance matrix for trait BLUEs
+str(hair_ans$VarBeta)
+
+# Is this within individual variation...?
+# a list with the values of the variance-covariance components with 
+# one list element for each random effect.
+hair_ans$sigma
+
+# Don't know what either of these are, 297 x 297 when 328 observations
+# "Vi: the inverse of the phenotypic variance matrix"
+str(hair_ans$Vi)
+# P isn't in the package manual
+str(hair_ans$P)
+
+# 2x2 matrix??
+hair_ans$sigmaSE
+
+# n x n matrix
+# a list (one element for each random effect) with the predicted error variance
+# matrix for trait BLUP
+as_data_frame(hair_ans$PevU$`u:international_id`$hair_score) %>% 
+  mutate(ind1 = colnames(.)) %>% 
+  reshape2::melt(id = "ind1") %>% 
+  rename(ind2 = variable) %>% 
+  mutate(ind2 = as.character(ind2))
+
+# What is na.method? Drop missing?
+hair_ans$call
+
+# Breeding values
+as_data_frame(purrr::flatten(hair_ans$U)) %>% 
+  rename(blup = 1)
+
+
+hair_ans$data
+
+
+```
+
+# JWAS
+
+## Toy dataset and genotypes
+
+
+```{r}
+jwas_testset <-
+  grm_metadata %>% 
+  slice(1:100)
+
+```
+
+
+```{r}
+
+# Subsetted MGF file with 100 individuals and 1000 markers
+test_dose <-
+  read_csv(here::here("data/raw_data/190215_test.dose.mgf"),
+         col_names = c("markerID", "ref", "alt", jwas_testset$international_id),
+         col_types = cols(.default = "d", markerID = "c", ref = "c", alt = "c" ))
+
+
+# Generate map file
+test_dose %>% 
+  dplyr::select(markerID) %>% 
+  separate(markerID,
+           into = c("chromosome", "position"),
+           remove = FALSE) %>% 
+  dplyr::mutate(markerID = purrr::map_chr(1:1000, ~ stringr::str_c("m", .x))) %>% 
+  write_csv(here::here("data/derived_data/jwastest_map.csv"))
+
+
+test_dose %>% 
+  dplyr::select(-(ref:alt)) %>% 
+  dplyr::mutate(markerID = purrr::map_chr(1:1000, ~ stringr::str_c("m", .x)),
+                markerID = forcats::fct_inorder(markerID)) %>% 
+  reshape2::melt(id = "markerID") %>% 
+  reshape2::dcast(variable ~ markerID) %>% 
+  rename(international_id = variable) %>% 
+  # Add trailing zeros to integers
+  mutate_at(vars(-international_id), ~ format(.x, digits = 3, nsmall = 3)) %>% 
+  write_csv(here::here("data/derived_data/jwastest_genotypes.dose.csv"))
+
+
+
+```
+
+```{r}
+# Subsetted MGF file with 100 individuals and 1000 markers
+test_hard <-
+  read_csv(here::here("data/raw_data/190215_test.hard.mgf"),
+         col_names = c("markerID", "ref", "alt", jwas_testset$international_id),
+         col_types = cols(.default = "d", markerID = "c", ref = "c", alt = "c" ))
+
+
+# Generate map file
+test_hard %>% 
+  dplyr::select(markerID) %>% 
+  separate(markerID,
+           into = c("chromosome", "position"),
+           remove = FALSE) %>% 
+  dplyr::mutate(markerID = purrr::map_chr(1:1000, ~ stringr::str_c("m", .x))) %>% 
+  write_csv(here::here("data/derived_data/jwastest_map.csv"))
+
+
+test_hard %>% 
+  dplyr::select(-(ref:alt)) %>% 
+  dplyr::mutate(markerID = purrr::map_chr(1:1000, ~ stringr::str_c("m", .x)),
+                markerID = forcats::fct_inorder(markerID)) %>% 
+  reshape2::melt(id = "markerID") %>% 
+  reshape2::dcast(variable ~ markerID) %>% 
+  rename(international_id = variable) %>% 
+  # Add trailing zeros to integers
+ # mutate_at(vars(-international_id), ~ format(.x, digits = 3, nsmall = 3)) %>% 
+  write_csv(here::here("data/derived_data/jwastest_genotypes.hard.txt"))
+
+```
+
+
+```{r}
+
+jwas_test <- 
+  long %>% 
+  # Add date deviations
+    dplyr::mutate(date_deviation = 
+           case_when(
+             year == "2018" & !is.na(date_score_recorded) ~ as.integer(date_score_recorded - mdy("5/1/2018")),
+             year == "2017" & !is.na(date_score_recorded) ~ as.integer(date_score_recorded - mdy("5/1/2017")),   
+             year == "2016" & !is.na(date_score_recorded) ~ as.integer(date_score_recorded - mdy("5/1/2016")),
+             #mean impute
+             # Need to figure out how to do this without hard coding
+             year == "2016" & is.na(date_score_recorded) ~ as.integer(29),
+             year == "2017" & is.na(date_score_recorded) ~ as.integer(31),
+             year == "2018" & is.na(date_score_recorded) ~ as.integer(19)
+                     )) %>% 
+  dplyr::select(farm_id, animal_id, breed_code, Lab_ID, sex, age, calving_season, toxic_fescue, location, year, date_score_recorded, date_deviation, hair_score) %>% 
+  # Add latitude by joining to location key
+  left_join(read_csv(here::here("data/raw_data/location_key.csv")) %>% 
+              janitor::clean_names() %>% 
+              dplyr::select(location, lat) %>% 
+              dplyr::mutate(location = stringr::str_to_upper(location))) %>% 
+  dplyr::mutate(
+    # Squish together a contemporary group
+    temp_group = stringr::str_c(location, year),
+    # Remove space from temp group
+    temp_group = stringr::str_remove(temp_group, "[[:blank:]]")) %>% 
+  # Adding international ID by Lab ID
+  left_join(old_samp %>% 
+              dplyr::select(Lab_ID, international_id)) %>% 
+  # Keep only rows in testset
+  dplyr::filter(Lab_ID %in% jwas_testset$Lab_ID) %>% 
+  # Adding PCs by international_id
+  left_join(eigenvec %>% 
+              select(PC1, PC2, international_id)) %>% 
+  mutate(id2 = international_id)
+  # mutate_at(vars("sex", "calving_season", "toxic_fescue", "temp_group", "international_id", "year", "farm_id"),
+  #           as.factor)
+
+
+write_csv(jwas_test, here::here("data/derived_data/jwastest_pheno.csv"))
+
+
+
+
+```
+
+
+
+# `rptR`
+
+```{r}
+library(rptR)
+data(BeetlesBody)
+
+long_test <- 
+  long %>% 
+  mutate(squash_id = str_c(farm_id, animal_id))
+```
+
+
+```{r}
+rep1 <- rpt(hair_score ~ (1 | squash_id),
+    grname = "squash_id",
+    data = long_test, 
+    datatype = "Gaussian",
+    nboot = 50,
+    npermut = 50)
+
+print(rep1)
+
+plot(rep1)
+```
+
+```{r}
+# "Estimating enhanced agreement repeatabilities"
+
+rpt(hair_score ~
+                    calving_season + date_deviation + lat + age + toxic_fescue + (1 | temp_group) + (1 | international_id),
+                  # What is this
+                  grname = "international_id",
+                  data = test,
+                  datatype = "Gaussian",
+                  adjusted = FALSE)
+```
+
+

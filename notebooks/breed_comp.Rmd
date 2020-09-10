@@ -1,0 +1,236 @@
+---
+title: "Breed comp & ancestry"
+author: "Harly Durbin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+# Had to use the old sample sheet bc international IDs in my genotype dump from 2/15 wouldn't match up otherwise
+# (i.e., international IDs got fixed)
+
+old_samp <- 
+  read_delim(here::here("data/raw_data/190205_sample_sheet.csv"), delim = c(","), col_names = TRUE, guess_max = 10000) %>% 
+  # This gets annoying so I'm renaming it
+  rename(Lab_ID = lab_id,
+         Reg = reg) %>% 
+  # For animals with multiple sample_id, keep only 1
+  group_by(Lab_ID) %>% 
+  filter(sample_id == max(sample_id)) %>% 
+  ungroup()
+  
+
+```
+
+# Breed comp
+
+```{r}
+
+# Generate breed comp data set 
+hs_bc <- 
+  nested_join %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  # Need sample ID in order to join to breed comp
+  left_join(sample_sheet %>% 
+              select(Lab_ID, sample_id),
+            by = c("Lab_ID")) %>% 
+  # Add breed comp 
+  left_join(breed_comp, by = c("sample_id"))
+
+```
+
+## Plot breed comp
+
+```{r, fig.width=24, fig.height=8}
+
+hs_bc %>% 
+  # remove if no breed comp run
+  filter(!is.na(holstein)) %>% 
+  select(farm_id, animal_id, registration_number, breed_code, holstein:wagyu) %>% 
+  filter(breed_code != "MAAN") %>% 
+  # melt to long format
+  melt(id = c("farm_id", "animal_id", "registration_number", "breed_code")) %>% 
+  # Make breed component uppercase
+  mutate(variable = str_to_title(variable)) %>% 
+  # reorder animal ID by ancestry
+  ggplot(aes(x = forcats::fct_reorder2(animal_id, variable, value), y = value, fill = variable)) +
+  #Make a stacked bar plot that's scaled by ancestry percentage using the scales package
+  geom_bar(stat = "identity",
+           position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  ggsci::scale_fill_ucscgb() +
+  #space = free_x is the key
+  #https://stackoverflow.com/questions/23207878/ggplot2-group-x-axis-discrete-values-into-subgroups
+  facet_grid(~ breed_code, space = "free_x", scales = "free_x") +
+ #  Remove all x axis title info (i.e., international IDs)
+    theme(
+      axis.title.x = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      panel.spacing.x = unit(0.1, "lines")
+      ) +
+  labs(y = "Assigned ancestry",
+       title = "Hair shedding dataset breed composition")
+
+
+cowplot::ggsave(here::here("breed_comp_test.png"), width = 24, height = 8)
+```
+
+```{r}
+nested_join %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  left_join(sample_sheet %>% 
+              select(Lab_ID, sample_id),
+            by = c("Lab_ID")) %>% 
+  left_join(breed_comp, by = c("sample_id")) %>% 
+  filter(!is.na(holstein)) %>% 
+#  filter(indicine > .1) %>% 
+  select(farm_id, animal_id, registration_number, breed_code, holstein:wagyu) %>% 
+  filter(breed_code == "HFD" & hereford < 0.2) %>% 
+  arrange(hereford) %>% 
+  select(hereford, everything())
+
+```
+
+
+
+# PCA
+
+```
+plink --vcf /CIFS/MUG01_N/deckerje/hjdzpd/hair_shedding_gen/190215_gen/imputed/190215_hair_shedding.vcf.gz
+--cow
+--threads 12
+--pca
+--out data/derived_data/190417
+```
+
+
+```{r}
+
+eigenval <-
+  read_table2(here::here("data/derived_data/190417.eigenval"), col_names = "eigenval") %>% 
+  mutate(pc = map_chr(1:20, ~ str_c("PC", .x)),
+         pve = eigenval/sum(eigenval))
+
+eigenvec <-
+  read_table2(here::here("data/derived_data/190417.eigenvec"),
+              col_names = FALSE) %>% 
+  select(-X1) %>% 
+  set_names(c("international_id", map_chr(1:20, ~ str_c("PC", .x)))) %>% 
+#  reshape2::melt(id = "international_id") %>% 
+  left_join(old_samp %>% 
+              select(international_id, Lab_ID, sample_id),
+            by = c("international_id")) %>% 
+  left_join(nested_join %>%
+              select(farm_id, animal_id, registration_number, breed_code, Lab_ID),
+            by = c("Lab_ID")) #%>%
+  # mutate(
+  #   breed_code = case_when(
+  #     str_detect(international_id, "RANUSA") ~ "ANR",
+  #     str_detect(international_id, "AANUSA") ~ "AN",
+  #     str_detect(international_id, "GVHUSA") ~ "GEL",
+  #     TRUE ~ breed_code
+  #   )
+  # )
+```
+
+
+```{r}
+#eigenvalue file, eigenvector file, integer pc1 integer pc2
+
+plot_pca <- function(val, vec, pc1, pc2) {
+ 
+  # col1 <- rlang::sym(str_c("PC", pc1))
+  # col2 <- rlang::sym(str_c("PC", pc2))
+  
+  col1 <- rlang::sym(str_c("PC", as.character(pc1)))
+  col2 <- rlang::sym(str_c("PC", as.character(pc2)))
+  
+   vec %>%
+    ggplot(aes(x = !!col1,
+               y = !!col2,
+               color = breed_code)) +
+    geom_point(alpha = 0.7) +
+    ggsci::scale_color_igv(alpha = 0.7) +
+    labs(
+      x = str_c("PC ", pc1, ": ", scales::percent(as.numeric(val[pc1, 3]))),
+      y = str_c("PC ", pc2, ": ", scales::percent(as.numeric(val[pc2, 3]))),
+      color = "Breed",
+      title = str_c("Hair shedding dataset: PC ", pc1, " vs. PC ", pc2)
+    )
+  
+  cowplot::ggsave(here::here(str_c("figures/eda/190408.PC", pc1, "_PC", pc2, ".png" )))
+}
+```
+
+
+```{r}
+purrr::map2(.x = seq(1,19, by = 2),
+            .y = seq(2,20, by = 2),
+            ~ plot_pca(val = eigenval,
+                       vec = eigenvec,
+                       pc1 = .x,
+                       pc2 = .y))
+```
+
+
+```{r}
+
+eigenval %>% 
+  slice(1:10) %>% 
+  mutate(pc = forcats::fct_inorder(pc)) %>% 
+  ggplot() + 
+  geom_col(mapping = aes(x = pc, y = pve),
+           stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = element_blank(), 
+       y = "% Variation explained",
+       title = "Hair shedding dataset: principal components 1-10") +
+  theme()
+
+
+```
+
+
+# etc
+
+
+```{r}
+lm(hair_score ~ as.factor(year) + as.factor(location), data = long) %>% 
+  broom::augment(long) %>% 
+  arrange(desc(.resid)) %>% 
+  ggplot(aes(x = age, y = .resid)) +
+  geom_point()
+```
+
+
+```{r}
+lm(hair_score ~ date_deviation + as.factor(year) + as.factor(location), data = long) %>% 
+  broom::augment(long) %>% 
+  arrange(desc(.resid)) %>% 
+  select(hair_score, .resid, date_deviation, everything()) %>% 
+  filter(!is.na(toxic_fescue)) %>% 
+  ggplot(aes(x = .resid)) +
+  geom_density() +
+  facet_wrap(~ toxic_fescue)
+  
+  
+  group_by(farm_id, animal_id) %>% 
+  filter(n_distinct(year) > 1) %>% 
+  summarise(p_var = var(.resid, na.rm = TRUE),
+            n_records = n_distinct(year)) %>% 
+  arrange(desc(p_var)) %>% 
+  ggplot(aes(x = p_var)) +
+  geom_histogram()
+  
+  # ggplot(aes(x = .resid)) + 
+  # geom_histogram()
+```
+
+
+
+

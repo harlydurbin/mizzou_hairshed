@@ -1,0 +1,559 @@
+---
+title: "Sim specialists webinar"
+author: "Harly Durbin"
+date: "10/13/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+library(readr)
+library(forcats)
+library(ggplot2)
+library(readxl)
+library(rlang)
+library(lubridate)
+library(magrittr)
+library(tidylog)
+
+```
+
+```{r}
+long <- 
+  read_rds(here::here("data/derived_data/long.rds"))
+```
+
+```{r}
+sent <- read_rds(here::here("data/derived_data/sent.rds"))
+```
+
+```{r}
+animal_table <- read_rds(here::here("data/derived_data/animal_table.rds"))
+```
+
+
+# How many sent to ASA?
+
+```{r}
+sent %>% 
+  left_join(animal_table %>% 
+              select(BC, breed_assoc, Lab_ID)) %>% 
+  group_by(breed_assoc) %>% 
+  tally(sort = TRUE)
+```
+
+
+# Breed map
+
+```{r}
+long %>% 
+  filter(is.na(breed_code))
+
+long %>% 
+  mutate(breed_code = if_else(is.na(breed_code), "CROS", breed_code)) %>% 
+  group_by(breed_code) %>% 
+  tally() 
+```
+
+```{r}
+long %>% 
+  summarise(n_distinct(farm_id, animal_id))
+```
+
+
+```{r}
+usa <- 
+  borders("state", regions = ".", fill = "white", colour = "black")
+```
+
+
+
+```{r, fig.height=12, fig.width=18}
+
+
+long %>%
+  mutate(breed_code = if_else(is.na(breed_code), "CROS", breed_code)) %>% 
+  left_join(read_csv(here::here("data/raw_data/location_key.csv")) %>% 
+              janitor::clean_names() %>% 
+              dplyr::select(location, lat, lng) %>% 
+              dplyr::mutate(location = stringr::str_to_upper(location))) %>% 
+    #Take out NAs and Braunvieh sample
+  filter(!is.na(breed_code) & !breed_code %in% c("BRN", "CHIA")) %>%
+  #Verbose breed annotations
+  mutate(breed_code = case_when(
+    breed_code == "AN" ~ "Angus: 8,651",
+    breed_code == "ANR" ~ "Red Angus: 1,873",
+    breed_code == "BG" ~ "Brangus: 1,645",
+    breed_code == "CHA" ~ "Charolais: 724",
+    breed_code == "CROS" ~ "Crossbred: 1,265",
+    breed_code == "GEL" ~ "Gelbvieh: 692",
+    breed_code == "HFD" ~ "Hereford: 3,335", 
+    breed_code == "MAAN" ~ "Maine-Anjou: 258",
+    breed_code == "SH" ~ "Shorthorn: 428",
+    breed_code == "SIM" ~ "Simmental: 7,326",
+    breed_code == "SIMB" ~ "Simbrah: 105"
+  )) %>% 
+  #Reorder breed_code in order of frequency
+  mutate(breed_code = forcats::fct_infreq(breed_code)) %>% 
+  ggplot(aes(
+    x = lng,
+    y = lat,
+    colour = breed_code
+  )) +
+  usa +
+  geom_count(
+    alpha = 0.7,
+    position = position_jitter(width = 0.4,
+                               height = 0.2)
+    #Shift position of overlapping points so that they can be seen better
+    # position = position_dodge(
+    #   dodge.width = 0.7,
+    #   padding = 0.2
+    # )
+  ) +
+  scale_size_area(max_size = 15,
+                  # No size guide
+                  guide = 'none') +
+  guides(col = guide_legend(title = "Breed")) +
+  bakeoff::scale_color_bakeoff(reverse = TRUE, discrete = TRUE) +
+  theme_classic() +
+  theme(
+    # No x or y axes anything
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    text = element_text(family = "Glacial Indifference"),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 20),
+    legend.background = element_rect(fill = "transparent",
+                                    colour = NA),
+    legend.justification = c(0, .05),
+    legend.key.size = unit(1, "cm"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "transparent",
+                                    colour = NA),
+    plot.background = element_rect(fill = "transparent",
+                                   colour = NA)
+  ) +
+  coord_map("albers", lat0 = 39, lat1 = 45) 
+
+cowplot::ggsave(here::here("talks_articles/simspecialists_2019/breed_map_transp.png"), dpi = 500, bg = "transparent", width = 12, height = 8)
+
+```
+
+# How many scores per animal
+
+```{r}
+scales::show_col(bakeoff::bakeoff_pal()(11))
+```
+
+
+```{r, fig.width=8, fig.height=6}
+long %>% 
+  group_by(farm_id, animal_id) %>% 
+  tally(sort = TRUE) %>% 
+  ggplot(
+    aes(x = forcats::as_factor(n))
+  ) +
+  geom_histogram(stat = "count",
+                 fill = "#126180") +
+  theme_classic() +
+  scale_y_continuous(label = scales::comma) +
+  theme(
+    text = element_text(family = "Glacial Indifference",
+                        #color = "#EDEAE5"
+                        ),
+    plot.title = element_text(size = 24),
+    plot.subtitle = element_text(size = 18, 
+                                 margin = margin(b = 15)),
+    axis.text.y = element_text(size = 24,
+                               #color = "#EDEAE5"
+                               ),
+    axis.text.x = element_text(size = 24,
+                              # color = "#EDEAE5"
+                              ),
+    legend.text = element_text(size = 22),
+    axis.title.y = element_text(size = 28,
+                                margin = margin(r = 15)),
+    axis.title.x = element_text(size = 28,
+                                margin = margin(t = 15)),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "transparent",
+                                    colour = NA),
+    plot.background = element_rect(fill = "transparent",
+                                   colour = NA)
+  ) +
+  labs(
+    x = "Years of data",
+    y = "Numbers of animals"
+  )
+
+cowplot::ggsave(here::here("talks_articles/simspecialists_2019/score_count_transp.png"), dpi = 500, bg = "transparent", width = 10, height = 5)
+```
+
+# Weaning weight linear model 
+
+# Weaning weight plot
+
+## Simmental
+
+### Import
+
+```{r}
+
+sim_calf_report <-
+read_excel(here::here("data/raw_data/180706.sim.Anm_CG_Data.xlsx"),
+           guess_max = 6135) %>%
+  janitor::clean_names() %>%
+  rename(
+    calf_sex = sex,
+    calf_reg = anm_nbr,
+    adj_ww = ad_j_ww,
+    birth_dt = brth_dt
+  ) %>%
+  mutate(calf_sex =
+           case_when(calf_sex == "C" ~ "F",
+                     calf_sex %in% c("S", "B") ~ "M")) %>%
+  select(calf_reg, calf_sex, adj_bw, birth_dt, adj_ww, w_dt, adj_yw, y_dt) %>% 
+  mutate(wean_year = year(w_dt))
+
+```
+
+
+```{r}
+sim_dam_report <-
+  read_excel(here::here("data/raw_data/180706.sim.Dam_Progeny_Report.xlsx")) %>% 
+  janitor::clean_names() %>% 
+  mutate_at(c("calf_dob", "wean_date"), as.Date) %>% 
+  rename(dam_reg = dam_asa_number,
+         calf_reg = calf_asa_number) %>% 
+  mutate(wean_year = year(wean_date)) %>% 
+  select(dam_reg, calf_reg, calf_dob:wean_year)
+```
+
+```{r}
+sim_ww <-
+  sim_calf_report %>% 
+  filter(wean_year %in% c(2016, 2017, 2018) & adj_ww != 0) %>% 
+  mutate(wean_year = as.character(wean_year)) %>% 
+  left_join(sim_dam_report %>% 
+              select(dam_reg, calf_reg)) %>% 
+  filter(!is.na(dam_reg)) %>% 
+  left_join(long, by = c("dam_reg" = "registration_number",
+                         "wean_year" = "year")) 
+
+```
+
+### Model
+
+```{r}
+
+sim_hair_mod <-
+  lm(adj_ww~1 +
+       hair_score +
+     as_factor(calving_season) +
+     as_factor(calf_sex) +
+       as_factor(farm_id) +
+     as_factor(wean_year),     
+   data = sim_ww)
+
+
+summary(sim_hair_mod)
+```
+
+### Plot
+
+```{r, fig.width= 14 , fig.height= 8}
+
+lm(adj_ww~1 +
+     as_factor(calving_season) +
+     as_factor(calf_sex) +
+     as_factor(farm_id) +
+     as_factor(wean_year),
+   data = sim_ww)%>% 
+  broom::augment_columns(sim_ww) %>% 
+  ggplot(aes(x = as.factor(hair_score),
+             y = .resid)) +
+  ggforce::geom_sina(alpha = 0.6,
+                     # Use the same color as the map
+                     color = "#AF744C",
+                     kernel = "rectangular") +
+  geom_boxplot(outlier.color = "#e74a2f",
+               outlier.alpha = 0.7,
+               alpha = 0.4,
+               fill = "#AF744C") +
+  theme_classic() +
+  theme(
+    text = element_text(family = "Glacial Indifference",
+                        ),
+    axis.text.y = element_text(size = 26
+                               ),
+    axis.text.x = element_text(size = 26
+                              ),
+    legend.text = element_text(size = 22),
+    axis.title.y = element_text(size = 28,
+                                margin = margin(r = 15)),
+    axis.title.x = element_text(size = 28,
+                                margin = margin(t = 15)),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "transparent",
+                                    colour = NA)
+  ) +
+  labs(x = "Dam's unadjusted hair shedding score",
+       y = str_wrap("Calf's 205d + sex + year + calving season + farm adjusted weaning weight",
+                    width = 35))
+
+ggsave(here::here("talks_articles/simspecialists_2019/sim_ww.transp.png"), bg = "transparent", dpi = 500)
+```
+
+## Red Angus
+
+### Import
+
+```{r}
+
+anr_ww <-
+  read_csv(here::here("data/raw_data/180503_anr_ww.csv")) %>% 
+  select(calf_reg = regisno,
+         calf_sex = sex, 
+         registration_number = dam_reg,
+         ww_cg = wean_cont_grp,
+         wean_date,
+         adj_ww = wean_adj) %>% 
+  mutate(wean_date = lubridate::mdy(wean_date),
+         year = lubridate::year(wean_date),
+         calf_sex =
+           case_when(
+             calf_sex == "C" ~ "F",
+             calf_sex %in% c("S", "B") ~ "M"),
+         registration_number = as.character(registration_number)
+           ) %>% 
+  left_join(long %>% 
+              mutate(year = as.numeric(year))) %>% 
+  filter(!is.na(hair_score))
+```
+
+### Explore
+
+```{r}
+read_csv(here::here("data/raw_data/180501_anr_animal.csv")) %>% 
+  filter(dam_reg %in% long$registration_number)
+```
+
+```{r}
+anr_ww %>% 
+  distinct(year)
+```
+
+```{r}
+
+anr_ww %>% 
+  summarise_all(~sum(is.na(.)))
+
+anr_ww %>% 
+  filter(is.na(farm_id))
+
+```
+
+
+### Model 
+
+```{r}
+anr_hair_mod <-
+  lm(
+    adj_ww~1 +
+      hair_score +
+      as_factor(calving_season) +
+      as_factor(calf_sex) +
+      as_factor(farm_id) +
+      as_factor(year),
+    data = anr_ww)
+
+
+summary(anr_hair_mod)
+```
+
+
+### Plot
+
+```{r, fig.width= 14 , fig.height= 8}
+lm(
+  adj_ww ~ 1 +
+    as_factor(calving_season) +
+    as_factor(calf_sex) +
+    as_factor(farm_id) +
+    as_factor(year),
+  data = anr_ww
+) %>% 
+  broom::augment_columns(anr_ww) %>% 
+  ggplot(aes(x = as.factor(hair_score),
+             y = .resid)) +
+  ggforce::geom_sina(alpha = 0.3,
+                     color = "#EE5863",
+                     kernel = "rectangular") +
+  geom_boxplot(outlier.color = "#e74a2f",
+               outlier.alpha = 0.7,
+               alpha = 0.4,
+               fill = "#EE5863") +
+  theme_classic() +
+  theme(
+    text = element_text(family = "Glacial Indifference",
+                        ),
+    axis.text.y = element_text(size = 26
+                               ),
+    axis.text.x = element_text(size = 26
+                              ),
+    legend.text = element_text(size = 22),
+    axis.title.y = element_text(size = 28,
+                                margin = margin(r = 15)),
+    axis.title.x = element_text(size = 28,
+                                margin = margin(t = 15)),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "transparent",
+                                    colour = NA)
+  ) +
+  labs(x = "Dam's unadjusted hair shedding score",
+       y = str_wrap("Calf's 205d + sex + year + calving season + farm adjusted weaning weight",
+                    width = 35))
+
+ggsave(here::here("talks_articles/simspecialists_2019/anr_ww.transp.png"), bg = "transparent", dpi = 500)
+
+```
+
+## Thompson
+
+### Import
+
+```{r}
+umct_ww <-
+  read_excel(here::here("data/raw_data/TRC_Growth.2015-2018.4June2018.xlsx")) %>%
+  janitor::clean_names() %>%
+  mutate(year = lubridate::year(lubridate::mdy(anm_birth_date))
+         ) %>% 
+  select(calf_reg = reg_no,
+         calf_sex = sex,
+         adj_ww = wn_adj_wt,
+         year) %>%
+  mutate(calf_sex =
+           case_when(
+             calf_sex == "C" ~ "F",
+             calf_sex %in% c("S", "B") ~ "M")) %>% 
+  left_join(
+    read_excel(
+      here::here("data/raw_data/TRC_Pedigree.2015-2018.4June2018.xlsx")
+    ) %>%
+      janitor::clean_names() %>%
+      select(
+        calf_id = anm_tag,
+        calf_reg = reg_no,
+        registration_number = dam_reg_no,
+        dam_id = dam_tag
+      )
+  ) %>% 
+  filter(!is.na(adj_ww)) %>% 
+  left_join(long %>% 
+              mutate(year = as.numeric(year)),
+            by = c("registration_number", "year")) %>% 
+  filter(!is.na(hair_score))
+```
+
+
+```{r}
+
+
+test %>% 
+  janitor::remove_empty(which = c("cols")) %>% 
+  select(-registration_number) %>% 
+  mutate(farm_id = "UMCT") %>% 
+  rename(animal_id = dam_id) %>% 
+  left_join(long %>% 
+              mutate(year = as.numeric(year)))
+
+```
+
+### Explore
+
+```{r}
+umct_ww %>% 
+  distinct(year)
+```
+
+
+
+
+### Model 
+
+```{r}
+umct_hair_mod <-
+  lm(
+    adj_ww~1 +
+      hair_score +
+      as_factor(calf_sex) +
+      as_factor(year),
+    data = umct_ww)
+
+
+summary(umct_hair_mod)
+```
+
+
+### Plot
+
+```{r, fig.width= 14 , fig.height= 8}
+lm(
+  adj_ww ~ 1 +
+    as_factor(calf_sex) +
+    as_factor(year),
+  data = umct_ww
+) %>% 
+  broom::augment_columns(umct_ww) %>% 
+  ggplot(aes(x = as.factor(hair_score),
+             y = .resid)) +
+  ggforce::geom_sina(alpha = 0.6,
+                     color = "#FEDB11",
+                     kernel = "rectangular") +
+  geom_boxplot(outlier.color = "#e74a2f",
+               outlier.alpha = 0.7,
+               alpha = 0.4,
+               fill = "#FEDB11") +
+  theme_classic() +
+  theme(
+    text = element_text(family = "Glacial Indifference",
+                        ),
+    axis.text.y = element_text(size = 26
+                               ),
+    axis.text.x = element_text(size = 26
+                              ),
+    legend.text = element_text(size = 22),
+    axis.title.y = element_text(size = 28,
+                                margin = margin(r = 15)),
+    axis.title.x = element_text(size = 28,
+                                margin = margin(t = 15)),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "transparent",
+                                    colour = NA)
+  ) +
+  labs(x = "Dam's unadjusted hair shedding score",
+       y = str_wrap("Calf's 205d + sex + year adjusted weaning weight",
+                    width = 35))
+
+ggsave(here::here("talks_articles/simspecialists_2019/umct_ww.transp.png"), bg = "transparent", dpi = 500)
+
+```

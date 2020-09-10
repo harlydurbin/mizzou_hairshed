@@ -1,0 +1,559 @@
+---
+title: "PEQG preparation"
+author: "Harly Durbin"
+date: "5/2/2018"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(stringr)
+library(fastDummies)
+library(qqman)
+library(visdat)
+library(cowplot)
+gwas_master <- readRDS("../gwas_master.RDS")
+#cov_multi <- readRDS("../ph")
+#cov_uni <- readRDS("phenotypes_uni.RDS")
+#grm <- readRDS("grm.RDS")
+
+```
+
+#Weaning weight
+
+
+* Predicting 2017 adjusted weaning weight from 2017 dam hair score
+    + In this model, weaning weight drops 1.8 pounds for every increase in hair score
+```{r}
+anr_ww <- read_csv("../../data/180503_anr_ww.csv") %>% 
+  mutate(regisno = as.character(regisno), dam_reg = as.character(dam_reg), birth_date = mdy(birth_date), wean_date = mdy(wean_date), dam_dob = mdy(dam_dob), year_date = mdy(year_date)) %>% 
+  dplyr::select(regisno, prefix, sex, birth_date, ownr, breeder, sire_reg, dam_reg, dam_dob, birth_wt, birth_adj, wean_date, wean_wt, wean_adj, year_date, year_wt, year_adj) %>% 
+  left_join(gwas_master, by = c("dam_reg" = "Reg")) %>% 
+  filter(year(wean_date) == "2017") %>% 
+  filter(!is.na(wean_adj)) %>% 
+  rename(calf_sex = sex) %>% 
+  mutate(calf_sex = replace(calf_sex, calf_sex == "C", "F"), calf_sex = replace(calf_sex, calf_sex == "B" | calf_sex == "S", "M")) %>%  
+  mutate(Farm_ID = as_factor(Farm_ID), HairScore2017 = as.numeric(HairScore2017), calf_sex = as.factor(calf_sex), regisno = as.factor(regisno), international_id = as.factor(international_id)) %>%
+  filter(Age2017 != 1) 
+
+```
+
+
+* Is model predicting ww from hair score significant?
+```{r}
+
+summary(lm(wean_adj~HairScore2017 + DateDeviation2017 + calf_sex + Farm_ID,
+              data = anr_ww))
+
+
+anr_ww_base <- mmer2(wean_adj~1 + DateDeviation2017 + calf_sex,
+              random = ~Farm_ID,
+              rcov = ~units,
+              data = ww_data)
+
+anova.MMERM(anr_ww_hs, anr_ww_base)
+
+summary(anr_ww_hs)
+
+anr_ww_hs$var.comp
+
+summary(anr_ww_hs)
+
+```
+
+
+* Adjust weaning weight for sex, farm
+```{r}
+test <- anr_ww %>% 
+  filter(!is.na(wean_adj) & !is.na(HairScore2017))
+
+mod.ww_sex_ajdust <- lm(wean_adj~1 + calf_sex + Farm_ID,
+   data = test %>% 
+     filter(!is.na(HairScore2017)))
+
+bound_residuals <- bind_cols(test, as.data.frame(mod.ww_sex_ajdust$residuals)) %>% 
+  rename(calf_residual = `mod.ww_sex_ajdust$residuals`) #%>% 
+  left_join(cov_resid, by = c("international_id"))
+
+
+left_join(bound_residuals, cov)
+
+
+resid_17 <- anr_hair_adjust$data %>% 
+  mutate(numb = row_number()) %>% 
+  filter(numb %in% anr_hair_adjust$used.observations) %>% 
+  bind_cols(as_data_frame(anr_hair_adjust$residuals) %>% 
+              rename(resid_hair = HairScore2017)) %>% 
+  dplyr::select(international_id, resid_hair) %>% 
+  mutate(international_id = as.character(international_id)) %>% 
+  right_join(anr_sex_adjust$data %>% 
+  mutate(numb = row_number()) %>% 
+  filter(numb %in% anr_sex_adjust$used.observations) %>% 
+  bind_cols(as_data_frame(anr_sex_adjust$residuals)) %>%
+  rename(ww_adj_resid = wean_adj1) %>% 
+  dplyr::select(international_id, ww_adj_resid) %>% 
+    mutate(international_id = as.character(international_id))) %>% 
+  filter(!is.na(resid_hair))
+
+
+
+
+bound_residuals %>% 
+  #filter(HairScore2017.y > 1 & HairScore2017.y < 5) %>% 
+  filter(!is.na(HairScore2017)) %>% 
+  ggplot(aes(x = as.factor(HairScore2017), y = calf_residual)) +
+  geom_boxplot(fill = c("#97B8C2")) +
+  labs(x = "Hair score", y = str_wrap("205d + sex + farm adjusted weaning weight", width = 30))
+
+ggsave("180510.ww_hs.png", width = 10.5, height = 6.5, units = "in", dpi = 300)
+```
+
+
+#Pre-adjustment
+
+> 2016
+
+```{r}
+
+pre_adjust_16 <- readRDS("pre_adjust_2016.RDS")
+
+pre_adjust_16$call
+
+#4956
+pre_adjust_16$used.observations
+#4956
+cov_uni %>% 
+  filter(!is.na(HairScore2016))
+
+#residuals Y - XB
+#Hair score - fixed effects, 
+resid_16 <- pre_adjust_16$data %>% 
+  mutate(numb = row_number()) %>% 
+  filter(numb %in% pre_adjust_16$used.observations) %>% 
+  bind_cols(as_data_frame(pre_adjust_16$residuals) %>% 
+              rename(resid_16 = HairScore2016)) %>% 
+  dplyr::select(international_id, resid_16)
+ 
+#cov 6452
+#residuals 4736
+cov_resid <- left_join(cov, resid_16, by = "international_id")  
+
+saveRDS(cov_resid, "cov_resid.RDS")
+```
+
+> 2017
+
+```{r}
+pre_adjust_17 <- readRDS("pre_adjust_2017.RDS")
+
+#4736
+pre_adjust_17$used.observations
+#4736
+cov_uni %>% 
+  filter(!is.na(HairScore2017))
+
+pre_adjust_17$PEV.u.hat
+
+
+#residuals Y - XB
+#Hair score - fixed effects, 
+resid_17 <- pre_adjust_17$data %>% 
+  mutate(numb = row_number()) %>% 
+  filter(numb %in% pre_adjust_17$used.observations) %>% 
+  bind_cols(as_data_frame(pre_adjust_17$residuals) %>% 
+              rename(resid_17 = HairScore2017)) %>% 
+  dplyr::select(international_id, resid_17)
+ 
+#cov 6452
+#residuals 4736
+cov_resid <- left_join(cov_resid, resid_17, by = "international_id")  
+
+
+```
+
+> Multi-year
+
+```{r}
+
+pre_adjust_multi <- readRDS("180509.pre_adjust_multi.RDS")
+
+
+#9692
+pre_adjust_multi$used.observations
+pre_adjust_multi$call
+
+multi_pev <- as.matrix(pre_adjust_multi$PEV.u.hat$`g(international_id)`)
+
+as.matrix(multi_pev)
+
+as.matrix(multi_pev)
+u.hat_multi <- pre_adjust_multi$u.hat[1] %>% 
+  purrr::reduce(as.data.frame) %>% 
+  as.data.frame()
+  
+u.hat_multi[,2] <- row.names(u.hat_multi)
+u.hat_multi <- u.hat_multi %>% 
+  rename(u.hat = HairScore, international_id = V2)
+
+pre_adjust_multi$data
+
+suma <- summary(pre_adjust_multi)$var.comp.table
+
+sum(suma[1,1]/sum(suma[,1]))
+
+cov_resid <- left_join(cov, u.hat_multi, by = c("international_id"))
+  
+
+```
+
+
+#Testing
+
+```{r}
+toy_data <- sample_n(cov_multi, 200, replace = FALSE) 
+
+
+toy_data <- cov_uni %>% 
+  filter(Breed == "AN") %>% 
+  filter(!is.na(HairScore2016)) %>% 
+  sample_n(200, replace = FALSE)
+
+
+```
+
+
+```{r}
+
+#Here, use DateDeviation2016, CalvingSeason2016, Sex, Age2016, and Farm_ID as fixed effects
+#Each of these is a column in toy_data
+#Make sure factors are coded correctely in the source data frame
+pre_adjust_toy <- sommer::mmer2(HairScore2016~1 + DateDeviation2016 + CalvingSeason2016 + Sex + Age2016 + Farm_ID,
+                                #specify individual as a random effect
+                                #international_id is a column in toy_data
+                        random = ~g(international_id),
+                        rcov = ~units,
+                        #Specify the dataframe where data is coming from
+                        data = toy_data,
+                        #Include the GRM (generated by GEMMA) as a random effect
+                        #grm is a matrix object, this isn't coming from toy_data
+                        G = list(international_id=grm))
+
+#Pull out the variance components and save it as an object
+suma <- summary(pre_adjust_toy)$var.comp.table
+
+#calculate heritability from the object you just saved
+sum(suma[1,1]/sum(suma[,1]))
+
+```
+
+#PEV/breeding value by breed
+
+```{r}
+
+#AN, ANR, CHA, CROS, GEL, HFD, SH, SIM
+pal <- c("#97B8C2", "#A01D26", "#026670", "#FCE181", "#011A27", "#265C00", "#233A9F",  "#BF9A77", "#313695" )
+
+library(cowplot)
+cov_resid %>% 
+  filter(!is.na(u.hat), Breed != "CHIA", Breed != "MAAN") %>% 
+  group_by(Breed) %>% 
+  ggplot(aes(y= u.hat, x = as.factor(Breed))) +
+  geom_boxplot(fill = c("#97B8C2")) +
+  labs(x = "Breed", y = "Breeding value") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggsave("180510.bv_bree.png", width = 5, height = 7, units = "in", dpi = 300)
+
+```
+
+
+
+#GWAS
+
+##GxE
+
+###30y average
+
+####Multi-year
+
+* `~/gemma/bin/gemma -g /CIFS/MUG01_N/deckerje/tnr343/local_adaptation_genotypes/hair_shed/180426_HJD.imputed.mgf.gz -p 180510.multi.pheno -k ../../output/180502.imputed.grm.sXX.txt -gxe 180510.multi_30y.gxe -lmm 4 -o 180510.multi_30y` 
+
+```{r}
+cov %>% 
+  select(norm_30y) %>% 
+  write_tsv("180510.multi_30y.gxe", na = "NA", col_names = FALSE)
+
+```
+
+```{r}
+assoc_30y_multi <- read_table2("180510.multi_30y.assoc.txt", 
+                      col_names = TRUE) %>%
+                   mutate(chr = as.integer(str_split_fixed(rs, pattern = ':', n = 2)[,1])) %>% 
+                   mutate(ps = as.numeric(str_extract(rs, "(?<=:)([[0-9]]+)(?=_)"))) %>% 
+                   filter(chr != -9)
+
+png("180510.30y_multi.png", width = 6, height = 3, units = "in", pointsize = 8, res = 300)
+par(mar = c(3, 3, 0.1, 0.1), mgp = c(2, 1, 0))
+qqman::manhattan(assoc_30y_multi, 
+          chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(7.153506e-08), col = alpha(c("#6E93AB", "#D35C37"), 0.8))
+dev.off()
+```
+
+```{r}
+assoc_30y_multi %>% 
+  filter(p_wald < 7.153506e-08) %>% 
+  mutate(bov_mine_id = str_c("GK", str_pad(chr, 6, side = c("left"), pad = "0"), ".2", ":", ps)) %>% 
+  select(bov_mine_id) %>% 
+  write_csv("~/Desktop/bovine_mine.csv")
+  
+
+assoc_30y_multi %>% 
+mutate(bov_mine_id = str_c("GK", str_pad(chr, 6, side = c("left"), pad = "0"), ".2", ":", ps)) %>% 
+  #Pull out signifcant hits
+  #Arrange by significance
+  arrange(p_wald) %>% 
+  #Select top ten
+  slice(1:10) %>% 
+  select(bov_mine_id) %>% 
+  write_csv("~/Desktop/bovine_mine.csv")
+```
+
+
+###60d average
+
+####2016
+
+* `~/gemma/bin/gemma -g /CIFS/MUG01_N/deckerje/tnr343/local_adaptation_genotypes/hair_shed/180426_HJD.imputed.mgf.gz -p 180509.2016_60d.pheno -k ../../output/180502.imputed.grm.sXX.txt -gxe 180509.2016_60d.gxe -lmm 4 -o 180509.2016_60d` 
+
+```{r}
+
+cov_resid %>% 
+  dplyr::select(sixty_avg_16) %>% 
+  write_tsv("180509.2016_60d.gxe", na = "NA", col_names = FALSE)
+
+cov_resid %>% 
+  dplyr::select(resid_16) %>% 
+  write_tsv("180509.2016_60d.pheno", na = "NA", col_names = FALSE)
+```
+
+
+####2017
+
+* `~/gemma/bin/gemma -g /CIFS/MUG01_N/deckerje/tnr343/local_adaptation_genotypes/hair_shed/180426_HJD.imputed.mgf.gz -p 180509.2017_60d.pheno -k ../../output/180502.imputed.grm.sXX.txt -gxe 180509.2017_60d.gxe -lmm 4 -o 180509.2017_60d` 
+
+```{r}
+
+cov_resid %>% 
+  dplyr::select(sixty_avg_17) %>% 
+  write_tsv("180509.2017_60d.gxe", na = "NA", col_names = FALSE)
+
+cov_resid %>% 
+  dplyr::select(resid_17) %>% 
+  write_tsv("180509.2017_60d.pheno", na = "NA", col_names = FALSE)
+```
+
+
+* 4736 individuals
+* 698958 SNPs
+* PVE 0.489604
+```{r}
+assoc_60d_17 <- read_table2("180509.2017_60d.assoc.txt", 
+                      col_names = TRUE) %>%
+                   mutate(chr = as.integer(str_split_fixed(rs, pattern = ':', n = 2)[,1])) %>% 
+                   mutate(ps = as.numeric(str_extract(rs, "(?<=:)([[0-9]]+)(?=_)"))) %>% 
+                   filter(chr != -9)
+
+png("180510.60d_17.png", width = 6, height = 3, units = "in", pointsize = 8, bg = "transparent", res = 300)
+par(mar = c(3, 3, 0.1, 0.1), mgp = c(2, 1, 0))
+qqman::manhattan(assoc_60d_17, 
+          chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(7.153506e-08), col = alpha(c("#6E93AB", "#D35C37"), 0.8))
+dev.off()
+```
+
+
+###Fescue
+
+* `~/gemma/bin/gemma -g /CIFS/MUG01_N/deckerje/tnr343/local_adaptation_genotypes/hair_shed/180426_HJD.imputed.mgf.gz -p 180509.2016_fescue.pheno -k ../../output/180502.imputed.grm.sXX.txt -gxe 180509.2016_fescue.gxe -lmm 4 -o 180509.2016_fescue` 
+
+```{r}
+
+cov_resid %>% 
+  dplyr::select(ToxicFescue2016) %>% 
+  mutate(ToxicFescue2016 = replace(ToxicFescue2016, ToxicFescue2016 == "Yes", 1)) %>% 
+  mutate(ToxicFescue2016 = replace(ToxicFescue2016, ToxicFescue2016 == "No" | is.na(ToxicFescue2016), 0)) %>% 
+  write_tsv("180509.2016_fescue.gxe", na = "NA", col_names = FALSE)
+
+cov_resid %>% 
+  dplyr::select(resid_16) %>% 
+  write_tsv("180509.2016_fescue.pheno", na = "NA", col_names = FALSE)
+```
+
+
+* `~/gemma/bin/gemma -g /CIFS/MUG01_N/deckerje/tnr343/local_adaptation_genotypes/hair_shed/180426_HJD.imputed.mgf.gz -p 180508.2017_fescue.pheno -k ../../output/180502.imputed.grm.sXX.txt -gxe 180508.2017_fescue.gxe -lmm 4 -o 180508.2017_fescue` 
+
+```{r}
+
+cov_resid %>% 
+  dplyr::select(ToxicFescue2017) %>% 
+  mutate(ToxicFescue2017 = replace(ToxicFescue2017, ToxicFescue2017 == "Yes", 1)) %>% 
+  mutate(ToxicFescue2017 = replace(ToxicFescue2017, ToxicFescue2017 == "No", 0)) %>% 
+  write_tsv("180508.2017_fescue.gxe", na = "NA", col_names = FALSE)
+
+cov_resid %>% 
+  dplyr::select(resid_17) %>% 
+  write_tsv("180508.2017_fescue.pheno", na = "NA", col_names = FALSE)
+```
+
+
+```{bash}
+GEMMA 0.97 (2017/12/27) by Xiang Zhou and team (C) 2012-2017
+Reading Files ...
+## number of total individuals = 6452
+## number of analyzed individuals = 4767
+## number of covariates = 1
+## number of phenotypes = 1
+## number of total SNPs/var        =   856577
+## number of analyzed SNPs         =   700453
+Start Eigen-Decomposition...
+pve estimate =0.457275
+se(pve) =0.036775
+gemma: src/lmm.cpp:399: double LogL_f(double, void*): Assertion `!is_nan(P_yy)' failed.
+Aborted (core dumped)
+
+```
+
+
+##Single year
+
+###2016
+* `~/gemma/bin/gemma -g /CIFS/MUG01_N/deckerje/tnr343/local_adaptation_genotypes/hair_shed/180426_HJD.imputed.mgf.gz -p 180509.2016.pheno -k output/180502.imputed.grm.sXX.txt -lmm 4 -o 180509.2016` 
+
+* 4956 individuals
+* 700179 SNPs
+* PVE estimate 0.444615
+```{r}
+
+qqman::manhattan(read_table2("180509.2016.assoc.txt", 
+                      col_names = TRUE) %>%
+                   mutate(chr = as.integer(str_split_fixed(rs, pattern = ':', n = 2)[,1])) %>% 
+                   mutate(ps = as.numeric(str_extract(rs, "(?<=:)([[0-9]]+)(?=_)"))) %>% 
+                   filter(chr != -9), 
+          chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(7.141031e-08), suggestiveline = FALSE, col = alpha(c("#D35C37", "#6E93AB"), 0.8))
+
+```
+
+
+###2017
+* `~/gemma/bin/gemma -g /CIFS/MUG01_N/deckerje/tnr343/local_adaptation_genotypes/hair_shed/180426_HJD.imputed.mgf.gz -p 180509.2017.pheno -k output/180502.imputed.grm.sXX.txt -lmm 4 -o 180509.2017` 
+
+
+* 4736 individuals
+* 698958 SNPs
+* PVE estimate 0.489604
+```{r}
+
+qqman::manhattan(read_table2("180509.2017.assoc.txt", 
+                      col_names = TRUE) %>%
+                   mutate(chr = as.integer(str_split_fixed(rs, pattern = ':', n = 2)[,1])) %>% 
+                   mutate(ps = as.numeric(str_extract(rs, "(?<=:)([[0-9]]+)(?=_)"))) %>% 
+                   filter(chr != -9), 
+          chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(7.153506e-08), suggestiveline = FALSE, col = alpha(c("#D35C37", "#6E93AB"), 0.8))
+
+```
+
+
+##Multi-year
+
+* `~/gemma/bin/gemma -g /CIFS/MUG01_N/deckerje/tnr343/local_adaptation_genotypes/hair_shed/180426_HJD.imputed.mgf.gz -p 180510.multi.pheno -k output/180502.imputed.grm.sXX.txt -lmm 4 -o 180510.multi` 
+
+```{r}
+
+cov_resid %>% 
+  dplyr::select(u.hat) %>% 
+  write_tsv("180510.multi.pheno", na = "NA", col_names = FALSE)
+
+
+```
+
+
+
+```{r}
+
+assoc_base_multi <- read_table2("180510.multi.assoc.txt", 
+                      col_names = TRUE) %>%
+  mutate(chr = as.integer(str_split_fixed(rs, pattern = ':', n = 2)[,1])) %>%
+  mutate(ps = as.numeric(str_extract(rs, "(?<=:)([[0-9]]+)(?=_)"))) %>%
+  filter(chr != -9) %>% 
+
+
+png("180510.base_multi.png", width = 6, height = 3, units = "in", pointsize = 8, bg = "transparent", res = 300)
+par(mar = c(3, 3, 0.1, 0.1), mgp = c(2, 1, 0))
+qqman::manhattan(assoc_base_multi, chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(7.153506e-08), col = alpha(c("#D35C37", "#6E93AB"), 0.8))
+dev.off()
+```
+
+```{r}
+assoc_base_multi %>% 
+  filter(p_wald < 7.153506e-08) %>% 
+  mutate(bov_mine_id = str_c("GK", str_pad(chr, 6, side = c("left"), pad = "0"), ".2", ":", ps)) %>% 
+  select(bov_mine_id) %>% 
+  write_csv("~/Desktop/bovine_mine.csv")
+  
+
+assoc_30y_multi %>% 
+mutate(bov_mine_id = str_c("GK", str_pad(chr, 6, side = c("left"), pad = "0"), ".2", ":", ps)) %>% 
+  #Pull out signifcant hits
+  #Arrange by significance
+  arrange(p_wald) %>% 
+  #Select top ten
+  slice(1:75) %>% 
+  select(bov_mine_id, chr) %>% 
+  write_csv("~/Desktop/bovine_mine.csv")
+
+```
+
+
+#Future directions
+
+> New sample map
+
+```{r}
+
+usa <- borders("state", regions = ".", fill = "white", colour = "black")
+
+
+gwas_master %>% 
+  filter(international_id %in% cov_uni$international_id) %>% 
+  group_by(Zip) %>% 
+  tally() %>% 
+  mutate(new_old = "old") %>%
+  bind_rows(read_excel("~/Desktop/new_hs.xlsx", sheet = 3) %>% 
+              select(n, Zip) %>% 
+              mutate(new_old = "new")) %>% 
+  left_join(read_csv("../../data/zips_to_coordinates.csv"), by = c("Zip")) %>% 
+  ggplot(aes(x = LNG, y= LAT, colour = factor(new_old), size = n)) +
+  usa +
+  geom_point(aes(size = n), alpha = 0.7) +
+  scale_color_manual(values = c( "old" = "#A6A6A6", "new" = "#417099")) +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  coord_fixed()  
+
+ggsave("180509.new_sample_map.png", device = "png")
+
+```
+
+
+
+```{r}
+gwas_master %>% 
+  filter(international_id %in% pre_adjust_16$data$international_id) %>% 
+  group_by(Breed) %>% 
+  tally()
+```
+

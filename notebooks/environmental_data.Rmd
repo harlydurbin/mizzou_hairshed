@@ -1,0 +1,192 @@
+---
+title: "Append environmental data"
+author: "Harly Durbin"
+date: "2/4/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(readr)
+library(purrr)
+library(readxl)
+#library(lubridate)
+#devtools::install_github("elbersb/tidylog")
+library(tidylog)
+library(rlang)
+library(tidyr)
+#library(rwunderground)
+#library(rnoaa)
+library(stringr)
+library(broom)
+
+source(here::here("source_functions/ymd_chr.R"))
+```
+
+```{r}
+joined_files <- 
+  read_rds(here::here("data/derived_data/joined_files.rds"))
+
+joined_files %>% 
+  filter(farm_id != location)
+```
+
+```{r location_key}
+
+location_key <- 
+  read_csv(here::here("data/raw_data/location_key.csv"), trim_ws = TRUE) %>% 
+  janitor::clean_names() %>% 
+  janitor::remove_empty(which = c("rows", "cols")) %>% 
+  arrange(location) %>% 
+  mutate(location = str_to_upper(location))
+
+
+
+```
+
+
+```{r}
+joined_files %>% 
+  distinct(location)
+```
+
+
+```{r}
+
+weather <-  
+  joined_files %>% 
+  #Append zipcodes by matching location key
+  left_join(location_key %>% 
+              select(location, zip), 
+            by = c("location")) %>% 
+  rename(zipcode = zip) %>%
+  #append coordinates by zipcode
+  left_join(read_csv(here::here("data/raw_data/zips_to_coordinates.csv")) %>% 
+              janitor::clean_names() %>% 
+              rename("zipcode" = "zip"),
+            by = c("zipcode")) %>% 
+  filter(!is.na(zipcode) & !is.na(date_score_recorded)) %>%
+  distinct(zipcode, lat, lng, date_score_recorded) %>%
+  mutate(sixty_prior = map(date_score_recorded,
+                           ~ seq(.x - 59, .x, by = "days")),
+         sixty_prior = map(sixty_prior, as_tibble)) %>% 
+  unnest() %>% 
+  select(zipcode, lat, lng, value) %>% 
+  distinct()
+```
+
+
+# Dark Sky API
+
+```{r}
+
+weather_done <- 
+  read_rds(here::here("data/derived_data/weather_done.rds")) %>% 
+  # Pull hourly data from the `data` column and save it to its own column 
+  mutate(hourly = map(data, "hourly", .default = NA),
+         # Pull daily average data from the `data` column and save 
+         # it to its own column 
+         daily = map(data, "daily", .default = NA)) %>% 
+  # Remove the data column
+  select(-data) %>% 
+  rename(date_score_recorded = value) 
+
+weather_done %>% 
+  unnest(daily)
+
+
+
+
+```
+
+
+# Adjusting for date score recorded
+
+```{r}
+
+date_adjust_data <-
+  joined_files %>%
+  #Append zipcodes by matching location key
+  left_join(location_key %>%
+              select(location, zip),
+            by = c("location")) %>%
+  rename(zipcode = zip) %>%
+  #append coordinates by zipcode
+  left_join(
+    read_csv(here::here(
+      "data/raw_data/zips_to_coordinates.csv"
+    )) %>%
+      janitor::clean_names() %>%
+      rename("zipcode" = "zip"),
+    by = c("zipcode")
+  ) %>%
+  group_by(year) %>%
+  mutate(date_score_recorded =
+           case_when(
+             is.na(date_score_recorded) ~ mean(date_score_recorded, na.rm = TRUE),
+             TRUE ~ as.Date(date_score_recorded)
+           )) %>%
+  ungroup() %>% 
+  mutate(
+    date_deviation =
+      case_when(
+        year == "2016" ~ as.integer(date_score_recorded - ymd("2016-05-01")),
+        year == "2017" ~ as.integer(date_score_recorded - ymd("2017-05-01")),
+        year == "2018" ~ as.integer(date_score_recorded - ymd("2018-05-01"))
+      )
+  ) 
+
+
+date_adjust_data %>%
+  filter(is.na(lat))
+```
+
+
+```{r}
+date_adjust_mod <- lm(hair_score ~ as.factor(year) + date_deviation, data = date_adjust_data)
+```
+
+
+```{r}
+
+adjusted <- 
+  augment(date_adjust_mod, date_adjust_data) %>% 
+  rename(adjusted = .resid)  
+
+
+```
+
+
+So, should be using latitude as a covariate since cattle at lower latitiudes are naturally going to shed off earlier because photo period...?
+
+Texas latitude is lower than Missouri
+
+```{r}
+
+glance(lm(adjusted ~ lat, data = adjusted))
+
+```
+
+
+
+```{r}
+
+
+adjusted %>% 
+  ggplot(aes(x = lat,
+             y = adjusted)) + 
+  geom_point() 
+```
+
+
+
+```{r}
+adjusted %>% 
+  mutate(year = as.factor(year)) %>% 
+  ggplot(aes(x = adjusted)) +
+  geom_histogram() +
+  facet_wrap(~ year)
+```
+

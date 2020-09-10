@@ -1,0 +1,348 @@
+---
+title: "Thompson field day 2017"
+author: "Harly Durbin"
+date: 'Last updated: `r Sys.Date()`'
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(cowplot)
+library(nlme)
+library(ggjoy)
+library(lubridate)
+```
+
+Need to include creation of master data frame 
+
+```{r, eval=TRUE, echo=TRUE}
+#Pull in 2016 herd report
+trc_pheno <- read_excel("~/googledrive/research_extension/extension/AngusOnlineCustomPerformanceHerdReport_20170905.xlsx")
+
+#Recode sex in order to be compatible with existing data
+trc_pheno$Sex <- gsub("B", "M", trc_pheno$Sex)
+trc_pheno$Sex <- gsub("C", "F", trc_pheno$Sex)
+
+#Pull Thompson farm samples from master list, join to herd report 
+trc_hair <- master %>%
+  filter(Farm_ID == "TRC")
+ 
+#Join Thompson farm herd report phenotypes to pre-existing Thompson farm hair shedding scores
+trc <- full_join(trc_hair, trc_pheno, by= c("Animal_ID" = "DamTag")) %>%
+  #Only keep females scored in 2016
+  mutate(HairScore2016 = as.integer(HairScore2016))%>%
+  mutate(HairScore2017 = as.integer(HairScore2017)) %>%
+  plyr::rename(c(WNAdjWT = "Adj_wean_wt", AnmBirthDate = "Birth_date")) %>%
+  mutate(Birth_date = mdy(Birth_date)) %>%
+  mutate(birth_year = year(Birth_date))
+
+#Pull out info for dams with calves in 2016, 2017
+calves16 <-  trc %>%
+  filter(birth_year == 2016) %>%
+  select(HairScore2016, WNRatio, DamWeanAvgRatio, Reg, Adj_wean_wt, WNWT)
+
+
+calves17 <- filter(trc, birth_year == 2017)
+
+```
+
+* Determine sample size of each score group
+```{r, eval=TRUE, echo=TRUE}
+trc %>% 
+  group_by(HairScore2016) %>%
+  tally()
+
+trc %>% 
+  group_by(HairScore2017) %>%
+  tally()
+```
+
+
+* Plot sample size 
+```{r, eval=TRUE, echo=TRUE}
+
+score_dist17 <- ggplot(trc, aes(x = HairScore2017)) +
+  geom_histogram(alpha = .4, binwidth = .5, fill = "goldenrod") +
+  theme(legend.position = c(0.85, 0.85)) +
+  xlab("TRC 2017 Hair Scores") +
+  ylab("")
+
+ggsave("~/googledrive/research_extension/extension/trc_score_dist.png", plot = score_dist17, device = "png")
+
+score_dist17
+```
+
+* Plotting weaning ratio against dam hair score
+```{r}
+wnratio16 <- ggplot(calves16, aes(x = HairScore2016, y = DamWeanAvgRatio )) +
+  geom_point() +
+  geom_jitter(height = 0.3, width = 0.3) + 
+  stat_summary(fun.data = mean_se, geom = "errorbar") +
+  stat_summary(fun.y = mean, geom = "point", size = 3, color = "yellow")
+
+#ggsave("~/googledrive/research_extension/extension/wnwt16.png", plot = wnratio16, device = "png")
+
+wnratio16
+```
+
+
+* Plotting unadjusted weaining weight against hair score
+```{r}
+wnwt16 <- ggplot(calves16, aes(x = HairScore2016, y = WNWT )) +
+  geom_point() +
+  geom_jitter(height = 0.3, width = 0.3) + 
+  stat_summary(fun.data = mean_se, geom = "errorbar") +
+  stat_summary(fun.y = mean, geom = "point", size = 3, color = "yellow")
+
+ggsave("~/googledrive/research_extension/extension/wnwt16.png", plot = wnwt16, device = "png")
+
+wnwt16
+```
+
+
+* Plotting adjusted weaning weight against Hair score
+```{r}
+adjwnwt16 <- ggplot(calves16, aes(x = HairScore2016, y = Adj_wean_wt )) +
+  geom_point() +
+  geom_jitter(height = 0.3, width = 0.3) + 
+  stat_summary(fun.data = mean_se, geom = "errorbar") +
+  stat_summary(fun.y = mean, geom = "point", size = 3, color = "yellow")
+
+ggsave("~/googledrive/research_extension/extension/trc_2016_calves.png", plot = prelim16, device = "png")
+
+prelim17 <- ggplot(calves17, aes(x = HairScore2017, y = Adj_wean_wt )) +
+  geom_point() +
+  geom_jitter(height = 0.3, width = 0.3) + 
+  stat_summary(fun.data = mean_se, geom = "errorbar") +
+  stat_summary(fun.y = mean, geom = "point", size = 3, color = "yellow")
+prelim17
+
+```
+ 
+ 
+ 
+ 
+ 
+ 
+```{r, eval=TRUE, echo=TRUE}
+
+
+trc_lm <- lm(Adj_wean_wt ~ HairScore2016, calves16)
+anova(trc_lm)
+summary(trc_lm)
+
+test <- master %>% 
+  filter(!is.na(HairScore2016) & !is.na(HairScore2017))
+
+score <- lm(HairScore2017 ~ HairScore2016, test)
+anova(score)
+```
+
+* 9/11/17: lists for Jared
+```{r, echo=TRUE, eval=TRUE}
+
+one_five <- master %>%
+  filter(Farm_ID == "TRC") %>%
+  filter(HairScore2017 == 1 | HairScore2017 == 5) %>%
+  arrange(HairScore2017) %>%
+  select(-Sold2017)
+
+write_excel_csv(one_five, "~/googledrive/research_extension/extension/170912.thompson_one_five.csv", na = "")
+```
+
+```{r, echo=TRUE, eval=TRUE, fig.width=10, fig.height=5, fig.path='~/googledrive/research_extension/extension/', dev=c('png')}
+
+
+master.copy = master
+master.copy <- filter(master.copy, !grepl("42", HairScore2017))
+master.copy$HairScore2016 <- as.numeric(master.copy$HairScore2016)
+master.copy$HairScore2017 <- as.numeric(master.copy$HairScore2017)
+cor.test(master.copy$HairScore2017, master.copy$HairScore2016, use = "pairwise.complete.obs")
+
+cor.test(trc$HairScore2017, trc$HairScore2016, use = "pairwise.complete.obs")
+
+xtabs(~ trc$HairScore2016 + trc$HairScore2017)
+
+trc.new <- separate(trc, Reg, into = c("One", "YearCode", "Number"), sep = c(1, 2), remove = FALSE)
+trc.YearB <- filter(trc.new, YearCode %in% c("B"))
+trc.YearB.HS234 <- filter(trc.YearB, HairScore2016 > 1 & HairScore2016 < 5)
+
+lm.YearB <- lm(WNWT ~ HairScore2016, data = trc.YearB)
+summary(lm.YearB)
+anova(lm.HS234 <- lm(WNWT ~ HairScore2016, data = trc.YearB.HS234))
+summary(lm.HS234)
+
+9jpeg(filename = "~/googledrive/research_extension/extension/lm.wn.png")
+boxplot(trc.YearB$`WN WT` ~ trc.YearB$HairScore2016,
+        ylab = "Weaning Weight", xlab = "Hair Shedding Score")
+#abline(a = lm.YearB$coefficients[1],
+#       b = lm.YearB$coefficients[2],
+#       col = "blue")
+#abline(a = lm.HS234$coefficients[1],
+ #      b = lm.HS234$coefficients[2],
+  #     col = "red")
+dev.off()
+
+lm.YearB.adj <- lm(Adj_wean_wt ~ HairScore2016, data = trc.YearB)
+summary(lm.YearB.adj)
+
+
+lm.HS234.adj <- lm(Adj_wean_wt ~ HairScore2016, data = trc.YearB.HS234)
+summary(lm.HS234.adj)
+
+jpeg(filename = "~/googledrive/research_extension/extension/lm.adjwn.png")
+boxplot(trc.YearB$Adj_wean_wt ~ trc.YearB$HairScore2016,
+        ylab = "Adjusted Weaning Weight", xlab = "Hair Shedding Score")
+#abline(a = lm.YearB.adj$coefficients[1],
+#       b = lm.YearB.adj$coefficients[2],
+#       col = "blue")
+#abline(a = lm.HS234.adj$coefficients[1],
+#       b = lm.HS234.adj$coefficients[2],
+#       col = "red")
+dev.off()
+
+
+
+
+#ggsave("~/googledrive/research_extension/extension/lm.adjwn.png", plot = wn.adj, device = "png")
+```
+
+There is an 18 pound difference in calf weaning weights between dams with hair shedding score of 2 versus 4.
+If we only analyze data from cows with hair shedding scores of 2, 3, and 4, there is a 40 pound difference.
+This is due to earlier shedding cows having older and heavier calves.
+
+When we look at adjusted weaning weights, we can remove the effect of older calves. Even on this basis, earlier shedding cows wean heavier calves. Between cows with a score of 4 and 2, the cows with a hair shedding score of 2 wean calves that are 10 pounds heavier. If we remove 1s and 5s from the analysis, the difference of weaned pounds between hair shedding scores 2 versus 4 is 26 pounds.
+
+
+#PROC CORR
+```{bash}
+/* The CORR procedure computes Pearson correlation coefficients and the probabilities associated with these statistics. The correlation statistics include the following:
+Pearson product-moment correlation: parametric measure of a linear relationship between two variables. */
+
+
+
+/* Data from Table 5.1 in Kleinbaum test */
+
+DATA SBP;
+   INPUT PERSON SBP AGE;
+   DATALINES;
+ 1     144 39
+ 2     220 47
+ 3     138 45
+ 4     145 47
+ 5     162 65
+ 6     142 46
+ 7     170 67
+ 8     124 42
+ 9     158 67
+10     154 56
+11     162 64
+12     150 56
+13     140 59
+14     110 34
+15     128 42
+16     130 48
+17     135 45
+18     114 17
+19     116 20
+20     124 19
+21     136 36
+22     142 50
+23     120 39
+24     120 21
+25     160 44
+26     158 53
+27     144 63
+28     130 29
+29     125 25
+30     175 69
+;
+RUN;
+
+
+/* Displays all the variables in the SAS Dataset SBP */
+
+PROC PRINT data=SBP;
+RUN;
+
+/* Scatter plots */
+
+proc gplot data=SBP;
+plot SBP*AGE;
+run;
+
+
+/* Correlation */
+proc corr data=SBP nomiss pearson ; /* NOMISS: Excludes observations with missing values from the analysis */
+var SBP AGE;
+run;
+
+proc corr data=SBP fisher (rho0 = 0.5 alpha = 0.01) ;
+/* FISHER: requests confidence limits and p-values under a specified null hypothesis, H0: rho = rho0 vs rho ? rho0, for correlation coefficients by using Fishers  transformation.  */
+var SBP AGE;
+run;
+
+```
+
+```{bash}
+/* Scatter plots */
+
+proc gplot data=thompson16;
+plot HairScore2016*BirthWT;
+run;
+
+
+/* Correlation */
+proc corr data=thompson16 nomiss pearson ; /* NOMISS: Excludes observations with missing values from the analysis */
+var HairScore2016 BirthWT;
+run;
+
+proc corr data=thompson16 fisher (rho0 = 0.5 alpha = 0.01) ;
+/* FISHER: requests confidence limits and p-values under a specified null hypothesis, H0: rho = rho0 vs rho ? rho0, for correlation coefficients by using Fishers  transformation.  */
+var HairScore206 BirthWT;
+run;
+
+```
+
+#Regression diagnostics
+```{bash}
+PROC UNIVARIATE;
+VAR HairScore2016 WNAge WNAdjWT;
+RUN;
+
+PROC REG;
+MODEL WNAdjWT = HairScore2016 WNAge;
+PLOT rstudent.*p.;
+OUTPUT out = two rstudent=jackknife_res cookd = cooksdistance h=h;
+RUN;
+
+/* rstudent = jackknife residual; cookd = cooks distance; h = leverage */
+
+PROC UNIVARIATE data = two normal plot;
+VAR jackknife_res;
+PROBPLOT jackknife_res / normal;
+RUN;
+
+/* normality check for jackknife residual */
+
+DATA outliers;
+SET two;
+IF (abs(jackknife_res) > tinv(0.95  8)) OR
+(cooksdistance > 1) OR
+(h > 0.36);
+RUN;
+PROC PRINT;
+RUN;
+```
+
+
+```{bash}
+
+```
+

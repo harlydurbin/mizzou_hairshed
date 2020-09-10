@@ -1,0 +1,58 @@
+---
+title: "April 2020 hair shedding EPD summary"
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(readr)
+library(dplyr)
+library(stringr)
+library(forcats)
+library(kableExtra)
+
+```
+
+```{r}
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
+
+
+# How hair shedding EPDs were calculated
+
+* Records from bulls were removed. Currently, hair shedding scores from bulls make up less than 1% of all data, and it is possible that biology governing hair shedding in bulls and females aren’t the same.
+* Contemporary groupings were defined as herd ID, year, calving season, age group, score group, toxic fescue grazing status based on the current American Angus Association hair shedding research EPD.
+    + **Age group** was defined as yearling, two year old, 3-year old, and other.
+    + **Calving season** was based on the breeder-reported calving season. Missing calving seasons were inferred based on the most recent calving season, then based on birth date if available. 
+    + **Score group** only applies to herds where cattle were scored over multiple days and was determined within herd based on the date scores were recorded. I used a 7-day sliding window in order to maximize the number of animals per score group. Since hair shedding patterns vary widely across the scoring season, we recommend that producers score all cattle on the same day or within a few days in order to enable accurate and fair comparisons between animals. 
+    + **Toxic fescue** grazing status was defined as “yes” or “no” based on the breeder-reported codes provided.
+    + Hair shedding scores from contemporary groups with fewer than five animals or no variation were removed. This doesn’t necessarily mean that an animal in a dropped contemporary group won’t have a breeding value. 
+
+# Dataset summary
+
+After data filtering and cleaning, there were `r cleaned %>% n_distinct() %>% scales::comma()` total hair shedding scores from `r cleaned %>% select(farm_id, temp_id) %>% n_distinct(.) %>%  scales::comma()` total animals. Using this dataset, we find the heritability of hair shedding to be 0.36 and the repeatability to be 0.44. This is very close to the heritability and repeatability reported by the American Angus Association. 
+
+```{r}
+
+cleaned %>% 
+  group_by(breed_code) %>% 
+  summarise(
+    `Total hair shedding scores` = n(),
+    `Total animals scored` = n_distinct(farm_id, temp_id)
+  ) %>% 
+  arrange(desc(`Total hair shedding scores`)) %>% 
+  filter(!is.na(breed_code)) %>% 
+  mutate_at(vars(contains("score")), ~ scales::comma(.)) %>% 
+  left_join(
+    read_csv("~/googledrive/research_extension/breeds.csv") %>% 
+      select(breed_code = assoc_code,
+             Breed)
+  ) %>% 
+  filter(!is.na(Breed)) %>% 
+  select(Breed, `Total hair shedding scores`, `Total animals scored`) %>% 
+  kable("latex") %>% 
+  kable_styling(position = "center")
+```
+
+

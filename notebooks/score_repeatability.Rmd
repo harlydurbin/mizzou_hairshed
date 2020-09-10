@@ -1,0 +1,124 @@
+---
+title: "Hair shedding score repeatability"
+author: "Harly Durbin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+library(readr)
+library(ggplot2)
+library(readxl)
+library(dplyr)
+library(lubridate)
+library(stringr)
+library(reshape2)
+library(cowplot)
+library(ggridges)
+library(GGally)
+library(irr)
+```
+
+```{r}
+repeat_data <- read_excel(here::here("data/raw_data/trc_repeatability.xlsx"))
+
+repeat_data
+```
+
+
+```{r}
+repeat_data_melt <- 
+  repeat_data %>% 
+  melt(id = c("Animal_ID", "WorkGroup"), na.rm = TRUE) %>% 
+  rename(HairScore = value, Scorer = variable)
+```
+
+
+```{r}
+str(repeat_data)
+
+```
+
+
+```{r}
+repeat_data_melt %>% 
+  group_by(Scorer) %>% 
+  summarise(mean(HairScore))
+
+repeat_data_melt %>% 
+  group_by(Scorer) %>% 
+  summarise(sd(HairScore))
+```
+
+```{r, message=FALSE, fig.height=8, fig.width=12}
+repeat_data %>%
+  na.omit() %>%
+  select(Harly:Brian) %>%
+  ggpairs(lower = list(continuous = "smooth")) +
+  theme(
+    text = element_text(family = "Glacial Indifference"),
+    axis.text = element_text(size = 18),
+    strip.text.x = element_text(size = 24, margin = margin(.3, 0, .3, 0, "cm"), color = "white"),
+    strip.text.y = element_text(size = 24, margin = margin(0, .3, 0, .3, "cm"), color = "white"),
+    strip.background = element_rect(colour = "#126180", fill = "#126180"),
+    plot.title = element_text(size = 26)
+  )
+
+cowplot::ggsave(here::here("talks_articles/simspecialists_2019/score_corr.png"), dpi = 500, width = 12, height = 8)
+  
+```
+
+
+```{r, message=FALSE}
+cor(repeat_data %>% 
+      na.omit() %>% 
+      select(Harly:Brian))  
+  
+cor(repeat_data %>% 
+      na.omit() %>% 
+      select(Harly:Brian), method = "spearman")
+```
+
+
+```{r}
+ggplot(repeat_data_melt, aes(x = HairScore, fill = Scorer )) +
+  geom_density(alpha = 0.25)
+```
+
+
+```{r}
+ggplot(repeat_data_melt, aes(x = HairScore, fill = Scorer)) + 
+  geom_bar(alpha = 0.9, position = "dodge")
+```
+
+
+```{r}
+ggplot(repeat_data_melt, aes(x = Scorer, y = HairScore, fill = Scorer)) +
+  geom_boxplot()
+```
+
+```{r}
+
+kendall(repeat_data %>% 
+          select(Harly:Brian))
+
+icc(repeat_data %>% 
+          select(Harly:Brian), type = c("agreement"))
+```
+
+Who has the most "singletons"?
+
+```{r}
+repeat_data %>% 
+  #select(Harly:Brian) %>%
+  na.omit() %>% 
+  mutate(sd = apply(.[(2:5)],1,sd)) %>% 
+  filter(sd == 0.5 | sd == 1.0) %>% 
+  mutate(singleton = ifelse(Troy != Harly & Harly == Brian, "Troy", ifelse(Harly != Troy & Troy == Brian, "Harly", ifelse(Will != Troy & Troy == Harly, "Will", "Brian")))) %>% 
+  group_by(singleton) %>% 
+  tally()
+
+
+```
+

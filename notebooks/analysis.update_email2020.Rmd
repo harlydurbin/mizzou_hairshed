@@ -1,0 +1,324 @@
+---
+title: "Untitled"
+author: "Harly Durbin"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(readxl)
+library(magrittr)
+library(glue)
+library(forcats)
+library(ggplot2)
+library(purrr)
+library(tidylog)
+
+source(here::here("source_functions/melt_aireml.R"))
+source(here::here("source_functions/calculate_heritability.R"))
+source(here::here("source_functions/calculate_acc.R"))
+```
+
+# Setup
+
+```{r}
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
+
+```{r}
+update_dat <- read_rds(here::here("data/derived_data/update_email2020/update_dat.rds"))
+```
+
+```{r}
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+```
+
+
+```{r}
+
+# Key for CG names, number of animals
+cgsol <-
+  readr::read_table2(
+    here::here("data/derived_data/update_email2020/no_breed/renf90.tables"),
+    skip = 2,
+    col_names = c("cg_old", "n_animals", "cg_new")
+  ) %>%
+  # 4 rows with all NAs except cg_new: parsing error?
+  filter(!is.na(cg_old)) %>%
+  left_join(
+    read_table2(
+      here::here("data/derived_data/update_email2020/no_breed/solutions"),
+      col_names = c("trait", "effect", "cg_new", "solution", "se"),
+      skip = 1
+    ) %>%
+      filter(effect == 1) %>%
+      select(cg_new, solution, se)
+  )
+
+```
+
+```{r}
+update_sol <-
+  # blupf90 solutions
+  read_table2(
+    here::here("data/derived_data/update_email2020/no_breed/solutions"),
+    col_names = c("trait", "effect", "id_new", "solution", "se"),
+    skip = 1
+  ) %>%
+  # limit to animal effect
+  filter(effect == 2) %>%
+  select(id_new, solution, se) %>%
+  # Re-attach original IDs
+  left_join(read_table2(
+    here::here("data/derived_data/update_email2020/no_breed/renadd02.ped"),
+    col_names = FALSE
+  ) %>%
+    select(id_new = X1, full_reg = X10)) %>%
+  select(full_reg, everything(), -id_new) %>%
+  # re-attach ID metadata
+  left_join(
+    read_rds(here::here("data/derived_data/import_join_clean/update_dat.rds")) %>%
+      distinct(
+        full_reg,
+        farm_id,
+        animal_id,
+        temp_id,
+        Lab_ID,
+        breed_code,
+        sex,
+        genotyped
+      )
+  ) %>%
+  # standardize breed codes
+  mutate(
+    breed_code = if_else(
+      is.na(breed_code),
+      str_extract(
+        full_reg,
+        "^SIM|^HER|^RAN|^BSH|^CIA|^RDP|^CHA|^BGR|^AAA|^AMGV|^GVH|^HFD|^BIR|^AAN|^AMAR|^AMXX"
+      ),
+      breed_code
+    ),
+    breed_code =
+      case_when(
+        breed_code %in% c("AAA", "AAN", "AN", "BIR") ~ "AN",
+        breed_code %in% c("ANR", "AMAR", "RAN") ~ "ANR",
+        breed_code %in% c("HER", "HFD") ~ "HFD",
+        breed_code %in% c("AMXX", "AMGV", "GVH", "GEL") ~ "GEL",
+        breed_code %in% c("BGR", "BG") ~ "BG",
+        breed_code %in% c("MAAN", "RDP") ~ "MAAN",
+        breed_code %in% c("SH", "BSH") ~ "SH",
+        breed_code %in% c("CHIA", "CIA") ~ "CHIA",
+        is.na(breed_code) ~ "CROS",
+        TRUE ~ breed_code
+      ),
+    # calculate accuracy
+    acc = purrr::map_dbl(.x = se, ~ calculate_acc(
+      e = 0.50472, u = 0.32498, se = .x, option = "bif"
+    )),
+    # divide breeding values by 2 to get epd
+    epd = solution / 2
+  ) %>%
+  # add full breed name
+  left_join(
+    read_csv(here::here("data/raw_data/breeds.csv")) %>%
+      select(breed_code = assoc_code,
+             breed_name = Breed)
+  ) %>%
+  select(
+    full_reg,
+    farm_id,
+    animal_id,
+    temp_id,
+    Lab_ID,
+    breed_code,
+    breed_name,
+    sex,
+    epd,
+    acc,
+    se,
+    genotyped
+  ) 
+
+
+```
+
+# Genetic parameters
+
+```{r}
+var_cov <-
+  melt_aireml(
+    path = here::here("data/derived_data/update_email2020/no_breed/airemlf90.update_email2020.no_breed.log"),
+    effect2 = c("hair_dir"),
+    effect3 = c("hair_pe"),
+    resids = c("hair_res")
+  ) 
+```
+
+```{r}
+var_cov %>% 
+  filter(val1 == val2) %>% 
+  separate(val1, into = c("key", "effect"), sep = "_") %>% 
+  select(effect, var_cov) %>% 
+  tidyr::pivot_wider(names_from = effect, values_from = var_cov) %>% 
+  rename(`Genetic variance` = dir,
+         `Permanent environment variance` = pe,
+         `Residual variance` = res)
+```
+
+```{r}
+var_cov %>% 
+univ_heritability(abbrv = "hair",
+                  desc = "Hair shedding",
+                  pe = TRUE)
+
+```
+
+# Bull report
+
+```{r}
+read_table2(
+  here::here("data/derived_data/update_email2020/no_breed/data.txt"),
+  col_names = c("full_reg", "cg", "hair_score")
+) %>%
+  group_by(full_reg) %>%
+  tally(name = "n_scores", sort = TRUE) %>%
+  ungroup() %>%
+  right_join(update_sol) %>%
+  filter(!is.na(n_scores)) %>%
+  left_join(full_ped) %>%
+  filter(sire_reg != "0") %>%
+  group_by(sire_reg) %>%
+  summarise(n_scored_progeny = n(),
+            n_progeny_scores = sum(n_scores)) %>%
+  arrange(desc(n_scored_progeny)) %>%
+  ungroup() %>%
+  left_join(update_sol %>%
+              select(sire_reg = full_reg, epd, acc, genotyped)) %>%
+  filter(acc >= 0.4) %>%
+  mutate(
+    breed_code = str_extract(
+      sire_reg,
+      "^SIM|^HER|^RAN|^BSH|^CIA|^RDP|^CHA|^BGR|^AAA|^AMGV|^GVH|^HFD|^BIR|^AAN|^AMAR|^AMXX"
+    ),
+    breed_code =
+      case_when(
+        breed_code %in% c("AAA", "AAN", "AN", "BIR") ~ "AN",
+        breed_code %in% c("ANR", "AMAR", "RAN") ~ "ANR",
+        breed_code %in% c("HER", "HFD") ~ "HFD",
+        breed_code %in% c("AMXX", "AMGV", "GVH", "GEL") ~ "GEL",
+        breed_code %in% c("BGR", "BG") ~ "BG",
+        breed_code %in% c("MAAN", "RDP") ~ "MAAN",
+        breed_code %in% c("SH", "BSH") ~ "SH",
+        breed_code %in% c("CHIA", "CIA") ~ "CHIA",
+        is.na(breed_code) ~ "CROS",
+        TRUE ~ breed_code
+      )
+  ) %>% 
+  select(breed_code, everything()) %>% 
+  writexl::write_xlsx(here::here("hairshed_bulls.xlsx"))
+  
+```
+
+# Comparison to Angus EPDs
+
+```{r}
+read_excel(here::here("data/raw_data/HairShedResearchEPDs.xlsx")) %>% 
+  janitor::remove_empty(which = c("cols", "rows")) %>% 
+  janitor::clean_names() %>% 
+  arrange(desc(hs_acc)) %>% 
+  left_join(update_sol %>% 
+              filter(breed_code == "AN") %>% 
+              mutate(registration_no = as.numeric(str_remove_all(full_reg, "[[:alpha:]]"))) %>% 
+              select(registration_no, epd, acc)) %>% 
+  filter(!is.na(epd)) %>% 
+  summarise(corr = cor(hs_epd, epd))
+```
+
+# Breed averages
+
+The table below shows the average EPD by reported breed for animals with an EPD accuracy greater than or equal to 0.4, including non-purebred cattle registered in open herd book breed associations (i.e., Simmental includes all cattle reported to be registered in the American Simmental Association, not just purebred Simmental). Lower EPDs are better and animals with EPDs below the average are "breed improvers".
+
+```{r}
+
+update_sol %>%
+  filter(!is.na(breed_name) &
+           !breed_code %in% c("CROS", "CHIA")) %>%
+  filter(acc >= 0.4) %>%
+  group_by(breed_name) %>%
+  summarise(`Average EPD` = round(mean(epd), digits = 2)) %>%
+  bind_rows(
+    update_sol %>%
+      filter(!is.na(breed_name) &
+               !breed_code %in% c("CROS", "CHIA")) %>%
+      filter(acc >= 0.4) %>%
+      summarise(`Average EPD` = mean(epd)) %>%
+      mutate(breed_name = "All breeds",
+    `Average EPD` = round(`Average EPD`, digits = 2)
+  )) %>% 
+  rename(Breed = breed_name) # %>% 
+  # kable("latex") %>% 
+  # kable_styling(position = "center")
+  
+
+```
+
+In the plot below, each point represents a single animal's EPD. The dark lines inside each box represent the average EPD for that breed (again, including non-purebred cattle registered in open herd book breed associations). While there are some breed differences, there is a large amount of variation within breeds.
+
+```{r, fig.width=14, fig.height=8}
+  update_sol %>%
+  dplyr::filter(!breed_code %in% c("CROS", "CHIA", "BRN") &
+                  !is.na(breed_code)) %>%
+  filter(acc >= 0.4) %>% 
+  mutate(
+    type =
+      case_when(
+        breed_code %in% c("SH", "ANR", "HFD", "AN") ~ "British",
+        breed_code %in% c("SIM", "CHA", "GEL", "MAAN") ~ "Continental",
+        breed_code %in% c("SIMB", "BG") ~ "American"
+      )
+  ) %>%
+  ggplot(aes(x = fct_reorder(breed_name, epd, mean),
+             y = epd)) +
+  #fill = fct_reorder(breed_code, blup, median),)) +
+  ggforce::geom_sina(aes(color = type),
+                     alpha = 0.3,
+                     #color = "#ff7436",
+                     kernel = "rectangular") +
+  scale_color_manual(values = c("#126180",
+                                "#e74a2f",
+                                "#fedb11")) +
+  geom_boxplot(aes(fill = type),
+               alpha = 0.4,
+               show.legend = FALSE) +
+  scale_fill_manual(values = c("#126180",
+                               "#e74a2f",
+                               "#fedb11")) +
+  guides(colour = guide_legend(override.aes = list(alpha = 1))) +
+  theme_classic() +
+  theme(
+    text = element_text(family = "Glacial Indifference"),
+    plot.title = element_text(size = 28,
+                              margin = margin(b = 15)),
+    plot.subtitle = element_text(size = 22),
+    axis.text.y = element_text(size = 24),
+    axis.text.x = element_text(size = 24, angle = 35, hjust = 1),
+    legend.text = element_text(size = 22),
+    legend.title = element_text(size = 24),
+    axis.title.y = element_text(size = 28,
+                                margin = margin(r = 15)),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+       y = "EPD",
+       color = "Breed type")
+
+ggsave(filename = here::here("figures/update_email2020.breed_boxswarm.png"), width = 14, height = 8)
+```
+

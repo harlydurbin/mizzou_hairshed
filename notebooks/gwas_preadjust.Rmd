@@ -1,0 +1,657 @@
+---
+title: "GWAS pre-adjustment"
+author: "Harly Durbin"
+date: 'Last updated: `r Sys.Date()`'
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(stringr)
+
+
+master <- readRDS("../master.RDS")
+```
+
+#Assigning covariates
+
+* Create `gwas_master` dataframe, fill in some missing data
+```{r, eval=FALSE, echo=TRUE}
+gwas_master <- master %>% 
+  #Some animals have international IDs in the genotype table but not the animal table for some reason
+  #Assign international IDs for those missing
+  #Angus
+  mutate(international_id = if_else(is.na(international_id) & breed_assoc == "American Angus Association",
+                                    str_c("AANUSA", Sex, 
+                                          #Padded zeroes
+                                          str_pad(Reg, 12, side = c("left"), pad = 0)), international_id)) %>% 
+  #Red Angus
+  mutate(international_id = if_else(is.na(international_id) & breed_assoc == "Red Angus Association of America",
+                                    str_c("RANUSA", Sex, 
+                                          str_pad(Reg, 12, side = c("left"), pad = 0)), international_id)) %>%
+  #Simmental
+  mutate(international_id = if_else(is.na(international_id) & breed_assoc == "American Simmental Association",
+                                    str_c("SIMUSA", Sex, 
+                                          str_pad(Reg, 12, side = c("left"), pad = 0)), international_id)) %>%
+  #Hereford
+  mutate(international_id = if_else(is.na(international_id) & breed_assoc == "American Hereford Association",
+                                    str_c("HERUSA", Sex, 
+                                          str_pad(Reg, 12, side = c("left"), pad = 0)), international_id)) %>%
+  select(Farm_ID, Zone, State, Zip, LAT, LNG, Breed, Sex, Color, Reg, international_id, Lab_ID, starts_with("Age"), starts_with("Date"), starts_with("Hair"), starts_with("Calving"), starts_with("Toxic")) %>%
+  #Fill in missing color for Angus cattle to black
+  mutate(Color = if_else(Breed == "AN" & is.na(Color), "Black", Color)) %>%
+  #Fill in missing color for Hereford cattle to Red White Face
+  mutate(Color = if_else(Breed == "HFD" & is.na(Color), "Red White Face", Color)) %>% 
+  #If Age2017 is NA but Age 2016 isn't, make Age 2017 = Age 2016 + 1 and vice versa, else leave it as is
+  mutate(Age2017 = if_else(is.na(Age2017) & !is.na(Age2016), 
+                           Age2016 + 1, 
+                           as.double(Age2017))) %>% 
+  mutate(Age2016 = if_else(is.na(Age2016) & !is.na(Age2017), 
+                           Age2017 - 1, 
+                           as.double(Age2016)))
+
+```
+
+##Days from May 1
+```{r, eval=TRUE, echo=TRUE}
+
+gwas_master <- gwas_master %>% 
+  mutate(DateScoreRecorded2016 = as.Date(DateScoreRecorded2016)) %>%
+  mutate(DateScoreRecorded2017 = as.Date(DateScoreRecorded2017)) %>% 
+  mutate(DateDeviation2016 =  DateScoreRecorded2016 - ymd("2016-05-01")) %>% 
+  mutate(DateDeviation2017 =  DateScoreRecorded2017 - ymd("2017-05-01"))
+
+```
+
+##30 year normal temperature
+
+```{r, eval=TRUE, echo=TRUE}
+
+gwas_master <- left_join(gwas_master, read_csv("../data/prism_dataframe.csv") %>% 
+                           #Rename y and x to LAT and LNG
+                           rename(LAT = y, LNG = x) %>%
+                           #Read in file with coordinates of each zip code, join to PRISM data after rounding LAT and LNG columns down to 1 deicimal place
+                           left_join(read_csv("../data/zips_to_coordinates.csv") %>%
+                                       mutate_at(vars(starts_with("L")), funs(round(., 1)))) %>% 
+                           #Remove entries that didn't match to a zip code
+                           filter(!is.na(ZIP)) %>% 
+                           rename(Zip = ZIP) %>% 
+                           mutate(Zip = as.numeric(Zip)) %>% 
+                           dplyr::select(Zip, meantemp), 
+                         by = c("Zip"))  %>% 
+  rename(norm_30y = meantemp)
+
+
+```
+
+
+##Two month prior average heat index
+
+* Would `tmax` be more informative than `tmean`?
+
+###Temperature
+
+####Read in PRISM data
+
+```{r, eval=TRUE, echo=TRUE}
+
+#What are min and max score dates? I need data for the 60 days prior to each of theses score dates.
+gwas_master %>% 
+  filter(!is.na(DateScoreRecorded2016)) %>% 
+  summarise(max(DateScoreRecorded2016))
+
+gwas_master %>% 
+  filter(!is.na(DateScoreRecorded2016)) %>% 
+  summarise(min(DateScoreRecorded2016))
+
+gwas_master %>% 
+  filter(!is.na(DateScoreRecorded2017)) %>% 
+  summarise(max(DateScoreRecorded2017))
+
+gwas_master %>% 
+  filter(!is.na(DateScoreRecorded2017)) %>% 
+  summarise(min(DateScoreRecorded2017))
+
+```
+
+```{r, eval=FALSE, echo=TRUE}
+library(prism)
+#Downlowad prism mean daily temperatures for days between 2/15/16 and 7/1/16 1/15/17 and 7/15/17 using prism package
+get_prism_dailys(type = "tmean", minDate = "2016-02-15", maxDate = "2016-07-01")
+get_prism_dailys(type = "tmean", minDate = "2017-01-15", maxDate = "2017-07-15")
+ls_prism_data(name = TRUE)
+
+```
+
+####Assign 2016 and 2017 60-day-prior averages
+
+```{r, eval=FALSE, echo=TRUE, comment=FALSE}
+library(prism)
+#List to receive daily norm data, one dataframe for each of 138 days between 2/15/16 and 7/1/16
+daily_norm <- list(1:320)
+#Dataframe of unique zip codes in my dataset for filtering purpsoes downstream
+zips <- as_data_frame(unique(gwas_master$Zip))
+
+for (i in 1:320) {
+#Use raster package to convert prism data for ith day to a raster object
+RS <- prism_stack(ls_prism_data()[i, 1])
+#convert that raster object to a dataframe
+df <- data.frame(rasterToPoints(RS))
+#Make an object of the df column names in order to determine what date the dataframe is for
+n <- colnames(df)
+#Find the date this file is for
+date_from_colname <- str_extract(n[3], "201[[0-9]]+")
+
+#Add this day's dataframe to the list of dataframes I made earlier
+daily_norm[[i]] <- as_data_frame(df) %>% 
+  #rename latitude and longitude columns
+  rename(LAT = y, LNG = x) %>% 
+  #If a column begins with "L" (i.e., LAT and LNG) round the number value in it down to one decimal place
+  mutate_at(vars(starts_with("L")), funs(round(., 1))) %>% 
+  #Read in csv with latitude and longitude matched up to zipcodes, left join it to the day data frame
+  left_join(read_csv("../zips_to_coordinates.csv") %>% 
+              mutate_at(vars(starts_with("L")), funs(round(., 1)))) %>% 
+  rename(Zip = ZIP) %>% 
+  #Remove rows where Zip is NA or Zip is not in the hair shedding cohort
+  filter(!is.na(Zip) & Zip %in% zips$value) %>%
+  #Add a column to designate the date this dataframe is for
+  mutate(date = ymd(date_from_colname))
+
+#Rename the 3rd column of this dataframe from the original filename to daily_norm
+names(daily_norm[[i]])[3] <- c("daily_norm")
+}
+
+
+daily_norm_reduce <- daily_norm %>%
+  #Combine all of the day-specific dataframes in the list I created using purrr::reduce
+  reduce(bind_rows) %>% 
+  #For each date in each zip, take the average temperature
+  group_by(date, Zip) %>% 
+  summarise(mean(daily_norm)) %>% 
+  rename(daily_norm = `mean(daily_norm)`)
+
+saveRDS(daily_norm_reduce, "daily_norm_reduce.RDS")
+
+
+detach(package:prism, unload = TRUE)
+detach(package:raster, unload = TRUE)
+```
+
+###Dewpoint
+
+* WeatherUnderground API key: c68ed99c7e1ca82e
+```{r}
+#FIXME
+
+library(rwunderground)
+
+#Downlowad prism mean daily temperatures for days between 2/15/16 and 7/1/16 1/15/17 and 7/15/17 using rwunderground package
+
+  for(i in 1:NROW(gwas_master)){ 
+  
+    #Ignore rows where DateScoreRecorded2016 is NA
+  if(!is.na(gwas_master$DateScoreRecorded2016[i])) {
+    #Create a vector of the 60 days prior to DateDateScoreRecorded2016
+    sixty_days <- seq.Date(from = gwas_master$DateScoreRecorded2016[i] - 60, to = gwas_master$DateScoreRecorded2016[i], by = c("day"))
+    #Designate the Zip of this row
+    sixty_zip <- gwas_master$Zip[i]
+    
+    for (i in 1:NROW(sixty_days)){
+      #For this the day corresponding to the ith row in sixty_days, pull down weather info
+      
+      
+
+  }
+  }
+  }
+
+
+get_api_key()
+
+set_location(zip_code = )
+bates <- as_data_frame(conditions(72501))
+
+
+history_daily(set_location(zip_code = 65285), date = "20170501", key = get_api_key())
+```
+
+
+
+###Assign
+
+```{r, eval=FALSE, echo=TRUE, comment=FALSE}
+
+gwas_master <- gwas_master %>% 
+  mutate(sixty_avg_16 = as.numeric(0))
+
+  for(i in 1:NROW(gwas_master)){ 
+  #Ignore rows where DateScoreRecorded2016 is NA
+  if(!is.na(gwas_master$DateScoreRecorded2016[i])) {
+    #Create a vector of the 60 days prior to DateDateScoreRecorded2016
+    sixty_days <- seq.Date(from = gwas_master$DateScoreRecorded2016[i] - 60, to = gwas_master$DateScoreRecorded2016[i], by = c("day"))
+    #Designate the Zip of this row
+    sixty_zip <- gwas_master$Zip[i]
+    
+    #For this row, make the value in the sixty_avg_16 column the average of temps recorded on the 60 days in the vector created above
+    gwas_master$sixty_avg_16[[i]] <- daily_norm_reduce %>% 
+      filter(date %in% sixty_days & Zip %in% sixty_zip) %>%
+      ungroup() %>% 
+      summarise(base::mean(daily_norm)) %>% 
+      as.numeric()
+  }
+}
+
+
+
+gwas_master <- gwas_master %>% 
+  mutate(sixty_avg_17 = as.numeric(0))
+
+for(i in 1:NROW(gwas_master)){ 
+   #Ignore rows where DateScoreRecorded2017 is NA
+  if(!is.na(gwas_master$DateScoreRecorded2017[i])) {
+    #Create a vector of the 60 days prior to DateDateScoreRecorded2016
+    sixty_days <- seq.Date(from = gwas_master$DateScoreRecorded2017[i] - 60, to = gwas_master$DateScoreRecorded2017[i], by = c("day"))
+    #Designate the Zip of this row
+    sixty_zip <- gwas_master$Zip[i]
+    
+    #For this row, make the value in the sixty_avg_16 column the average of temps recorded on the 60 days in the vector created above
+    gwas_master$sixty_avg_17[[i]] <- daily_norm_reduce %>% 
+      filter(date %in% sixty_days & Zip %in% sixty_zip) %>%
+      ungroup() %>% 
+      summarise(base::mean(daily_norm)) %>% 
+      as.numeric()
+  }
+}
+
+#Replace 0s with NA
+gwas_master <- gwas_master %>% 
+  naniar::replace_with_na(replace = list(sixty_avg_17 = 0)) %>% 
+  naniar::replace_with_na(replace = list(sixty_avg_16 = 0))
+  
+saveRDS(gwas_master, file = "gwas_master.RDS")
+
+```
+
+####What's the distribution of 60-day-prior average temperatures look like?
+
+```{r, eval=TRUE, echo=TRUE, comment=FALSE}
+
+ggplot(gwas_master, aes(x = sixty_avg_16)) +
+  geom_density() +
+  facet_grid(~Zone)
+
+ggplot(gwas_master, aes(x = sixty_avg_17)) +
+  geom_density() 
+
+```
+
+##Contemporary group generation
+
+* For bim/bam: read in, tidy
+
+```{r, eval=FALSE, echo=TRUE}
+
+fam <- read_table2("pre_adjust/180426_HJD.imputed.sample", skip = 2, col_names = FALSE) %>%
+  #remove "1_" prefix from all international IDs
+  mutate_all(., funs(str_replace(., "1_", ""))) %>% 
+  dplyr::select(X1) %>% 
+  rename(international_id = X1) %>% 
+  left_join(gwas_master %>% 
+              dplyr::select(international_id, Farm_ID, Breed, Color, CalvingSeason2016, CalvingSeason2017, Sex, Age2016, Age2017, DateScoreRecorded2016, DateScoreRecorded2017, DateDeviation2016, DateDeviation2017, sixty_avg_16, sixty_avg_17, LAT, LNG, Zone, HairScore2016, HairScore2017, ToxicFescue2016, ToxicFescue2017, norm_30y) %>% 
+              distinct(),
+            by = c("international_id")) %>%
+  #Change date deviation from date to integer
+  mutate(DateDeviation2016 = as.integer(DateDeviation2016), DateDeviation2017 = as.integer(DateDeviation2017)) %>%
+  #Make a column of row numbers for filtering 
+  mutate(numb = row_number()) %>% 
+  #Remove OHG duplicate (scored twice in 2017)
+  filter(numb != 2976) %>% 
+  #Remove from 2017 analysis (scored twice, change its 2017 hair score to NA)
+  mutate(HairScore2017 = replace(HairScore2017, numb == 2975, NA))
+
+
+#How many times does each international ID occur?
+n_occur_reg <- as.data.frame(table(fam$international_id))
+#Pull out international IDs where # occurences > 1, make data frame of row numbers to toss
+dup_reg <- as_data_frame(fam[fam$international_id %in% n_occur_reg$Var1[n_occur_reg$Freq > 1],]) %>% 
+  filter(is.na(HairScore2016))
+
+#mean 2016 date deviation is 27
+mean_dev_16 <- fam %>% 
+  filter(!is.na(DateDeviation2016)) %>% 
+  summarise(mean(DateDeviation2016)) %>% 
+  as.integer()
+#mean 2017 date deviation is 29
+mean_dev_17 <- fam %>% 
+  filter(!is.na(DateDeviation2017)) %>% 
+  summarise(mean(DateDeviation2017)) %>% 
+  as.integer()
+
+#mean 2016 age is 3
+mean_age_16 <- fam %>% 
+  filter(!is.na(Age2016)) %>% 
+  summarise(mean(Age2016)) %>% 
+  as.integer()
+#mean 2017 age is 4
+mean_age_17 <- fam %>% 
+  filter(!is.na(Age2017)) %>% 
+  summarise(mean(Age2017)) %>% 
+  as.integer()
+
+#mean 2016 60d avg is 16.275
+mean_sixty_16 <- fam %>% 
+  filter(!is.na(sixty_avg_16)) %>% 
+  summarise(mean(sixty_avg_16)) %>% 
+  as.numeric()
+#mean 2017 60d avg is 17.077
+mean_sixty_17 <- fam %>% 
+  filter(!is.na(sixty_avg_17)) %>% 
+  summarise(mean(sixty_avg_17)) %>% 
+  as.numeric()
+
+```
+
+* For PLINK binary ped: read in, tidy
+
+```{r}
+
+fam <- read_table2("gemma_in/180506.f250.fam", col_names = FALSE) %>% 
+  dplyr::select(X2, X3) %>% 
+  #Trim white space
+  mutate(X2 = str_trim(X2, side = c("both")), X3 = str_trim(X3, side = c("both"))) %>%
+  #If international id == sire international id, change sire international id to 0
+  mutate(X3 = if_else(X3 == X2, "0", X3)) %>% 
+  left_join(gwas_master %>% 
+              dplyr::select(international_id, Farm_ID, CalvingSeason2016, CalvingSeason2017, Sex, Age2016, Age2017, DateScoreRecorded2016, DateScoreRecorded2017, DateDeviation2016, DateDeviation2017, sixty_avg_16, sixty_avg_17, HairScore2016, HairScore2017, LAT), by = c("X2" = "international_id")) %>% 
+  distinct() %>% 
+  #Change date deviation from date to integer
+  mutate(DateDeviation2016 = as.integer(DateDeviation2016), DateDeviation2017 = as.integer(DateDeviation2017)) %>%
+  #Make a column of row numbers for filtering 
+  mutate(numb = row_number()) %>% 
+  #Remove OHG duplicate (scored twice in 2017)
+  filter(numb != 4623) %>% 
+  #Remove from 2017 analysis (scored twice, change its 2017 hair score to NA)
+  mutate(HairScore2017 = replace(HairScore2017, numb == 4622, NA))
+
+#How many times does each international ID occur?
+n_occur_reg <- as.data.frame(table(fam$X2))
+#Pull out international IDs where # occurences > 1, make data frame of row numbers to toss
+dup_reg <- as_data_frame(fam[fam$X2 %in% n_occur_reg$Var1[n_occur_reg$Freq > 1],]) %>% 
+  filter(is.na(HairScore2016))
+
+
+#mean 2016 date deviation is 27
+mean_dev <- fam %>% 
+  filter(!is.na(DateDeviation2016)) %>% 
+  summarise(mean(DateDeviation2016)) %>% 
+  as.integer()
+
+
+#mean 2016 age is 3
+mean_age <- fam %>% 
+  filter(!is.na(Age2016)) %>% 
+  summarise(mean(Age2016)) %>% 
+  as.integer()
+
+#mean 2016 60d avg is 16.275
+mean_sixty_avg <- fam %>% 
+  filter(!is.na(sixty_avg_16)) %>% 
+  summarise(mean(sixty_avg_16)) %>% 
+  as.numeric()
+
+```
+
+* Create covariate file
+```{r, eval=FALSE, echo=TRUE}
+
+cov <- fam %>%    
+  #Remove if in dup_reg
+  filter(!numb %in% dup_reg$numb) %>% 
+  #Remove row number column
+  dplyr::select(-numb) %>% 
+  #Can't have NAs during contemporary group creation; change relevant NAs to a U
+  mutate(Sex = replace(Sex, is.na(Sex), "U")) %>%
+  #If any males have a calving season assigned, remove it
+  mutate(CalvingSeason2016 = replace(CalvingSeason2016, Sex == "M", "U"), CalvingSeason2017 = replace(CalvingSeason2017, Sex == "M", "U")) %>%
+  #Change NA calving season for females and unknown sex to U 
+  mutate(CalvingSeason2016 = replace(CalvingSeason2016, is.na(CalvingSeason2016), "U"), CalvingSeason2017 = replace(CalvingSeason2017, is.na(CalvingSeason2017), "U")) %>%
+  #Change 
+  #Create contemporary groupings
+  mutate(sex_group_16 = as.factor(str_c(Sex, CalvingSeason2016)), sex_group_17 = as.factor(str_c(Sex, CalvingSeason2017))) %>% 
+  #Change farm to a factor
+  mutate(Farm_ID = as.factor(Farm_ID)) %>% 
+  #Change hair score to numeric
+  mutate_at(vars(starts_with("Hair")), funs(as.numeric(.))) %>% 
+  #mean impute DateDeviation, Age, 60d avg for 2016
+  mutate(DateDeviation2016 = replace(DateDeviation2016, is.na(DateDeviation2016) & !is.na(HairScore2016), mean_dev_16), 
+         Age2016 = replace(Age2016, is.na(Age2016) & !is.na(HairScore2016), mean_age_16),
+         sixty_avg_16 = replace(sixty_avg_16, is.na(sixty_avg_16) & !is.na(HairScore2016), mean_sixty_16)) %>%
+  #mean impute DateDeviation, Age, 60d avg for 2017
+  mutate(DateDeviation2017 = replace(DateDeviation2017, is.na(DateDeviation2017) & !is.na(HairScore2017), mean_dev_17), 
+         Age2017 = replace(Age2017, is.na(Age2017) & !is.na(HairScore2017), mean_age_17),
+         sixty_avg_17 = replace(sixty_avg_17, is.na(sixty_avg_17) & !is.na(HairScore2017), mean_sixty_17)) %>% 
+  mutate(international_id = as.factor(international_id), Farm_ID = as.factor(Farm_ID), CalvingSeason2016 = as.factor(CalvingSeason2016), CalvingSeason2017 = as.factor(CalvingSeason2017), Sex = as.factor(Sex))
+
+#Assign row names (for downstream sommer analyses)
+row.names(cov) <- cov$international_id
+
+#Remove animals not in Troy's imputation run
+f250 <- read_table2("pre_adjust/227234.180430.6615.A.ID", col_names = FALSE) 
+cov_uni <- cov %>% 
+  filter(international_id %in% f250$X2)
+
+row.names(cov_uni) <- cov_uni$international_id
+
+saveRDS(cov_uni, "peqg/phenotypes_uni.RDS")
+
+
+```
+
+
+
+```{r}
+
+#Create long format dataframe with one line for each year's observation
+#This could have been done a lot easier with dplyr::gather but didn't realize that at the time
+cov_multi <- bind_rows(cov_uni %>%
+                         filter(!is.na(HairScore2016)) %>% 
+                         rename(HairScore = HairScore2016, DateDeviation = DateDeviation2016, CalvingSeason = CalvingSeason2016, Age = Age2016, sixty_avg = sixty_avg_16, sex_group = sex_group_16, ToxicFescue = ToxicFescue2016) %>% 
+                         mutate(yr = 2016) %>% 
+                         dplyr::select(international_id, Farm_ID, CalvingSeason, Sex, Age, DateDeviation, sixty_avg, norm_30y, HairScore, LAT, yr, sex_group),
+                       cov_uni %>%
+                         filter(!is.na(HairScore2017)) %>%
+                         rename(HairScore = HairScore2017, DateDeviation = DateDeviation2017, CalvingSeason = CalvingSeason2017, Age = Age2017, sixty_avg = sixty_avg_17, sex_group = sex_group_17, ToxicFescue = ToxicFescue2017) %>%
+                         mutate(yr = 2017) %>% 
+                         dplyr::select(international_id, Farm_ID, CalvingSeason, Sex, Age, DateDeviation, sixty_avg, norm_30y, HairScore, LAT, yr, sex_group)) %>%
+  mutate(con_group = str_c(Farm_ID, CalvingSeason, yr)) %>% 
+  #could have been done easier with dplyr::mutate_at()
+  mutate(international_id = as.factor(international_id), yr = as.factor(yr), Farm_ID = as.factor(Farm_ID), CalvingSeason = as.factor(CalvingSeason), Sex = as.factor(Sex), con_group = as.factor(con_group))
+
+saveRDS(cov_multi, "peqg/phenotypes_multi.RDS")
+```
+
+
+
+* How many contemporary groups do I end up with? How many are in each group?
+    + 91 contemporary groups ranging from 558 to 1
+```{r, eval=TRUE, echo=TRUE}
+cov_uni %>%
+  filter(!is.na(HairScore2016)) %>% 
+  group_by(con_group) %>% 
+  arrange() %>% 
+  tally() %>% 
+  arrange(desc(n))
+
+cov_uni %>%
+  filter(!is.na(HairScore2016)) %>% 
+    group_by(con_group) %>% 
+  arrange() %>% 
+  tally() %>% 
+  summarise(mean(n)) 
+
+cov_uni %>%
+  filter(!is.na(HairScore2016)) %>% 
+    group_by(con_group) %>% 
+  arrange() %>% 
+  tally() %>% 
+  summarise(sd(n))
+ 
+```
+
+#Phenotype pre-adjustment
+
+
+* Read in GRM generated with GEMMA; remove rows and columns where HairScore2016 is NA in covariate dataframe
+```{r, eval=TRUE, echo=FALSE}
+
+grm <- read_table2("pre_adjust/180502.imputed.grm.sXX.txt", col_names = FALSE) %>%
+  #For some reason, ended up with an extra column of just NAs, remove it
+  dplyr::select(-X6453) %>% 
+  drop_na() 
+
+row.names(grm) <- cov_uni$international_id
+colnames(grm) <- cov_uni$international_id
+   
+saveRDS(grm, file = "180507.grm_imputed.RDS")
+
+
+#Drop rows and columns where corresponding to rows in cov_uni where HairScore2016 is NA
+   
+   
+
+
+grm <- base::as.matrix(grm)
+
+
+
+```
+
+
+##In `rrBLUP`
+
+* Create model matrix
+    + `model.matrix(HairScore2016 ~as.factor(con_group) + DateDeviation2016 + Age2016, data = cov_uni)` drops all rows where HairScore2016 is NA: wrong because that means GRM can't match to correct row downstream
+    
+```{r, eval=TRUE, echo=FALSE}
+ 
+mm <- model.matrix(~as.factor(con_group) + DateDeviation2016 + Age2016, data = cov_uni)
+
+mm <- mm[!is.na(cov_uni$HairScore2016), ]
+
+mm <- mm[, colSums(mm != 0) > 0]
+
+Matrix::rankMatrix(mm)
+
+
+ 
+```
+ 
+
+```{r, eval=FALSE, echo=TRUE}
+
+
+aside(data_mixed <- rrBLUP::mixed.solve(cov_mixed$HairScore2016, 
+                        K = grm, 
+                        X = mm, 
+                        method="REML", 
+                        bounds=c(0.25, 99), return.Hinv=FALSE)
+)
+
+
+
+```
+
+
+##In `sommer`
+
+
+* Create subset/toy dataset for testing `sommer`
+
+```{r, eval=FALSE, echo=TRUE}
+
+#toy_data <- cov_uni[1:200,]
+
+toy_data <- cov_multi %>% 
+  sample_n(400, replace = TRUE)  %>% 
+  mutate(international_id.pe = international_id)
+
+unique(as.character(toy_data$international_id))
+
+toy_data <- cov_uni %>% 
+  dplyr::filter(!is.na(HairScore2016) & !is.na(HairScore2017)) %>% 
+  sample_n(200, replace = FALSE)
+
+#filter(cov_uni, CalvingSeason2016 != CalvingSeason2017)
+
+row.names(toy_data) <- toy_data$international_id
+```
+
+
+###Tool notes
+
+* `mmer2` is formula based
+    + To specify fixed effects, `1+[fixed effects]` after phenotype specification
+        - Only specify random effects inside `g()` if it has a corresponding covariance matrix (i.e., only use for animal effect/GRM)
+        - Specify : `G=(list(X1=grm))`
+* Repeatability/permanent environmental troubleshooting
+    + ~~Add repeatability component with `~g(X1)` (i.e., random effect of individual)~~
+    + Specifying a clone ID column (i.e., `g(international_id.pe)`) in random effects and an identity matrix in G does not work, also tried variations on G list formatting
+    + Possible solution: using `at()`? I.e., `at(yr,c("2016", "2017"):ID)`
+        - Or making my own repeatability matrix, whatever that entails
+
+
+###Phenotypic adjustment
+
+
+* Test with toy dataset
+    + Including `con_group` as random effect and `DateDeviation2016` as fixed effect: $h^2 = 0.44$
+    
+
+```{r, eval= FALSE, echo=TRUE}
+
+pe <- base::diag(x = 1, nrow = 6452, ncol = 6452)
+
+row.names(pe) <- row.names(grm)
+colnames(pe) <- colnames(grm)
+
+
+#Here, use DateDeviation, CalvingSeason, Sex, Age, and Farm_ID as fixed effects
+#Each of these is a column in toy_data
+#Make sure factors are coded correctely in the source data frame
+pre_adjust_toy <- sommer::mmer2(HairScore~1 + DateDeviation + CalvingSeason + Sex + Age + Farm_ID,
+#specify individual as a random effect
+#international_id is a column in toy_data                  
+              random = ~g(international_id) + g(international_id.pe),
+              rcov = ~units,
+#Specify the dataframe where data is coming from
+              data = toy_data,
+#Include the GRM (generated by GEMMA) as a random effect
+#grm is a matrix object, this isn't coming from toy_data
+              G = list(international_id = grm, international_id.pe = pe)
+)
+
+#Pull out the variance components and save it as an object
+suma <- summary(pre_adjust_toy)$var.comp.table
+
+
+#calculate heritability from the object you just save
+sum(suma[1,1]/sum(suma[,1]))
+
+pre_adjust_toy$u.hat$`g(international_id)`
+
+
+pre_adjust_toy$u.hat$`g(international_id.pe`
+
+
+detach(package:sommer, unload = TRUE)
+
+```
+
+
+

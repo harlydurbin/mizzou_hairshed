@@ -1,0 +1,1135 @@
+---
+title: "Life sciences week poster GWAS"
+author: "Harly Durbin"
+date: 'Last updated: `r Sys.Date()`'
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(stringr)
+library(fastDummies)
+library(qqman)
+library(visdat)
+master <- readRDS("../../master.RDS")
+```
+
+#Thoughts/notes
+
+> Simple models: $y= \mu + Deviation from May 1 + age of cow + contemporary group + e$
+
+
+* Two univariate (LMM; one for 2016, one for 2017) and one multivariate (mvLMM; 2016 and 2017)
+    + Contemporary group = farm, calving season, sex
+        - ~How to include calving season for males???~
+        - ~What about where calving season is unknown~
+        - Animals that moved farms (were sold) between years not included in 
+* Do I need to impute first? 
+* For multivariate: "Score date deviations won't be consistent between 2016 and 2017. You might need to pre-adjust your phenotypes using rrBLUP to fit a multivariate model."
+        
+        
+```{r, eval=TRUE, echo=TRUE}
+select(master, starts_with("Calving")) %>% 
+  vis_miss()
+
+select(master, starts_with("Hair")) %>% 
+  vis_miss()
+
+select(master, starts_with("Date")) %>% 
+  vis_miss()
+```
+
+* How many sires do I have lab IDs for?
+
+```{r}
+x <- read_excel("../180209.hs_lab_ids.xlsx") %>% 
+  select(lab_id_sire) %>% 
+  drop_na() %>% 
+  distinct()
+
+read_excel("../180209.hs_lab_ids.xlsx") %>% 
+  select(Lab_ID) %>% 
+  full_join(x, by = c("Lab_ID" = "lab_id_sire")) %>% 
+  distinct() %>% 
+  write_csv("~/Desktop/180426.hs_lab_id.txt", col_names = FALSE, na = "")
+```
+
+
+##Tool notes
+* [Specify covariates  with](https://www.biostars.org/p/305296/) `-c`?
+* `-lmm 4`: perform Wald, likelihood ratio, and score tests
+* Note: `Segmentation fault (core dumped)` comes from cov, .fam, and GRM files not being all the same length
+* `gsl: lu.c:262: ERROR: matrix is singular. Default GSL error handler invoked. Aborted (core dumped)`
+    + [Possibly due to high colinearity?](https://github.com/genetics-statistics/GEMMA/issues/78)
+    + Works when missing values coded as 0 in fam
+
+
+#Covariates
+
+##Days from May 1
+
+```{r, eval=TRUE, echo=TRUE}
+master <- master %>% 
+  mutate(DateScoreRecorded2016 = as.Date(DateScoreRecorded2016)) %>%
+  mutate(DateScoreRecorded2017 = as.Date(DateScoreRecorded2017)) %>% 
+  mutate(DateDeviation2016 =  DateScoreRecorded2016 - ymd("2016-05-01")) %>% 
+  mutate(DateDeviation2017 =  DateScoreRecorded2017 - ymd("2017-05-01"))
+
+
+```
+
+##Age
+
+```{r, eval=TRUE, echo=TRUE}
+master <- master %>% 
+  #If Age2017 is NA but Age 2016 isn't, make Age 2017 = Age 2016 + 1 and vice versa, else leave it as is
+  mutate(Age2017 = if_else(is.na(Age2017) & !is.na(Age2016), 
+                           Age2016 + 1, 
+                           as.double(Age2017))) %>% 
+  mutate(Age2016 = if_else(is.na(Age2016) & !is.na(Age2017), 
+                           Age2017 - 1, 
+                           as.double(Age2016)))
+```
+
+
+
+#Runs
+
+##F250 2016 test: all possible animals, all covariates
+
+###Generate input files
+
+####Genotype file
+
+* Remove duplicates from .ped file using `remove_dup.plink.py`
+* .bim file
+
+####Phenotype file
+
+* Make .bed  & .fam file
+```{bash, eval= FALSE}
+/usr/local/bin/plink-3.31b_linux_x86_64/plink --ped /CIFS/MUG01_N/deckerje/hjdzpd/180327_gen/duplicates_filtered/227234.180327.5952.A.ped --map /CIFS/MUG01_N/schnabelr/PLINK_FILES/9913_GGPF250_171219.map --cow --make-bed --out /data/hjdzpd/hair_gwas/f250_test/180331.f250
+```
+
+
+* A lot of animals have themselves listed as their sire for some reason, need to figure out why and if it's actually that way in the database at some point 
+    + 707 in my fam file
+    + 708 in samples_table
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+read_table2("180331.f250.fam", col_names = FALSE) %>% 
+  distinct() %>% 
+  filter(X2 == X3)
+
+read_excel("../180209.hs_lab_ids.xlsx") %>%
+  mutate(Reg = str_trim(Reg, side = c("both"))) %>% 
+  select(Lab_ID, Reg, Sire_Reg, international_id, sire_international_id) %>% 
+  filter(international_id == sire_international_id)
+```
+
+* For now, remove sire_international_id if = to international_id
+* I don't know why I keep ending up with psuedo-duplicates
+```{r, eval=FALSE, echo=TRUE}
+
+fam <- read_table2("180331.f250.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both")), X3 = str_trim(X3, side = c("both"))) %>% 
+  mutate(X3 = if_else(X3 == X2, "0", X3)) %>% 
+  left_join(select(master, international_id, HairScore2016), by = c("X2" = "international_id")) %>%
+  mutate(HairScore2016 = if_else(is.na(HairScore2016), X6, as.integer(HairScore2016))) %>% 
+  select(-X6) %>% 
+  filter(X2 %in% f250_id$international_id) %>% 
+  distinct() %>% 
+  mutate(numb = row_number()) 
+
+filter(fam, HairScore2016== "-9")
+
+#Why do I still have more than are in the fam file
+n_occur_reg <- data.frame(table(fam$X2))
+dup_reg <- as_data_frame(fam[fam$X2 %in% n_occur_reg$Var1[n_occur_reg$Freq > 1],]) %>% 
+  filter(HairScore2016 == "-9")
+
+fam %>% 
+  filter(!numb %in% dup_reg$numb) %>% 
+  select(-numb) %>% 
+  arrange(X2) %>% 
+  write_delim("180331.f20_test.2.fam", col_names = FALSE, delim = "\t")
+
+```
+
+
+####Covariate file
+
+* Assign contemporary groups, create covariate file
+    + `all.equal()` to test that row order is the same after removing duplicates
+```{r, eval=FALSE, echo=TRUE}
+
+cov <-  read_table2("180331.f250.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both"))) %>%
+  #mutate(X2 = if_else(X2 == "BSHUSAF000004256195", "BSHUSAF00004256195", X2)) %>% 
+  #Append covariate info to list of international IDs in fam fil
+  left_join(select(master, international_id, Farm_ID, CalvingSeason2016, Sex, Age2016, DateDeviation2016), by = c("X2" = "international_id")) %>%
+  #Change date deviation from date to integer
+  mutate(DateDeviation2016 = as.integer(DateDeviation2016)) %>% 
+  #Make a column of row numbers for filtering 
+  mutate(numb = row_number()) 
+
+
+#How many times does each international ID occur?
+n_occur_reg <- as.data.frame(table(cov$X2))
+#Pull out international IDs where # occurences > 1, make data frame of row numbers to toss
+dup_reg <- as_data_frame(cov[cov$X2 %in% n_occur_reg$Var1[n_occur_reg$Freq > 1],]) %>% 
+  filter(is.na(DateDeviation2016)) %>% 
+  filter(numb != "1753")
+ 
+mean_dev <- cov %>% 
+  filter(!is.na(DateDeviation2016)) %>% 
+  summarise(mean(DateDeviation2016)) %>% 
+  as.integer()
+
+mean_age <- cov %>% 
+  filter(!is.na(Age2016)) %>% 
+  summarise(mean(Age2016)) %>% 
+  as.integer()
+ 
+x <- cov %>%    
+  #Remove if in dup_reg
+  filter(!numb %in% dup_reg$numb) %>% 
+  #Remove row number column
+  select(-numb) %>% 
+  mutate(Sex = if_else(is.na(Sex), "U", Sex)) %>%
+  mutate(CalvingSeason2016 = if_else(is.na(CalvingSeason2016), "X", CalvingSeason2016)) %>% 
+  mutate(con_group = str_c(Farm_ID, Sex, CalvingSeason2016)) %>% 
+  mutate(DateDeviation2016 = if_else(is.na(DateDeviation2016), mean_dev, DateDeviation2016)) %>% 
+  mutate(Age2016 = if_else(is.na(Age2016), mean_age, as.integer(Age2016)))  
+  
+ 
+as_data_frame(model.matrix(~as.factor(x$con_group) + x$DateDeviation2016 + x$Age2016)) %>% 
+  write_delim("180402.f250.cov", col_names = FALSE, na = "0")
+
+
+```
+
+
+####GRM
+
+* Calculate standardized (`-gk 2`) relatedness matrix
+
+```{bash, eval=FALSE}
+/usr/local/bin/gemma-0.94/bin/gemma -bfile f250_test/180331.f250 -gk 2 -o 180331.f250.grm
+
+## number of total individuals = 5923
+## number of analyzed individuals = 4277
+## number of covariates = 1
+## number of phenotypes = 1
+## number of total SNPs = 227218
+## number of analyzed SNPs = 104403
+```
+
+###Run GWAS
+
+* Run GEMMA 
+```{bash, eval = FALSE}
+/usr/local/bin/gemma-0.94/bin/gemma -bfile 180331.f250 -k output/180331.f250.grm.sXX.txt -c 180402.f250.cov -lmm 4 -o 180402.f250.2016
+```
+
+###Analyze output
+
+
+##F250 2016 test: all possible animals, no covariates or contemporary groups 
+
+###Generate input files
+
+* Use bed, bim, fam, GRM generated above
+
+###Run GWAS
+
+* Run GEMMA
+```{bash, eval = FALSE, echo= TRUE}
+/usr/local/bin/gemma-0.94/bin/gemma -bfile f250_test/180331.f250 -k output/180331.f250.grm.sXX.txt -lmm 4 t -o 180331.f250.2016
+```
+
+
+###Analyze output
+
+* Bonferroni cutoff: 0.05/104,096 
+```{r, eval=TRUE, echo=TRUE}
+f250_2016_nocov <- read_table2("./gemma_out/180331.f250.2016.assoc.txt", col_names = TRUE) %>%
+  filter(chr != -9)
+
+manhattan(f250_2016_nocov, chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(4.803259e-07), col = alpha(c("blue", "goldenrod"), 0.5))
+```
+
+
+
+##F250 2016 test: only animals with complete records (reduced dataset), all covariates
+
+###Generate input files
+
+####Genotype file
+
+* How many samples missing no data and in ID file?
+    + 3,792 samples
+    + Create plink keep file
+```{r, eval=FALSE, echo=TRUE}
+id <- read_table2("227234.180327.5952.A.ID", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both"))) %>% 
+  distinct()
+
+no_miss <- master %>% 
+  filter(international_id %in% id$X2) %>% 
+  filter(!is.na(international_id), !is.na(Farm_ID), !is.na(Sex), !is.na(DateScoreRecorded2016), !is.na(HairScore2016), !is.na(Age2016), !is.na(CalvingSeason2016)) %>% 
+  select(international_id, Farm_ID, Sex, CalvingSeason2016, HairScore2016, Age2016, DateDeviation2016) #%>% 
+  #mutate(Farm_ID = 1) %>% 
+  #write_delim("180402.keep.txt", delim = "\t", na = "-9")
+  
+
+```
+
+* Create bed, bim, fam with only these animals
+```{bash, eval=FALSE, echo =TRUE}
+plink --ped /CIFS/MUG01_N/deckerje/hjdzpd/180327_gen/duplicates_filtered/227234.180327.5952.A.ped --map /CIFS/MUG01_N/schnabelr/PLINK_FILES/9913_GGPF250_171219.map --cow --make-bed -- out 180402.no_miss
+```
+
+
+####Phenotype file
+
+* Fix fam file
+    + Realized rows of fam and bed need to be in the same order, don't `arrange()`
+```{r, eval=FALSE, echo=TRUE}
+read_table2("180402.no_miss.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both")), X3 = str_trim(X3, side = c("both"))) %>%
+  mutate(X3 = if_else(X3 == X2, "0", X3)) %>% 
+  left_join(no_miss %>% 
+              select(international_id, HairScore2016), by = c("X2" = "international_id")) %>% 
+  mutate(X6 = HairScore2016) %>% 
+  select(-HairScore2016) %>% 
+  write_tsv("180402.no_miss.2.fam", col_names = FALSE)
+  
+```
+
+
+####Covariate file
+
+* Create modified covariate file
+* 3,972 samples
+```{r, eval=FALSE, echo = TRUE}
+x <-read_table2("180402.no_miss.fam", col_names = FALSE) %>% 
+  select(X2) %>% 
+  mutate(X2 = str_trim(X2, side = c("both"))) %>% 
+  left_join(no_miss, by = c("X2" = "international_id")) %>% 
+  mutate(DateDeviation2016 = as.integer(DateDeviation2016)) %>% 
+  mutate(con_group = str_c(Farm_ID, Sex, CalvingSeason2016)) %>% 
+  select(-X2, -HairScore2016)
+
+
+as_data_frame(model.matrix(~as.factor(x$con_group) + x$DateDeviation2016 + x$Age2016)) %>% 
+  write_delim("180402.no_miss.txt", col_names = FALSE, na = "0")
+  
+  
+
+```
+
+####GRM 
+
+```{bash, eval = FALSE, echo = TRUE}
+/usr/local/bin/gemma-0.94/bin/gemma -bfile f250_test/no_miss/180402.no_miss -gk 2 -o 180402.no_miss.grm`
+```
+
+
+###Run GWAS
+
+```{bash, eval = FALSE, echo = TRUE}
+/usr/local/bin/gemma-0.94/bin/gemma -bfile 180402.no_miss -k output/180402.no_miss.grm.sXX.txt -c 180402.no_miss.cov -lmm 4 -o 180402.no_miss.2016
+```
+
+###Analyze output
+
+* Why were only 103,205 SNPs used?
+```{r, eval=TRUE, echo=TRUE}
+#How many SNPs where no animals genotyped
+read_table2("gemma_out/180402.no_miss.frq") %>% 
+  mutate(sampled = NCHROBS/2 ) %>% 
+  tally(sampled == 0)
+
+#How many SNPs with MAF < 0.01
+read_table2("gemma_out/180402.no_miss.frq") %>% 
+  filter(MAF < 0.01) %>% 
+  tally()
+```
+
+##F250 2016 test reduced dataset: only sex, age, and date deviation as covariates
+
+###Generate input files
+
+* Use genotype, phenotype (`180402.no_miss.2.fam`), and GRM files generated above
+
+####Covariate file
+
+* Create modified covariate file
+* 3,792 observations
+```{r, eval = FALSE, echo=TRUE}
+
+cov <-  read_table2("180402.no_miss.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both"))) %>%
+  select(X2) %>% 
+  #Append covariate info to list of international IDs in fam fil
+  left_join(master %>% 
+              filter(!is.na(international_id), !is.na(Farm_ID), !is.na(Sex), !is.na(DateScoreRecorded2016), !is.na(HairScore2016), !is.na(Age2016), !is.na(CalvingSeason2016)) %>% 
+              select(international_id, Sex, Age2016, DateDeviation2016),
+            by = c("X2" = "international_id")) %>%
+  #Change date deviation from date to integer
+  mutate(DateDeviation2016 = as.integer(DateDeviation2016))
+
+#Create model matrix
+mm <- model.matrix(~as.factor(cov$Sex) + cov$DateDeviation2016 + cov$Age2016) 
+  
+Matrix::rankMatrix(mm)
+
+as_data_frame(mm) %>% 
+  write_tsv("180403.no_miss.reduced_cov.cov", col_names = FALSE)
+```
+
+###Run GWAS
+
+* GEMMA command
+
+```{bash, eval = FALSE, echo = TRUE}
+gemma -bfile 180402.no_miss -k output/180402.no_miss.grm.sXX.txt -c 180403.no_miss.reduced_cov.cov -lmm 4 -o 180402.no_miss.reduced_cov.2016
+```
+
+
+###Analyze output
+
+* Bonferroni cutoff: 0.05/103,205 
+```{r, eval=TRUE, echo = TRUE}
+manhattan(read_table2("./gemma_out/180402.no_miss.reduced_cov.2016.assoc.txt", col_names = TRUE) %>%
+  filter(chr != -9), chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(4.844727e-07), col = alpha(c("blue", "goldenrod"), 0.5))
+```
+
+
+* What are the top hits?
+```{r, eval = TRUE, echo = TRUE}
+read_table2("./gemma_out/180402.no_miss.reduced_cov.2016.assoc.txt", col_names = TRUE) %>%
+  filter(chr != -9) %>%  
+  arrange(p_wald) %>%
+  rename(snp_name = rs) %>% 
+  slice(1:100)
+  #write_csv("180403.f250.reduced.2016.top_hits.csv", na = "" )
+
+```
+
+
+##F250 2016 test: reduced dataset, only LAT, sex, age, and date deviation as covariates
+
+* Use genotype, phenotype (`180402.no_miss.2.fam`), and GRM files generated above
+
+####Covariate file
+
+* Create modified covariate file
+* 3,792 observations
+```{r, eval=FALSE, echo=TRUE}
+
+cov <-  read_table2("180402.no_miss.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both"))) %>%
+  select(X2) %>% 
+  #Append covariate info to list of international IDs in fam fil
+  left_join(master %>% 
+              filter(!is.na(international_id), !is.na(Farm_ID), !is.na(Sex), !is.na(DateScoreRecorded2016), !is.na(HairScore2016), !is.na(Age2016), !is.na(CalvingSeason2016)) %>% 
+              select(international_id, LAT, Age2016, DateDeviation2016),
+            by = c("X2" = "international_id")) %>%
+  #Change date deviation from date to integer
+  mutate(DateDeviation2016 = as.integer(DateDeviation2016))
+
+#Create model matrix
+mm <- model.matrix(~ cov$LAT + cov$DateDeviation2016 + cov$Age2016) 
+  
+Matrix::rankMatrix(mm)
+
+as_data_frame(mm) %>% 
+  write_tsv("180403.no_miss.reduced_cov.lat.cov", col_names = FALSE)
+```
+
+###Run GWAS
+
+* GEMMA command
+```{bash, eval=FALSE, echo =TRUE}
+gemma -bfile 180402.no_miss -k output/180402.no_miss.grm.sXX.txt -c 180403.no_miss.reduced_cov.lat.cov -lmm 4 -o 180403.no_miss.reduced_cov.lat.2016
+```
+
+###Analyze output
+
+* Bonferroni cutoff: 0.05/103,205 
+```{r, eval = TRUE, echo = TRUE}
+
+manhattan(read_table2("gemma_out/180403.no_miss.reduced_cov.lat.2016.assoc.txt", col_names = TRUE) %>%
+  filter(chr != -9), chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(4.844727e-07), col = alpha(c("blue", "goldenrod"), 0.5), main = str_wrap("Reduced dataset using latitude, sex, age, and scoring date deviation as covariates", width = 45))
+```
+
+##F250 2016 test: reduced dataset, only mean yearly temp, sex, age, and date deviation as covariates
+
+* Use genotype, phenotype (`180402.no_miss.2.fam`), and GRM files generated above
+
+####Covariate file
+
+* Create modified covariate file
+* 3,792 observations
+```{r, eval=FALSE, echo=TRUE}
+#Read in PRISM data
+prism <- read_csv("prism_dataframe.csv") %>% 
+  #Rename y and x to LAT and LNG
+  rename(LAT = y, LNG = x) %>% 
+  #Read in file with coordinates of each zip code, join to PRISM data after rounding LAT and LNG columns down to 1 deicimal place
+  left_join(read_csv("../zips_to_coordinates.csv") %>% 
+              mutate_at(vars(starts_with("L")), funs(round(., 1)))) %>% 
+  #Remove entries that didn't match to a zip code
+  filter(!is.na(ZIP)) %>% 
+  rename(Zip = ZIP) %>% 
+  select(Zip, meantemp)
+
+cov <-  read_table2("180402.no_miss.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both"))) %>%
+  select(X2) %>% 
+  #Append covariate info to list of international IDs in fam fil
+  left_join(master %>% 
+              filter(!is.na(international_id), !is.na(Farm_ID), !is.na(Sex), !is.na(DateScoreRecorded2016), !is.na(HairScore2016), !is.na(Age2016), !is.na(CalvingSeason2016)) %>% 
+              select(international_id, Sex, Zip, Age2016, DateDeviation2016) %>%
+              mutate(Zip = as.character(Zip)),
+            by = c("X2" = "international_id")) %>%
+  left_join(prism) %>% 
+  #Change date deviation from date to integer
+  mutate(DateDeviation2016 = as.integer(DateDeviation2016))
+
+#Create model matrix
+mm <- model.matrix(~ as.factor(cov$Sex) + cov$meantemp + cov$DateDeviation2016 + cov$Age2016) 
+
+Matrix::rankMatrix(mm)
+
+as_data_frame(mm) %>% 
+  write_tsv("180404.no_miss.reduced_cov.meantemp.cov", col_names = FALSE)
+```
+
+###Run GWAS
+
+* GEMMA command
+```{bash, eval=FALSE, echo =TRUE}
+gemma -bfile 180402.no_miss -k output/180402.no_miss.grm.sXX.txt -c 180404.no_miss.reduced_cov.meantemp.cov -lmm 4 -o 180404.no_miss.reduced_cov.meantemp.2016
+```
+
+###Analyze output
+
+* Bonferroni cutoff: 0.05/103,205 
+```{r, eval =TRUE, echo =TRUE}
+manhattan(read_table2("gemma_out/180404.no_miss.reduced_cov.meantemp.2016.assoc.txt", col_names = TRUE) %>%
+  filter(chr != -9), chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(4.844727e-07), col = alpha(c("blue", "goldenrod"), 0.5), main = str_wrap("Reduced dataset using average mean temp, sex, age, and scoring date deviation as covariates", width = 45))
+```
+
+* Format top hits for BovineMine
+
+```{r, eval=FALSE, echo=TRUE}
+read_table2("gemma_out/180404.no_miss.reduced_cov.meantemp.2016.assoc.txt", col_names = TRUE) %>%
+  #Rename SNP id column because I kept confusing it with ps (position)
+  rename(snp_name = rs) %>% 
+  filter(chr != 0) %>% 
+  #Collapse "GK", leading zeros up to six digits including chr number, weird ".2", ":", and SNP position
+  mutate(bov_mine_id = str_c("GK", str_pad(chr, 6, side = c("left"), pad = "0"), ".2", ":", ps)) %>% 
+  #Pull out signifcant hits
+  filter(p_wald >= 4.844727e-07) %>% 
+  #Arrange by significance
+  arrange(p_wald) %>% 
+  #Select top ten
+  slice(1:10) %>% 
+  select(bov_mine_id) %>% 
+  write_csv("~/Desktop/bovine_mine.csv")
+  
+
+```
+
+
+
+##F250 test 2017: reduced dataset, only mean yearly temp, age, and date deviation as covariates
+
+###Generate input files
+
+####Phenotype file: 2017
+
+```{r, eval = FALSE, echo=TRUE}
+read_table2("180402.no_miss.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both")), X3 = str_trim(X3, side = c("both"))) %>%
+  mutate(X3 = if_else(X3 == X2, "0", X3)) %>% 
+  left_join(master %>% 
+              filter(!is.na(international_id), !is.na(Farm_ID), !is.na(Sex), !is.na(DateScoreRecorded2016), !is.na(HairScore2016), !is.na(Age2016), !is.na(CalvingSeason2016)) %>% 
+              select(international_id, HairScore2017), by = c("X2" = "international_id")) %>% 
+  mutate(HairScore2017 = if_else(is.na(HairScore2017), 0, as.double(HairScore2017))) %>% 
+  select(-X6) %>% 
+  write_tsv("180402.no_miss.2017.fam", col_names = FALSE)
+```
+
+
+####Covariate file
+
+* Create modified covariate file
+* 2,976 observations
+```{r, eval=FALSE, echo=TRUE}
+#Read in PRISM data
+prism <- read_csv("prism_dataframe.csv") %>% 
+  #Rename y and x to LAT and LNG
+  rename(LAT = y, LNG = x) %>% 
+  #Read in file with coordinates of each zip code, join to PRISM data after rounding LAT and LNG columns down to 1 deicimal place
+  left_join(read_csv("../zips_to_coordinates.csv") %>% 
+              mutate_at(vars(starts_with("L")), funs(round(., 1)))) %>% 
+  #Remove entries that didn't match to a zip code
+  filter(!is.na(ZIP)) %>% 
+  rename(Zip = ZIP) %>% 
+  select(Zip, meantemp)
+
+
+
+cov <- read_table2("180402.no_miss.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both"))) %>%
+  select(X2) %>% 
+  #Append covariate info to list of international IDs in fam fil
+  left_join(master %>% 
+              filter(!is.na(international_id), !is.na(Farm_ID), !is.na(Sex), !is.na(DateScoreRecorded2016), !is.na(HairScore2016), !is.na(Age2016), !is.na(CalvingSeason2016)) %>% 
+              select(international_id, Sex, Zip, Age2017, DateDeviation2017, HairScore2017) %>%
+              mutate(Zip = as.character(Zip)),
+            by = c("X2" = "international_id")) %>% 
+  left_join(prism) %>% 
+  select(Sex, Age2017, DateDeviation2017, meantemp) %>% 
+  #Change date deviation from date to integer
+  mutate(DateDeviation2017 = as.integer(DateDeviation2017))
+
+
+#5
+mean_age <- cov %>% 
+  filter(!is.na(Age2017)) %>% 
+  summarise(mean(Age2017)) %>% 
+  as.integer()
+
+
+#28
+mean_dev <- cov %>% 
+  filter(!is.na(DateDeviation2017)) %>% 
+  summarise(mean(DateDeviation2017)) %>% 
+  as.integer()
+
+cov <- cov %>% 
+  mutate(DateDeviation2017 = if_else(is.na(DateDeviation2017), mean_dev, DateDeviation2017)) %>% 
+  mutate(Age2017 = if_else(is.na(Age2017), 5, Age2017)) 
+  
+mm <- model.matrix(~ as.factor(cov$Sex) + cov$meantemp + cov$DateDeviation2017 + cov$Age2017) 
+  
+Matrix::rankMatrix(mm)
+
+as_data_frame(mm) %>% 
+  write_tsv("180404.no_miss.reduced_cov.meantemp.2017.cov", col_names = FALSE)
+
+```
+
+###Run GWAS
+
+* GEMMA command
+```{bash, eval= FALSE, echo = TRUE}
+gemma -bfile 180402.no_miss -k output/180402.no_miss.grm.sXX.txt -c 180404.no_miss.reduced_cov.meantemp.2017.cov -lmm 4 -o 180404.no_miss.reduced_cov.meantemp.2017
+```
+
+###Analyze output
+
+* Bonferroni cutoff: 0.05/103,189
+```{r, eval =TRUE, echo =TRUE}
+manhattan(read_table2("gemma_out/180404.no_miss.reduced_cov.meantemp.2017.assoc.txt", col_names = TRUE) %>%
+  filter(chr != -9), chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(4.845478e-07), col = alpha(c("blue", "goldenrod"), 0.5))
+```
+
+```{r, eval=FALSE, echo=TRUE}
+read_table2("gemma_out/180404.no_miss.reduced_cov.meantemp.2017.assoc.txt", col_names = TRUE) %>%
+  #Rename SNP id column because I kept confusing it with ps (position)
+  rename(snp_name = rs) %>% 
+  filter(chr != 0) %>% 
+  #Collapse "GK", leading zeros up to six digits including chr number, weird ".2", ":", and SNP position
+  mutate(bov_mine_id = str_c("GK", str_pad(chr, 6, side = c("left"), pad = "0"), ".2", ":", ps)) %>% 
+  #Pull out signifcant hits
+  filter(p_wald >= 4.844727e-07) %>% 
+  #Arrange by significance
+  arrange(p_wald) %>% 
+  #Select top ten
+  slice(1:10) %>% 
+  select(bov_mine_id) %>% 
+  write_csv("~/Desktop/bovine_mine.csv")
+  
+
+```
+
+##Full test 2017
+
+###Create input files
+
+####Phenotype file
+* 5,923 observations
+    + 4,364 with hair scores
+```{r, eval = FALSE, echo=TRUE}
+
+
+
+read_table2("180331.f250.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both")), X3 = str_trim(X3, side = c("both"))) %>%
+  mutate(X3 = if_else(X3 == X2, "0", X3)) %>% 
+  left_join(master %>% 
+              filter(!is.na(HairScore2017)) %>% 
+              select(international_id, HairScore2017), by = c("X2" = "international_id")) %>% 
+  select(-X6) %>% 
+  write_tsv("180405.2017.full.fam", col_names = FALSE)
+```
+
+####Cov file
+
+```{r, eval=FALSE, echo=TRUE}
+#Read in PRISM data
+prism <- read_csv("prism_dataframe.csv") %>% 
+  #Rename y and x to LAT and LNG
+  rename(LAT = y, LNG = x) %>% 
+  #Read in file with coordinates of each zip code, join to PRISM data after rounding LAT and LNG columns down to 1 deicimal place
+  left_join(read_csv("../zips_to_coordinates.csv") %>% 
+              mutate_at(vars(starts_with("L")), funs(round(., 1)))) %>% 
+  #Remove entries that didn't match to a zip code
+  filter(!is.na(ZIP)) %>% 
+  rename(Zip = ZIP) %>% 
+  select(Zip, meantemp)
+
+
+
+cov <- read_table2("180405.2017.full.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both"))) %>%
+  select(X2) %>% 
+  #Append covariate info to list of international IDs in fam fil
+  left_join(master  %>% 
+              select(international_id, Sex, Zip, Age2017, DateDeviation2017, HairScore2017) %>%
+              mutate(Zip = as.character(Zip)),
+            by = c("X2" = "international_id")) %>% 
+  left_join(prism) %>% 
+  #Change date deviation from date to integer
+  mutate(DateDeviation2017 = as.integer(DateDeviation2017)) %>% 
+  #Make a column of row numbers for filtering 
+  mutate(numb = row_number()) 
+
+
+
+n_occur_reg <- as.data.frame(table(cov$X2))
+#Pull out international IDs where # occurences > 1, make data frame of row numbers to toss
+dup_reg <- as_data_frame(cov[cov$X2 %in% n_occur_reg$Var1[n_occur_reg$Freq > 1],]) %>% 
+  filter(is.na(DateDeviation2017)) %>% 
+  filter(numb != "1753")
+
+
+#29 
+mean_dev <- cov %>% 
+  filter(!is.na(DateDeviation2017)) %>% 
+  summarise(mean(DateDeviation2017)) %>% 
+  as.integer()
+
+#4
+mean_age <- cov %>% 
+  filter(!is.na(Age2017)) %>% 
+  summarise(mean(Age2017)) %>% 
+  as.integer()
+
+
+cov <- cov %>%    
+  #Remove if in dup_reg
+  filter(!numb %in% dup_reg$numb) %>% 
+  #Remove row number column
+  mutate(Sex = if_else(is.na(Sex), "U", Sex)) %>% 
+  mutate(DateDeviation2017 = if_else(is.na(DateDeviation2017), 29, as.double(DateDeviation2017))) %>% 
+  mutate(Age2017 = if_else(is.na(Age2017), 4, Age2017))
+  
+mm <- model.matrix(~ as.factor(cov$Sex) + cov$meantemp + cov$DateDeviation2017 + cov$Age2017) 
+  
+Matrix::rankMatrix(mm) 
+
+as_data_frame(mm) %>% 
+  select(-`as.factor(cov$Sex)U`) %>% 
+  write_tsv("180405.2017.full.cov", col_names = FALSE)
+
+  
+
+```
+
+* GEMMA command
+```{bash, eval= FALSE, echo = TRUE}
+gemma -bfile 180331.f250.2017 -k ../output/180331.f250.grm.sXX.txt -c 180405.2017.full.cov -lmm 4 -o 180405.full.reduced_cov.meantemp.2017
+```
+
+###Analyze output
+
+* Bonferroni cutoff: 0.05/103,513
+```{r, eval =TRUE, echo =TRUE}
+manhattan(read_table2("gemma_out/180405.full.reduced_cov.meantemp.2017.assoc.txt", col_names = TRUE) %>%
+  filter(chr != -9), chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(4.830311e-07), col = alpha(c("blue", "goldenrod"), 0.5))
+```
+
+* Format top hits for BovineMine
+
+```{r, eval=FALSE, echo=TRUE}
+read_table2("gemma_out/180405.full.reduced_cov.meantemp.2017.assoc.txt", col_names = TRUE) %>%
+  #Rename SNP id column because I kept confusing it with ps (position)
+  rename(snp_name = rs) %>% 
+  filter(chr != 0) %>% 
+  #Collapse "GK", leading zeros up to six digits including chr number, weird ".2", ":", and SNP position
+  mutate(bov_mine_id = str_c("GK", str_pad(chr, 6, side = c("left"), pad = "0"), ".2", ":", ps)) %>% 
+  #Pull out signifcant hits
+  #Arrange by significance
+  arrange(p_wald) %>% 
+  filter(p_wald > 4.830311e-07) %>% 
+  #Select top ten
+  slice(1:10) %>% 
+  select(bov_mine_id) %>% 
+  write_csv("~/Desktop/bovine_mine.csv")
+```
+
+
+#Full test 2016
+
+###Create input files
+
+####Phenotype file
+* 5,923 observations
+    + 4,439 with phenotypes
+```{r, eval = FALSE, echo=TRUE}
+read_table2("180331.f250.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both")), X3 = str_trim(X3, side = c("both"))) %>%
+  mutate(X3 = if_else(X3 == X2, "0", X3)) %>% 
+  left_join(master %>% 
+              filter(!is.na(HairScore2016)) %>% 
+              select(international_id, HairScore2016), by = c("X2" = "international_id")) %>% 
+  #mutate(HairScore2016 = if_else(is.na(HairScore2016), , as.double(HairScore2016))) %>% 
+  select(-X6) %>% 
+  write_tsv("180405.2016.full.fam", col_names = FALSE)
+
+
+```
+
+####Cov file
+
+```{r, eval=FALSE, echo=TRUE}
+#Read in PRISM data
+prism <- read_csv("prism_dataframe.csv") %>% 
+  #Rename y and x to LAT and LNG
+  rename(LAT = y, LNG = x) %>% 
+  #Read in file with coordinates of each zip code, join to PRISM data after rounding LAT and LNG columns down to 1 deicimal place
+  left_join(read_csv("../zips_to_coordinates.csv") %>% 
+              mutate_at(vars(starts_with("L")), funs(round(., 1)))) %>% 
+  #Remove entries that didn't match to a zip code
+  filter(!is.na(ZIP)) %>% 
+  rename(Zip = ZIP) %>% 
+  select(Zip, meantemp)
+
+
+
+cov <- read_table2("180405.2016.full.fam", col_names = FALSE) %>% 
+  mutate(X2 = str_trim(X2, side = c("both"))) %>%
+  select(X2) %>% 
+  #Append covariate info to list of international IDs in fam fil
+  left_join(master  %>% 
+              select(international_id, Sex, Zip, Age2016, DateDeviation2016, HairScore2016) %>%
+              mutate(Zip = as.character(Zip)),
+            by = c("X2" = "international_id")) %>% 
+  left_join(prism) %>% 
+  #Change date deviation from date to integer
+  mutate(DateDeviation2016 = as.integer(DateDeviation2016)) %>% 
+  #Make a column of row numbers for filtering 
+  mutate(numb = row_number()) 
+
+
+
+n_occur_reg <- as.data.frame(table(cov$X2))
+#Pull out international IDs where # occurences > 1, make data frame of row numbers to toss
+dup_reg <- as_data_frame(cov[cov$X2 %in% n_occur_reg$Var1[n_occur_reg$Freq > 1],]) %>% 
+  filter(is.na(DateDeviation2016)) %>% 
+  filter(numb != "1752")
+
+
+#27
+mean_dev <- cov %>% 
+  filter(!is.na(DateDeviation2016)) %>% 
+  summarise(mean(DateDeviation2016)) %>% 
+  as.integer()
+
+#3
+mean_age <- cov %>% 
+  filter(!is.na(Age2016)) %>% 
+  summarise(mean(Age2016)) %>% 
+  as.integer()
+
+
+cov <- cov %>%    
+  #Remove if in dup_reg
+  filter(!numb %in% dup_reg$numb) %>% 
+  #Remove row number column
+  mutate(Sex = if_else(is.na(Sex), "U", Sex)) %>% 
+  mutate(DateDeviation2016 = if_else(is.na(DateDeviation2016), mean_dev, DateDeviation2016)) %>% 
+  mutate(Age2016 = if_else(is.na(Age2016), 3, Age2016))
+  
+mm <- model.matrix(~ as.factor(cov$Sex) + cov$meantemp + cov$DateDeviation2016 + cov$Age2016) 
+  
+Matrix::rankMatrix(mm)
+
+as_data_frame(mm) %>% 
+  select(-`as.factor(cov$Sex)M`) %>% 
+  write_tsv("180405.2016.full.cov", col_names = FALSE)
+
+
+```
+
+* GEMMA command
+```{bash, eval= FALSE, echo = TRUE}
+gemma -bfile 180331.f250.2016 -k ../output/180331.f250.grm.sXX.txt -c 180405.2016.full.cov -lmm 4 -o 180405.full.reduced_cov.meantemp.2016
+```
+
+
+###Analyze aoutput
+
+* Bonferroni cutoff: 0.05/104,389
+```{r, eval =TRUE, echo =TRUE}
+manhattan(read_table2("gemma_out/180405.full.reduced_cov.meantemp.2016.assoc.txt", col_names = TRUE) %>%
+  filter(chr != -9), chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(4.789777e-07), suggestiveline = FALSE, col = alpha(c("blue", "goldenrod"), 0.5))
+```
+
+```{r}
+read_table2("gemma_out/180405.full.reduced_cov.meantemp.2016.assoc.txt", col_names = TRUE) %>%
+  #Rename SNP id column because I kept confusing it with ps (position)
+  rename(snp_name = rs) %>% 
+  filter(chr != 0) %>% 
+  #Collapse "GK", leading zeros up to six digits including chr number, weird ".2", ":", and SNP position
+  mutate(bov_mine_id = str_c("GK", str_pad(chr, 6, side = c("left"), pad = "0"), ".2", ":", ps)) %>% 
+  #Pull out signifcant hits
+  #Arrange by significance
+  arrange(p_wald) %>% 
+  #Select top ten
+  slice(1:10) %>% 
+  select(bov_mine_id) %>% 
+  write_csv("~/Desktop/bovine_mine.2016.csv")
+```
+
+
+#Poster prep/figures
+
+```{r, eval=TRUE, echo=TRUE}
+master <- master %>% 
+  mutate(DateScoreRecorded2016 = as.Date(DateScoreRecorded2016)) %>%
+  mutate(DateScoreRecorded2017 = as.Date(DateScoreRecorded2017)) %>% 
+  mutate(DateDeviation2016 =  DateScoreRecorded2016 - ymd("2016-05-01")) %>% 
+  mutate(DateDeviation2017 =  DateScoreRecorded2017 - ymd("2017-05-01"))
+
+master <- master %>% 
+  #If Age2017 is NA but Age 2016 isn't, make Age 2017 = Age 2016 + 1 and vice versa, else leave it as is
+  mutate(Age2017 = if_else(is.na(Age2017) & !is.na(Age2016), 
+                           Age2016 + 1, 
+                           as.double(Age2017))) %>% 
+  mutate(Age2016 = if_else(is.na(Age2016) & !is.na(Age2017), 
+                           Age2017 - 1, 
+                           as.double(Age2016)))
+
+
+```
+
+```{r}
+id <- read_table2("../gwas/227234.180327.5952.A.ID", col_names = FALSE)
+
+master %>% 
+  filter(international_id %in% id$X2) %>% 
+  filter(!is.na(HairScore2016)) %>% 
+  group_by(Breed) %>% 
+  tally()
+
+
+master %>% 
+  filter(international_id %in% id$X2) %>% 
+  filter(!is.na(HairScore2017)) %>% 
+  group_by(Breed) %>% 
+  tally()
+```
+
+
+```{r}
+usa <- map_data("state")
+
+#ginger: D35C37
+#hazelnut: BF9A77
+#oat: D6C6B9
+#sky: 97B8C2
+#cerulean: 026670 too close to sky
+#butter: FCE181
+#dark navy: 011A27
+#emerald: 265C00
+#ruby red: A01D26
+
+
+
+pal <- c("#97B8C2", "#A01D26", "#026670", "#FCE181", "#011A27", "#265C00", "#233A9F",  "#BF9A77", "#313695" )
+
+ggplot(data = master %>% 
+         filter(!is.na(Breed), Breed != "CHIA", Breed != "MAAN", Breed != "BRN"), 
+        aes(x = LNG, y= LAT, colour = factor(Breed))) +
+  geom_polygon(data = usa, aes(x=long, y=lat, group = group),colour = "black", fill = "white") +
+  geom_count(alpha = 0.6) +
+  scale_size_area(max_size = 6) +
+  scale_color_manual(values =c("AN", "ANR: 708", "CHA: 285", "CROS: 439", "GEL: 282", "HFD: 1,273", "SH: 276", "SIM: 1,831"), values = pal) +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  labs(color = "Breed") +
+  coord_fixed() +
+ggtitle(str_wrap("Full dataset: distribution of samples", width = 47)) 
+
+
+ggsave("../peqg/180509.breed_map.png", device = "png")
+
+#Put a summary table next to it
+breed_sum <- tableGrob( 
+  master %>% 
+    filter(!is.na(HairScore2016) | !is.na(HairScore2017)) %>% 
+    filter(!is.na(Breed), Breed != "CHIA", Breed != "MAAN", Breed != "BRN") %>% 
+    group_by(Breed) %>%
+    tally() %>%
+    arrange(desc(n))
+)
+#grid.arrange(breed_map, breed_sum, ncol=2, top= "Hair shedding dataset: breed breakdown")
+#Need to figure out how to change key title
+```
+
+
+```{r}
+tx <- map_data("state", region = "texas")
+
+#ginger: D35C37
+#hazelnut: BF9A77
+#oat: D6C6B9
+#sky: 97B8C2
+#cerulean: 026670 too close to sky
+#butter: FCE181
+#dark navy: 011A27
+#emerald: 265C00
+#ruby red: A01D26
+
+
+
+ggplot(data = master %>% 
+         filter(State == "TX"), 
+        aes(x = LNG, y= LAT, colour = factor(Breed))) +
+  geom_polygon(data = tx, aes(x=long, y=lat, group = group),colour = "black", fill = "white") +
+  geom_count(alpha = 0.6) +
+  scale_size_area(max_size = 6) +
+  #scale_color_manual(labels =c("Angus: 2,935", "ANR: 708", "CHA: 285", "CROS: 439", "GEL: 282", "HFD: 1,273", "SH: 276", "SIM: 1,831"), values = pal) +
+  xlab("Longitude") +
+  ylab("Latitude")+
+  labs(color = "Breed") +
+  coord_fixed() +
+ggtitle(str_wrap("Full dataset: distribution of samples", width = 47)) 
+
+```
+
+
+```{r}
+ggplot(master %>% 
+         filter(international_id %in% id$X2) %>% 
+         filter(!is.na(HairScore2016))) + 
+  geom_histogram(aes(x = as.integer(HairScore2016)), fill = "#97B8C2", alpha = 0.5, bins = 5, show.legend = FALSE) +
+  labs(x = "2016 Hair Score", y = "Count")
+ggsave("180403.lsw_score_dist.2016.png")
+
+
+
+ggplot(master %>% 
+         filter(international_id %in% id$X2) %>% 
+         filter(!is.na(HairScore2017))) + 
+  geom_histogram(aes(x = as.integer(HairScore2017)), fill = "#97B8C2", alpha = 0.5, bins = 5, show.legend = FALSE) +
+  labs(x = "2017 Hair Score", y = "Count")
+ggsave("180403.lsw_score_dist.2017.png")
+
+```
+
+
+
+
+```{r}
+ggplot(master %>%
+         filter(international_id %in% id$X2) %>% 
+         filter(!is.na(HairScore2016))) + 
+  geom_density(aes(x = DateScoreRecorded2016), adjust = 3, fill = "#97B8C2", alpha = 0.5, show.legend = FALSE) +
+  labs(x = "Date Score Recorded 2016", x = "Density")
+ggsave("180403.lsw_date_dist.2016.png", device = "png")
+
+ggplot(master %>%
+         filter(international_id %in% id$X2) %>% 
+         filter(!is.na(HairScore2016))) + 
+  geom_density(aes(x = DateScoreRecorded2017), adjust = 3, fill = "#97B8C2", alpha = 0.5, show.legend = FALSE) +
+  labs(x = "Date Score Recorded 2017", x = "Density")
+ggsave("180403.lsw_date_dist.2017.png", device = "png")
+```
+
+```{r}
+ggplot(master %>%
+         filter(international_id %in% id$X2) %>% 
+         filter(!is.na(HairScore2016))) + 
+  geom_density(aes(x = Age2016), adjust = 3, fill = "#97B8C2", alpha = 0.5, show.legend = FALSE) +
+  labs(x = "Age 2016", x = "Density")
+ggsave("180403.lsw_age_dist.2016.png", device = "png")
+
+ggplot(master %>%
+         filter(international_id %in% id$X2) %>% 
+         filter(!is.na(HairScore2016))) + 
+  geom_density(aes(x = Age2017), adjust = 3, fill = "#97B8C2", alpha = 0.5, show.legend = FALSE) +
+  labs(x = "Age 2017", x = "Density")
+ggsave("180403.lsw_age_dist.2017.png", device = "png")
+```
+
+```{r}
+prism <- read_csv("../gwas/prism_dataframe.csv") %>% 
+  #Rename y and x to LAT and LNG
+  rename(LAT = y, LNG = x) %>% 
+  #Read in file with coordinates of each zip code, join to PRISM data after rounding LAT and LNG columns down to 1 deicimal place
+  left_join(read_csv("../zips_to_coordinates.csv") %>% 
+              mutate_at(vars(starts_with("L")), funs(round(., 1)))) %>% 
+  #Remove entries that didn't match to a zip code
+  filter(!is.na(ZIP)) %>% 
+  rename(Zip = ZIP) %>% 
+  select(Zip, meantemp)
+
+
+ggplot(master %>%
+         filter(international_id %in% id$X2) %>% 
+         filter(!is.na(HairScore2016)) %>% 
+         mutate(Zip = as.character(Zip)) %>% 
+         left_join(prism)) + 
+  geom_density(aes(x = meantemp), adjust = 3, fill = "#97B8C2", alpha = 0.5, show.legend = FALSE) +
+  labs(x = "Mean yearly temperature (C), 2016 dataset ", x = "Density")
+ggsave("180403.lsw_temp_dist.2016.png", device = "png")
+
+ggplot(master %>%
+         filter(international_id %in% id$X2) %>% 
+         filter(!is.na(HairScore2017)) %>% 
+         mutate(Zip = as.character(Zip)) %>% 
+         left_join(prism)) + 
+  geom_density(aes(x = meantemp), adjust = 3, fill = "#97B8C2", alpha = 0.5, show.legend = FALSE) +
+  labs(x = "Mean yearly temperature (C), 2017 dataset ", x = "Density")
+ggsave("180403.lsw_temp_dist.2017.png", device = "png")
+```
+
+```{r}
+png("180405.full.reduced_cov.meantemp.2016.png")
+manhattan(read_table2("../gwas/gemma_out/180405.full.reduced_cov.meantemp.2016.assoc.txt", col_names = TRUE) %>%
+  filter(chr != -9), chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(4.830311e-07), suggestiveline = FALSE, col = alpha(c("#D35C37", "#6E93AB"), 0.8))
+dev.off()
+  #main = str_wrap("Reduced dataset using mean temperature, sex, age, and scoring date deviation as covariates", width = 48))
+
+png("180405.full.reduced_cov.meantemp.2017.png")
+manhattan(read_table2("../gwas/gemma_out/180405.full.reduced_cov.meantemp.2017.assoc.txt", col_names = TRUE) %>%
+  filter(chr != -9), chr = "chr", bp = "ps", p = "p_wald", snp = "rs", genomewideline = -log10(4.830311e-07), suggestiveline = FALSE, col = alpha(c("#D35C37", "#6E93AB"), 0.8))
+dev.off()
+```
+
+

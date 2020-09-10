@@ -1,0 +1,35 @@
+{
+    "__default__":
+    {
+        "p" : "BioCompute,htc4,hpc5",
+        "n": 1,
+        "mem" : 150GB,
+        "qos" : "biolong",
+        "t" : "6-00:00:00",
+        "account" : "animalsci",
+        "mail-user" : "hjdurbin@mail.missouri.edu",
+        "mail-type" : "END,FAIL"
+    },
+    "sommer_mod":
+    {
+        "o": "log/slurm_out/sommer/sommer_mod/{wildcards}.%j.out"
+    },
+    "reduce_full":
+    {
+        "p" : "General,Lewis,BioCompute,htc4,hpc5",
+        "mem" : 50GB,
+        "o": "log/slurm_out/sommer/reduce_full/{wildcards}.%j.out",
+        "t" : "0-02:00"
+    },
+    "cross_val":
+    {
+        "o": "log/slurm_out/sommer/cross_val/{wildcards}.%j.out"
+    },
+    "reduce_cv":
+    {
+        "p" : "General,Lewis,BioCompute,htc4,hpc5",
+        "mem" : 50GB,
+        "o": "log/slurm_out/sommer/reduce_cv/{wildcards}.%j.out",
+        "t" : "0-02:00"
+    }
+}
