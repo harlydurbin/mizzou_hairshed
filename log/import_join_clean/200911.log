@@ -1,0 +1,716 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+
+Attaching package: ‘purrr’
+
+The following object is masked from ‘package:magrittr’:
+
+    set_names
+
+
+Attaching package: ‘tidylog’
+
+The following objects are masked from ‘package:dplyr’:
+
+    add_count, add_tally, anti_join, count, distinct, distinct_all,
+    distinct_at, distinct_if, filter, filter_all, filter_at, filter_if,
+    full_join, group_by, group_by_all, group_by_at, group_by_if,
+    inner_join, left_join, mutate, mutate_all, mutate_at, mutate_if,
+    relocate, rename, rename_all, rename_at, rename_if, rename_with,
+    right_join, sample_frac, sample_n, select, select_all, select_at,
+    select_if, semi_join, slice, slice_head, slice_max, slice_min,
+    slice_sample, slice_tail, summarise, summarise_all, summarise_at,
+    summarise_if, summarize, summarize_all, summarize_at, summarize_if,
+    tally, top_frac, top_n, transmute, transmute_all, transmute_at,
+    transmute_if, ungroup
+
+The following objects are masked from ‘package:tidyr’:
+
+    drop_na, fill, gather, pivot_longer, pivot_wider, replace_na,
+    spread, uncount
+
+The following object is masked from ‘package:stats’:
+
+    filter
+
+
+Attaching package: ‘rlang’
+
+The following objects are masked from ‘package:purrr’:
+
+    %@%, as_function, flatten, flatten_chr, flatten_dbl, flatten_int,
+    flatten_lgl, flatten_raw, invoke, list_along, modify, prepend,
+    splice
+
+The following object is masked from ‘package:magrittr’:
+
+    set_names
+
+mutate: no changes
+Excluding PVF_2019
+Excluding WAA_2018
+[[1]]
+Excluding PVF_2019
+
+[[2]]
+Excluding WAA_2018
+
+Warning message:
+`combine()` is deprecated as of dplyr 1.0.0.
+Please use `vctrs::vec_c()` instead.
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+BSG: start
+BSG: finished importing raw files
+mutate_at: no changes
+mutate_at: no changes
+mutate_at: no changes
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+BSG: finished first clean
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: changed 5 values (3%) of 'animal_id' (0 new NA)
+mutate_all: changed one value (2%) of 'animal_id' (0 new NA)
+mutate_all: changed one value (1%) of 'animal_id' (0 new NA)
+New names:
+* NA -> ...1
+* NA -> ...2
+New names:
+* NA -> ...1
+* NA -> ...2
+Found 187 new matches, 79 still unmatched
+Found 0 new matches, 79 still unmatched
+Found 0 new matches, 79 still unmatched
+Found 0 new matches, 79 still unmatched
+Found 0 new matches, 79 still unmatched
+Found 0 new matches, 79 still unmatched
+Found 0 new matches, 79 still unmatched
+Found 0 new matches, 79 still unmatched
+Found 0 new matches, 79 still unmatched
+select: no changes
+BSG: finished creating key
+group_by: one grouping variable (registration_number)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (barcode)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (animal_id)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (Lab_ID)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+[90m# A tibble: 5 x 3[39m
+  farm  error                             n
+  [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m                         [3m[90m<int>[39m[23m
+[90m1[39m BSG   Missing Lab ID                   79
+[90m2[39m BSG   Duplicate registration number     0
+[90m3[39m BSG   Duplicate barcode                 0
+[90m4[39m BSG   Duplicate animal ID               0
+[90m5[39m BSG   Duplicate Lab ID                  0
+Found 153 new matches, 0 still unmatched
+Found 49 new matches, 0 still unmatched
+Found 107 new matches, 4 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 4 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 4 new matches, 0 still unmatched
+Joining, by = "temp_id"
+BSG: finished reducing rows
+CMF: start
+CMF: finished importing raw files
+mutate_at: no changes
+mutate_at: no changes
+mutate_at: no changes
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+CMF: finished first clean
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: changed 5 values (4%) of 'animal_id' (0 new NA)
+mutate_all: changed 5 values (4%) of 'animal_id' (0 new NA)
+mutate_all: changed 5 values (4%) of 'animal_id' (0 new NA)
+New names:
+* NA -> ...1
+* NA -> ...2
+New names:
+* NA -> ...1
+* NA -> ...2
+Found 131 new matches, 10 still unmatched
+Found 0 new matches, 10 still unmatched
+Found 0 new matches, 10 still unmatched
+Found 0 new matches, 10 still unmatched
+Found 0 new matches, 10 still unmatched
+Found 0 new matches, 10 still unmatched
+Found 0 new matches, 10 still unmatched
+Found 0 new matches, 10 still unmatched
+Found 0 new matches, 10 still unmatched
+select: no changes
+CMF: finished creating key
+group_by: one grouping variable (registration_number)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (barcode)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (animal_id)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (Lab_ID)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+[90m# A tibble: 5 x 3[39m
+  farm  error                             n
+  [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m                         [3m[90m<int>[39m[23m
+[90m1[39m CMF   Missing Lab ID                   10
+[90m2[39m CMF   Duplicate registration number     0
+[90m3[39m CMF   Duplicate barcode                 0
+[90m4[39m CMF   Duplicate animal ID               0
+[90m5[39m CMF   Duplicate Lab ID                  0
+Found 130 new matches, 1 still unmatched
+Found 131 new matches, 0 still unmatched
+Found 141 new matches, 0 still unmatched
+Found 1 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Joining, by = "temp_id"
+CMF: finished reducing rows
+DPH: start
+DPH: finished importing raw files
+mutate_at: no changes
+mutate_at: no changes
+mutate_at: no changes
+mutate_at: converted 'barcode' from logical to character (0 new NA)
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+DPH: finished first clean
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+New names:
+* NA -> ...1
+* NA -> ...2
+New names:
+* NA -> ...1
+* NA -> ...2
+New names:
+* NA -> ...1
+* NA -> ...2
+Found 202 new matches, 1 still unmatched
+Found 0 new matches, 1 still unmatched
+Found 0 new matches, 1 still unmatched
+Found 0 new matches, 1 still unmatched
+Found 0 new matches, 1 still unmatched
+Found 0 new matches, 1 still unmatched
+Found 0 new matches, 1 still unmatched
+Found 0 new matches, 1 still unmatched
+Found 0 new matches, 1 still unmatched
+select: no changes
+DPH: finished creating key
+group_by: one grouping variable (registration_number)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (barcode)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (animal_id)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (Lab_ID)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+[90m# A tibble: 5 x 3[39m
+  farm  error                             n
+  [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m                         [3m[90m<int>[39m[23m
+[90m1[39m DPH   Missing Lab ID                    1
+[90m2[39m DPH   Duplicate registration number     0
+[90m3[39m DPH   Duplicate barcode                 0
+[90m4[39m DPH   Duplicate animal ID               0
+[90m5[39m DPH   Duplicate Lab ID                  0
+Found 144 new matches, 0 still unmatched
+Found 143 new matches, 0 still unmatched
+Found 200 new matches, 0 still unmatched
+Found 197 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Joining, by = "temp_id"
+DPH: finished reducing rows
+DRR: start
+DRR: finished importing raw files
+mutate_at: no changes
+Joining, by = c("animal_id", "farm_id")
+DRR: finished first clean
+mutate_all: no changes
+mutate_all: changed 15 values (36%) of 'animal_id' (0 new NA)
+Found 36 new matches, 6 still unmatched
+Found 6 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+select: no changes
+DRR: finished creating key
+group_by: one grouping variable (registration_number)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (barcode)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (animal_id)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (Lab_ID)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+[90m# A tibble: 5 x 3[39m
+  farm  error                             n
+  [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m                         [3m[90m<int>[39m[23m
+[90m1[39m DRR   Missing Lab ID                    0
+[90m2[39m DRR   Duplicate registration number     0
+[90m3[39m DRR   Duplicate barcode                 0
+[90m4[39m DRR   Duplicate animal ID               0
+[90m5[39m DRR   Duplicate Lab ID                  0
+Found 37 new matches, 5 still unmatched
+Found 5 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Joining, by = "temp_id"
+DRR: finished reducing rows
+EKF: start
+EKF: finished importing raw files
+mutate_at: no changes
+mutate_at: no changes
+mutate_at: no changes
+mutate_at: no changes
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+EKF: finished first clean
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+New names:
+* NA -> ...1
+* NA -> ...2
+New names:
+* NA -> ...1
+* NA -> ...2
+New names:
+* NA -> ...1
+* NA -> ...2
+Found 43 new matches, 9 still unmatched
+Found 0 new matches, 9 still unmatched
+Found 0 new matches, 9 still unmatched
+Found 0 new matches, 9 still unmatched
+Found 0 new matches, 9 still unmatched
+Found 0 new matches, 9 still unmatched
+Found 0 new matches, 9 still unmatched
+Found 0 new matches, 9 still unmatched
+Found 0 new matches, 9 still unmatched
+select: no changes
+EKF: finished creating key
+group_by: one grouping variable (registration_number)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (barcode)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (animal_id)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (Lab_ID)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+[90m# A tibble: 5 x 3[39m
+  farm  error                             n
+  [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m                         [3m[90m<int>[39m[23m
+[90m1[39m EKF   Missing Lab ID                    9
+[90m2[39m EKF   Duplicate registration number     0
+[90m3[39m EKF   Duplicate barcode                 0
+[90m4[39m EKF   Duplicate animal ID               0
+[90m5[39m EKF   Duplicate Lab ID                  0
+Found 23 new matches, 0 still unmatched
+Found 24 new matches, 0 still unmatched
+Found 39 new matches, 1 still unmatched
+Found 48 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 1 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 1 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Joining, by = "temp_id"
+EKF: finished reducing rows
+FAV: start
+FAV: finished importing raw files
+mutate_at: no changes
+mutate_at: no changes
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+FAV: finished first clean
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: changed one value (2%) of 'animal_id' (0 new NA)
+New names:
+* NA -> ...1
+* NA -> ...2
+Found 60 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+select: no changes
+FAV: finished creating key
+group_by: one grouping variable (registration_number)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (barcode)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (animal_id)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (Lab_ID)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+[90m# A tibble: 5 x 3[39m
+  farm  error                             n
+  [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m                         [3m[90m<int>[39m[23m
+[90m1[39m FAV   Missing Lab ID                    3
+[90m2[39m FAV   Duplicate registration number     0
+[90m3[39m FAV   Duplicate barcode                 0
+[90m4[39m FAV   Duplicate animal ID               0
+[90m5[39m FAV   Duplicate Lab ID                  0
+Found 61 new matches, 0 still unmatched
+Found 63 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Joining, by = "temp_id"
+FAV: finished reducing rows
+FCF: start
+FCF: finished importing raw files
+mutate_at: no changes
+mutate_at: no changes
+mutate_at: no changes
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+FCF: finished first clean
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+New names:
+* NA -> ...1
+* NA -> ...2
+New names:
+* NA -> ...1
+* NA -> ...2
+Found 79 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+select: no changes
+FCF: finished creating key
+group_by: one grouping variable (registration_number)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (barcode)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (animal_id)
+filter (grouped): removed 80 rows (98%), 2 rows remaining
+ungroup: no grouping variables
+group_by: one grouping variable (Lab_ID)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+[90m# A tibble: 5 x 3[39m
+  farm  error                             n
+  [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m                         [3m[90m<int>[39m[23m
+[90m1[39m FCF   Missing Lab ID                    3
+[90m2[39m FCF   Duplicate registration number     0
+[90m3[39m FCF   Duplicate barcode                 0
+[90m4[39m FCF   Duplicate animal ID               2
+[90m5[39m FCF   Duplicate Lab ID                  0
+Found 82 new matches, 0 still unmatched
+Found 81 new matches, 0 still unmatched
+Found 74 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Joining, by = "temp_id"
+FCF: finished reducing rows
+FHC: start
+FHC: finished importing raw files
+mutate_at: no changes
+mutate_at: no changes
+mutate_at: no changes
+mutate_at: no changes
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+FHC: finished first clean
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+New names:
+* NA -> ...1
+* NA -> ...2
+New names:
+* NA -> ...1
+* NA -> ...2
+New names:
+* NA -> ...1
+* NA -> ...2
+Found 405 new matches, 50 still unmatched
+Found 8 new matches, 42 still unmatched
+Found 19 new matches, 23 still unmatched
+Found 0 new matches, 23 still unmatched
+Found 0 new matches, 23 still unmatched
+Found 0 new matches, 23 still unmatched
+Found 0 new matches, 23 still unmatched
+Found 0 new matches, 23 still unmatched
+Found 0 new matches, 23 still unmatched
+select: no changes
+FHC: finished creating key
+group_by: one grouping variable (registration_number)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (barcode)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (animal_id)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (Lab_ID)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+[90m# A tibble: 5 x 3[39m
+  farm  error                             n
+  [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m                         [3m[90m<int>[39m[23m
+[90m1[39m FHC   Missing Lab ID                   23
+[90m2[39m FHC   Duplicate registration number     0
+[90m3[39m FHC   Duplicate barcode                 0
+[90m4[39m FHC   Duplicate animal ID               0
+[90m5[39m FHC   Duplicate Lab ID                  0
+Found 342 new matches, 6 still unmatched
+Found 325 new matches, 6 still unmatched
+Found 346 new matches, 41 still unmatched
+Found 319 new matches, 5 still unmatched
+Found 6 new matches, 0 still unmatched
+Found 0 new matches, 6 still unmatched
+Found 6 new matches, 35 still unmatched
+Found 5 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 6 new matches, 0 still unmatched
+Found 35 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Joining, by = "temp_id"
+FHC: finished reducing rows
+FSR: start
+FSR: finished importing raw files
+mutate_at: no changes
+mutate_at: no changes
+mutate_at: no changes
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+FSR: finished first clean
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: changed one value (3%) of 'animal_id' (0 new NA)
+mutate_all: changed one value (3%) of 'animal_id' (0 new NA)
+mutate_all: no changes
+New names:
+* NA -> ...1
+* NA -> ...2
+New names:
+* NA -> ...1
+* NA -> ...2
+Found 29 new matches, 17 still unmatched
+Found 0 new matches, 17 still unmatched
+Found 0 new matches, 17 still unmatched
+Found 0 new matches, 17 still unmatched
+Found 0 new matches, 17 still unmatched
+Found 0 new matches, 17 still unmatched
+Found 0 new matches, 17 still unmatched
+Found 0 new matches, 17 still unmatched
+Found 0 new matches, 17 still unmatched
+select: no changes
+FSR: finished creating key
+group_by: one grouping variable (registration_number)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (barcode)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (animal_id)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (Lab_ID)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+[90m# A tibble: 5 x 3[39m
+  farm  error                             n
+  [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m                         [3m[90m<int>[39m[23m
+[90m1[39m FSR   Missing Lab ID                   17
+[90m2[39m FSR   Duplicate registration number     0
+[90m3[39m FSR   Duplicate barcode                 0
+[90m4[39m FSR   Duplicate animal ID               0
+[90m5[39m FSR   Duplicate Lab ID                  0
+Found 29 new matches, 0 still unmatched
+Found 29 new matches, 0 still unmatched
+Found 41 new matches, 1 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 1 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 1 new matches, 0 still unmatched
+Joining, by = "temp_id"
+FSR: finished reducing rows
+FTF: start
+FTF: finished importing raw files
+mutate_at: no changes
+mutate_at: no changes
+mutate_at: no changes
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+Joining, by = c("animal_id", "farm_id")
+FTF: finished first clean
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+mutate_all: no changes
+New names:
+* NA -> ...1
+* NA -> ...2
+New names:
+* NA -> ...1
+* NA -> ...2
+Found 245 new matches, 31 still unmatched
+Found 0 new matches, 31 still unmatched
+Found 0 new matches, 31 still unmatched
+Found 0 new matches, 31 still unmatched
+Found 0 new matches, 31 still unmatched
+Found 0 new matches, 31 still unmatched
+Found 0 new matches, 31 still unmatched
+Found 0 new matches, 31 still unmatched
+Found 0 new matches, 31 still unmatched
+select: no changes
+FTF: finished creating key
+group_by: one grouping variable (registration_number)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (barcode)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (animal_id)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+group_by: one grouping variable (Lab_ID)
+filter (grouped): removed all rows (100%)
+ungroup: no grouping variables
+[90m# A tibble: 5 x 3[39m
+  farm  error                             n
+  [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m                         [3m[90m<int>[39m[23m
+[90m1[39m FTF   Missing Lab ID                   31
+[90m2[39m FTF   Duplicate registration number     0
+[90m3[39m FTF   Duplicate barcode                 0
+[90m4[39m FTF   Duplicate animal ID               0
+[90m5[39m FTF   Duplicate Lab ID                  0
+Found 276 new matches, 0 still unmatched
+Found 276 new matches, 0 still unmatched
+Found 187 new matches, 28 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 28 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 28 new matches, 0 still unmatched
+Joining, by = "temp_id"
+FTF: finished reducing rows
+GIB: start

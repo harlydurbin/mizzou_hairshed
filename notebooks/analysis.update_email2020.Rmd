@@ -220,7 +220,7 @@ read_table2(
       )
   ) %>% 
   select(breed_code, everything()) %>% 
-  writexl::write_xlsx(here::here("hairshed_bulls.xlsx"))
+  writexl::write_xlsx(here::here("data/derived_data/update_email2020hairshed_bulls.xlsx"))
   
 ```
 
@@ -319,6 +319,6 @@ In the plot below, each point represents a single animal's EPD. The dark lines i
        y = "EPD",
        color = "Breed type")
 
-ggsave(filename = here::here("figures/update_email2020.breed_boxswarm.png"), width = 14, height = 8)
+ggsave(filename = here::here("figures/update_email2020/updateemail2020.breed_boxswarm.png"), width = 14, height = 8)
 ```
 

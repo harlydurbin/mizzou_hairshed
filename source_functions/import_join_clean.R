@@ -173,7 +173,7 @@ print("Cleaning Mizzou hair scores, adding UA data")
 cleaned %<>% 
   ##### HAIR SCORE ####
 filter(!is.na(hair_score)) %>% 
-  mutate(hair_score = clean::clean_numeric(hair_score)) %>% 
+  mutate(hair_score = cleaner::clean_numeric(hair_score)) %>% 
   bind_rows(read_rds(here::here("data/derived_data/import_join_clean/ua_clean.rds"))) %>% 
   # Verify hair score values
   assertr::verify(dplyr::between(hair_score, 1, 5))

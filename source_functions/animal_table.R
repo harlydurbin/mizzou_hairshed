@@ -1,10 +1,12 @@
 #https://stackoverflow.com/questions/23568899/access-data-base-import-to-r-installation-of-mdb-tools-on-mac
 
-get_animal_table <- function(date_string){
+library(magrittr)
+
+get_animal_table <- function(path){
   
 df <- 
   Hmisc::mdb.get(
-    glue::glue("~/Desktop/Samples_{date_string}.accdb"),
+    path,
     tables = "Animal",
     allow = c("_"))
 
@@ -16,7 +18,7 @@ df[df == ""] <- NA
 df <-
   df %>% 
   # Remove white space
-  dplyr::mutate_if(is.character, funs(stringr::str_squish(.))) %>% 
+  dplyr::mutate_if(is.character, dplyr::funs(stringr::str_squish(.))) %>% 
   dplyr::mutate(breed_assoc =
                   dplyr::case_when(
                     breed_assoc %in% c("American Angus Association ", "American Anugs Association") ~
