@@ -945,7 +945,6 @@ animal_table %>%
   
 ```
 
-
 # Combine
 
 ```{r}
@@ -985,15 +984,18 @@ full_ped %<>%
     TRUE ~ full_reg
   )) %>% 
   ungroup() %>% 
+  mutate_at(vars(contains("reg")),
+            ~ case_when(str_detect(., "NA$") ~ "0",
+                        . == "CHAFNFANAN" ~ "0",
+                        TRUE ~ .)) %>% 
   filter(full_reg != "0")
 ```
 
-```{r}
-full_ped %>% 
-  filter_at(vars(contains("reg")), any_vars(str_detect(., "NA")))
+# Tallies
 
-```
 
+
+# Export
 
 ```{r}
 full_ped %>% 

@@ -248,7 +248,7 @@ mutate(
       color %in% c("ED", "R") ~ 
         "RED",
       color %in% c("Y") ~ 
-        "YELLOW"
+        "YELLOW",
       # Color codes from Arkansas, no idea what they're supposed to mean
       color %in% c("GB", "BM", "RM", "YM", "BB", "RB", "RM") ~ NA_character_,
       TRUE ~ 
@@ -333,4 +333,4 @@ cleaned %>%
   select(Lab_ID, barcode, registration_number, animal_id, year) %>% 
   left_join(animal_table)
 
-
+print("Exported cleaned data")

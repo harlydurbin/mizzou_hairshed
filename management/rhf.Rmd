@@ -273,8 +273,8 @@ no_reg <-
 ```{r}
 anr <-
   c("RHF.ReportDownload09_16_2020.xlsx", "RHF.ReportDownload09_16_2020.2.xlsx") %>% 
-  purrr::map_dfr(~ read_excel(here::here(glue::glue("data/raw_data/{.x}")))) %>% 
-  janitor::remove_empty(which = "cols") %>% 
+  purrr::map_dfr(~ read_excel(here::here(glue::glue("management/{.x}")))) %>% 
+  janitor::remove_empty(which = c("cols", "rows")) %>% 
   janitor::clean_names()
 ```
 
@@ -285,13 +285,16 @@ anr_found <-
   left_join(anr %>% 
               select(Animal_ID = animal_id, Age = birth_date, RegistrationNumber = reg_number, Color = color)) %>% 
   filter(!is.na(RegistrationNumber)) %>% 
-  mutate(Breed_code = "ANR", RegistrationNumber = as.character(RegistrationNumber), Color = if_else(Color == 1, "RED", "BLACK"))
+  mutate(Breed_code = "ANR",
+         RegistrationNumber = as.character(RegistrationNumber),
+         Color = if_else(Color == 1, "RED", "BLACK"),
+         Age = lubridate::mdy(Age))
 ```
 
 ```{r}
 sim <-
   c("RHF.250581-Info_for_Hair_Data_Report_Download-2020-09-16.2.xlsx", "RHF.250581-Info_for_Hair_Data_Report_Download-2020-09-16.xlsx") %>% 
-  purrr::map_dfr(~ read_excel(here::here(glue::glue("data/raw_data/{.x}")))) %>% 
+  purrr::map_dfr(~ read_excel(here::here(glue::glue("management/{.x}")))) %>% 
   janitor::clean_names()
 ```
 
@@ -301,9 +304,17 @@ sim_found <-
   filter(!Animal_ID %in% anr_found$Animal_ID) %>% 
   select(Animal_ID) %>% 
   left_join(sim %>% 
-              select(Animal_ID = tattoo, Age = birth_date, RegistrationNumber = asa_number, Color = color)) %>%
+              select(Animal_ID = tattoo,
+                     Age = birth_date,
+                     RegistrationNumber = asa_number,
+                     Color = color,
+                     breeds,
+                     alt_number)) %>%
   filter(!is.na(RegistrationNumber)) %>% 
-  mutate(Age = as.character(Age), RegistrationNumber = stringr::str_remove(RegistrationNumber, "\\.0"), Breed_code = "SIM")
+  mutate(Age = lubridate::ymd(Age),
+         Breed_code = if_else(!is.na(alt_number), "ANR", "SIM"),
+         RegistrationNumber = if_else(!is.na(alt_number), stringr::str_remove(alt_number, "USAAR"), stringr::str_remove(RegistrationNumber, "\\.0"))) %>% 
+  select(-breeds, -alt_number)
 ```
 
 ```{r}
