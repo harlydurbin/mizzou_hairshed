@@ -993,11 +993,21 @@ full_ped %<>%
 
 # Tallies
 
+```{r}
+full_ped %>% 
+  group_by(sire_reg) %>% 
+  tally(sort = TRUE)
+```
 
+```{r}
+full_ped %>% 
+  group_by(dam_reg) %>% 
+  tally(sort = TRUE)
+```
 
 # Export
 
-```{r}
+```{r, eval=FALSE}
 full_ped %>% 
   write_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
