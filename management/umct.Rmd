@@ -1,0 +1,102 @@
+---
+title: "umct"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+```
+
+# 6/3/20 send Johnny UMCT scores and EPDs
+
+```{r}
+full_ped <- read_rds(here::here("data/derived_data/full_ped.rds"))
+```
+
+```{r}
+source(here::here("source_functions/calculate_acc.R"))
+```
+
+```{r}
+cleaned <- read_rds(here::here("data/derived_data/cleaned.rds"))
+```
+
+
+```{r}
+umct_bulls <-
+  full_ped %>% 
+  filter(farm_id == "UMCT") %>% 
+  filter(sire_reg != "0") %>% 
+  distinct(sire_reg) %>% 
+  rename(full_reg = sire_reg)
+```
+
+```{r}
+# blupf90 solutions
+read_table2(
+  here::here("data/derived_data/update_email2020/no_breed/solutions"),
+  col_names = c("trait", "effect", "id_new", "solution", "se"),
+  skip = 1
+) %>%
+  # limit to animal effect
+  filter(effect == 2) %>%
+  select(id_new, solution, se) %>%
+  # Re-attach original IDs
+  left_join(read_table2(
+    here::here("data/derived_data/update_email2020/no_breed/renadd02.ped"),
+    col_names = FALSE
+  ) %>%
+    select(id_new = X1, full_reg = X10)) %>%
+  select(full_reg, everything(), -id_new) %>%
+  right_join(umct_bulls) %>%
+  filter(!is.na(solution)) %>% 
+  mutate(acc = purrr::map_dbl(.x = se, ~ calculate_acc(
+    e = 0.50472,
+    u = 0.32498,
+    se = .x,
+    option = "bif"
+  )),
+  # divide breeding values by 2 to get epd
+  epd = solution / 2) %>% 
+  select(registration_number = full_reg, epd, epd_accuracy = acc) %>% 
+  mutate_at(vars(contains("epd")), ~ round(., digits = 2)) %>%
+  arrange(epd) %>% 
+  writexl::write_xlsx("~/Box Sync/HairShedding/ReportedData/EPDs2020/umct_sires.xlsx")
+  
+```
+
+```{r}
+umct <- cleaned %>% 
+  filter(farm_id == "UMCT") %>% 
+  select(year, registration_number, animal_id, date_score_recorded, hair_score, age, barcode)
+```
+
+```{r}
+# I'm being lazy
+t16 <- umct %>% filter(year == 2016)
+t17 <- umct %>% filter(year == 2017)
+t18 <- umct %>% filter(year == 2018)
+t19 <- umct %>% filter(year == 2019)
+t20 <- umct %>% filter(year == 2020)
+```
+
+```{r}
+writexl::write_xlsx(list("2016" = t16,
+                         "2017" = t17,
+                         "2018" = t18,
+                         "2019" = t19,
+                         "2020" = t20), path = "~/Box Sync/HairShedding/ReportedData/Thompson/200604.UMCT_all_scores.xlsx")
+
+```
+
+```{r}
+umct %>% 
+  filter(is.na(registration_number)) %>% 
+  distinct(animal_id) %>% 
+  filter(!stringr::str_detect(animal_id, "^1G")) %>% 
+  arrange(animal_id) %>% 
+  writexl::write_xlsx(path = "~/Box Sync/HairShedding/ReportedData/Thompson/200604.UMCT_missing_reg.xlsx")
+```
+

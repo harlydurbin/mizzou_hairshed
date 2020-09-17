@@ -1,0 +1,186 @@
+---
+title: "Untitled"
+author: "Harly Durbin"
+date: "8/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(readr)
+library(dplyr)
+library(stringr)
+
+source(here::here("source_functions/animal_table.R"))
+source(here::here("source_functions/iterative_id_search.R"))
+```
+
+# Setup 
+
+```{r}
+animal_table <- get_animal_table("200806")
+```
+
+
+```{r}
+xref <- 
+  read_csv("~/Downloads/xref.csv") %>% 
+  mutate(sim_breed = str_extract(animal, "^[[:upper:]]{3}"),
+         sim_sex = str_extract(animal, "(?<=^[[:upper:]]{6})M|F"),
+         sim_iid = glue::glue("SIMUSA{sim_sex}{str_pad(asa_nbr, 12, side = 'left', pad = '0')}")) 
+```
+
+# Find matches
+
+```{r}
+
+matching <-
+  xref %>%
+  id_search(
+    source_col = animal,
+    search_df = animal_table,
+    search_col = international_id,
+    key_col = Lab_ID,
+    match_source = TRUE
+  ) %>%
+  id_search(
+    source_col = sim_iid,
+    search_df = animal_table,
+    search_col = international_id,
+    key_col = Lab_ID,
+    match_source = TRUE
+  ) %>%
+  id_search(
+    source_col = asa_nbr,
+    search_df = animal_table %>%
+      filter(BC == "SIM") %>% 
+      rename(Reg_SIM = Reg),
+    search_col = Reg_SIM,
+    key_col = Lab_ID,
+    match_source = TRUE
+  ) %>%
+  id_search(
+    source_col = asa_nbr,
+    search_df = animal_table %>%
+      filter(BC == "SIM") %>% 
+      mutate(Reg = str_pad(Reg, width = 7, side = "left", pad = "0")) %>% 
+      rename(Reg_SIM_pad = Reg),
+    search_col = Reg_SIM_pad,
+    key_col = Lab_ID,
+    match_source = TRUE
+  ) %>% 
+  left_join(
+    animal_table %>%
+      select(
+        Lab_ID,
+        mu_reg = Reg,
+        mu_breed = BC,
+        mu_sex = Sex,
+        duplicate,
+        mu_comment = Comment,
+        mu_iid = international_id
+      )
+  ) %>% 
+  mutate(mu_sex = if_else(mu_sex == "U", sim_sex, mu_sex))
+```
+
+# Tally by `match_source`
+
+```{r}
+matching %>% 
+  distinct(asa_nbr, match_source) %>% 
+  group_by(match_source) %>% 
+  tally(sort = TRUE)
+```
+
+```{r}
+matching %>% 
+  filter(match_source == "asa_nbr-Reg_SIM_pad") %>% 
+  select(animal, mu_ia, everything())
+```
+
+# Duplicates
+
+```{r}
+duplicates <-
+  matching %>% 
+  group_by(asa_nbr) %>% 
+  filter(n() > 1) %>% 
+  ungroup() %>% 
+  arrange(asa_nbr) %>% 
+  select(asa_nbr, animal, match_source, duplicate, Lab_ID)
+```
+
+# Sex discrepancies 
+
+```{r}
+wrong_sex <-
+  matching %>% 
+  filter(sim_sex != mu_sex) %>% 
+  select(asa_nbr, animal, match_source, Sex = mu_sex, Lab_ID)
+```
+
+
+```{r}
+matching %>% 
+  filter(sim_sex == mu_sex) %>% 
+  filter(str_detect(match_source, "asa_nbr-Reg"))
+```
+
+# Unmatched
+
+```{r}
+unmatched <-
+  matching %>% 
+  filter(is.na(Lab_ID)) %>% 
+  select(asa_nbr, animal, match_source, Lab_ID)
+  
+```
+
+# Confident
+
+```{r}
+confident <-
+  matching %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  filter(sim_sex == mu_sex) %>% 
+  group_by(asa_nbr) %>% 
+  filter(n() == 1) %>% 
+  ungroup() %>% 
+  select(asa_nbr, animal, match_source, Lab_ID)
+```
+
+```{r}
+confident %>% 
+  group_by(match_source) %>% 
+  tally(sort = TRUE)
+```
+
+
+# How many `sim_ia-international_id` matches associated with hair shedding?
+
+```{r}
+matching %>% 
+  filter(match_source == "sim_iid-international_id") %>% 
+  group_by(mu_comment) %>% 
+  tally(sort = TRUE)
+```
+
+
+# Export
+
+I found lab IDs for about half of these I think (see attached). I added a column for the `match_source` (which column in the "[ASA data column]-[column in our system]) in case that's helpful in deciding what to believe and what not to believe. 
+
+Tabs in the file:
+* `confident`
+    * 95,383 matches based on a direct match of the international ID provided by ASA and the international ID in our system
+    * 4,187 matches based on a generated international ID ("SIMUSA" + sex inferred from the provided `animal` column + registration number provided in `asa_nbr` column padded with zeroes to 12 digits)
+    * 539 matches based on the registration number provided in the `asa_nbr` column and the `Reg` column in our system, subset to rows where `BC` = `SIM` OR subset to rows where `BC` = `SIM` and padded to 7 digits with zeroes like in the ASA file. Eyeballing these, it looks like most or all are probably true matches but I think that's your call
+* `duplicates`: 723 animals that match up to 2 or more Lab_IDs (1,470 total duplicates). It appears that most of these are known duplicates.
+* `wrong_sex`: 299 animals that match up to a lab ID, but don't match the sex we have recorded in our system (excluding those where the sex we have is "U")
+* `unmatched`: 115,814 animals without a lab ID based on the above criteria
+
+```{r}
+writexl::write_xlsx(list("confident" = confident, "duplicates" = duplicates, "wrong_sex" = wrong_sex, "unmatched" = unmatched), path = "~/Desktop/200806.ASA_Lab_ID.xlsx")
+```
+

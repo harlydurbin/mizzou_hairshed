@@ -1,0 +1,33 @@
+---
+title: "Rocking chair ranch"
+author: "Harly Durbin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(dplyr)
+```
+
+# 12/20/19
+
+"Harly,
+
+Back in June/July, Rocking Chair sent in some Shed scores but did not include scores for heifers born in 2017.  Their animal ID numbers will start with a “7” for example 7000 or 7026.  
+
+Because they do not have a shed score, they did not get run through your Genic program.   But I’m curious, did we send DNA in for those animals?  And it’s already there for when we do record the scores?"
+
+```{r}
+read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_RCR_2019.xlsx", sheet = 1) %>% 
+  filter(str_detect(Animal_ID, "^7")) %>% 
+  filter(!is.na(Barcode)) %>% 
+  select(RegistrationNumber, Animal_ID, HairScore, Barcode) %>% 
+  writexl::write_xlsx("~/Desktop/20191220.RCR_2017_heifers.xlsx")
+```
+
+```{r}
+animal_table %>% 
+  filter(Reg == "RR10392149")
+```
+

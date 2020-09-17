@@ -1,0 +1,128 @@
+---
+title: "Southwest Center"
+author: "Harly Durbin"
+date: 'Last updated: `r Sys.Date()`'
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(stringr)
+
+```
+
+```{r}
+#Read in cow data, skip 4 rows, remove spaces from EID
+fid_eid <- read_excel("/Users/harlyjanedurbin/Box Sync/HairShedding/ReportedData/SouthwestCenter/167_20180524 COWS.XLSX", skip = 4) %>% 
+  mutate(EID = str_replace(EID, " ", "")) %>% 
+  select(FID, EID) %>% 
+  #Read in heifer data, skip 4 rows, change EID to a character
+  #Bind heifer data to cow data
+  bind_rows(read_excel("/Users/harlyjanedurbin/Box Sync/HairShedding/ReportedData/SouthwestCenter/168_20180524 HEIFERS.XLSX", skip = 4) %>% 
+              mutate(EID = as.character(EID)) %>% 
+              select(FID, EID))
+
+
+read_excel("~/Box Sync/HairShedding/ReportedData/2018/DataRecording_SWCenter_2018.xlsx", sheet = "DataEntry") %>% 
+  full_join(fid_eid, by = c("Animal_ID" = "FID")) %>% 
+  mutate(DateScoreRecorded = as.Date(DateScoreRecorded)) %>% 
+  write_csv("~/Desktop/swc_eid.csv", na = "")
+```
+
+```{r}
+read_excel("~/Box Sync/HairShedding/ReportedData/2018/DataRecording_SWCenter_2018.xlsx", sheet = "has_LabID") %>% 
+  select(Lab_ID, Reg, Ref_ID) %>% 
+  mutate(Reg = as.character(Reg)) %>% 
+  filter(Ref_ID %in% fid_eid$FID) %>% 
+  write_csv("~/Desktop/180530.swc.lab_id.csv")
+```
+
+* Generate animal table input
+```{r}
+read_excel("~/Box Sync/HairShedding/ReportedData/2018/DataRecording_SWCenter_2018.xlsx", sheet = "DataEntry") %>%
+  filter(!is.na(Barcode)) %>% 
+  select(Breed_code, RegistrationNumber, Sex, Animal_ID, Barcode) %>% 
+  rename(BC = Breed_code, Reg = RegistrationNumber, Ref_ID = Animal_ID, Ref_ID2 = Barcode) %>% 
+  left_join(read_excel("~/Box Sync/HairShedding/ReportedData/2018/DataRecording_SWCenter_2018.xlsx", sheet = "has_LabID") %>% 
+              select(Lab_ID, Reg, Ref_ID), by = c("Ref_ID")) %>% 
+  write_csv("~/Desktop/swc_eid.csv", na = "")
+```
+
+
+___
+
+* 180619: Helen realized that some animals have already been genotyped (didn't find them at first because source code is UMF rather than SWC)
+
+```{r}
+swc <- read_excel("~/Box Sync/HairShedding/ReportedData/FilesMissingLabIDs/DataRecording_SWCenter_2018.xlsx", sheet = "Animal") 
+
+swc_genotyped <- read_excel("data/180621.UMF.xlsx") %>% 
+  mutate(Animal_ID = str_split_fixed(Ref_ID, pattern = '_', n = 3)[,3]) %>% 
+  filter(Animal_ID %in% swc$Ref_ID) 
+
+animal_table %>% 
+  filter(Lab_ID %in% swc_genotyped$Lab_ID) %>% 
+  write_csv("~/Desktop/swc_table_info.csv", na = "")
+
+swc_genotyped %>% 
+  write_csv("~/Desktop/swc_genotyped.csv", na = "")
+```
+
+# 2019
+
+## EID discrepancies
+
+```{r}
+changed <-
+  read_excel(here::here("data/raw_data/190522.SWC_mat_wt.xlsx"), 
+           skip = 4) %>% 
+  janitor::clean_names() %>% 
+  mutate(eid = as.character(eid)) %>% 
+  left_join(read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_UMF_2019.xlsx", sheet = 1),
+            by = c("eid" = "RegistrationNumber")) %>% 
+  filter(is.na(HairScore)) %>% 
+  select(fid, eid) 
+```
+
+### Cross-reference with 2018 EIDs
+
+```{r}
+changed %>%
+  left_join(read_excel(here::here("data/raw_data/180524.SWC_cows.xlsx"),
+                       skip = 4) %>%
+              janitor::clean_names() %>%
+              select(eid, fid) %>% 
+              rename(eid_18 = eid),
+            by = c("fid")) %>% 
+  rename(eid_19 = eid) %>% 
+  writexl::write_xlsx("~/Desktop/eid_discrepancy.xlsx")
+  
+
+
+
+```
+
+## Heifer EIDs
+
+```{r}
+read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_UMF_2019.xlsx",
+           sheet = 1) %>%
+  filter(str_detect(Animal_ID, "^6E")) %>%
+  left_join(read_excel(here::here("data/raw_data/180524.SWC_calves.xlsx"),
+                       skip = 4) %>%
+              select(FID, EID), 
+            by = c("Animal_ID" = "FID")) %>% 
+  mutate(RegistrationNumber = EID) %>% 
+  select(-EID) %>% 
+  mutate(RegistrationNumber = as.character(RegistrationNumber)) %>% 
+  writexl::write_xlsx("~/Desktop/heifers.xlsx")
+
+```
+

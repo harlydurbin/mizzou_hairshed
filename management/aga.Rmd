@@ -1,0 +1,90 @@
+---
+title: "AGA"
+author: "Harly Durbin"
+date: "4/22/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(stringr)
+```
+
+```{r}
+full_ped <- read_rds(here::here("data/derived_data/full_ped.rds"))
+```
+
+```{r}
+source(here::here("source_functions/calculate_acc.R"))
+```
+
+
+```{r}
+read_table2(
+  here::here("data/derived_data/update_email2020/no_breed/solutions"),
+  col_names = c("trait", "effect", "id_new", "solution", "se"),
+  skip = 1
+) %>%
+  # limit to animal effect
+  filter(effect == 2) %>%
+  select(id_new, solution, se) %>%
+  # Re-attach original IDs
+  left_join(read_table2(
+    here::here("data/derived_data/update_email2020/no_breed/renadd02.ped"),
+    col_names = FALSE
+  ) %>%
+    select(id_new = X1, full_reg = X10)) %>%
+  select(full_reg, everything(), -id_new) %>%
+  filter(str_detect(full_reg, "^AMGV|^AMXX|^GVH|^GEL")) %>%
+  left_join(full_ped %>%
+              select(farm_id, animal_id, full_reg)) %>%
+  left_join(
+    read_table2(
+      here::here("data/derived_data/update_email2020/no_breed/data.txt"),
+      col_names = c("full_reg", "cg", "hair_score")
+    ) %>%
+      group_by(full_reg) %>%
+      tally(name = "n_scores", sort = TRUE) %>%
+      ungroup()
+  ) %>%
+  mutate(
+    acc = purrr::map_dbl(.x = se, ~ calculate_acc(
+      e = 0.50472,
+      u = 0.32498,
+      se = .x,
+      option = "bif"
+    )),
+    # divide breeding values by 2 to get epd
+    epd = solution / 2,
+    full_reg = str_replace(full_reg, "GVHUSAF00000", "AMGV")
+  ) %>%
+  left_join(read_rds(here::here("data/derived_data/update_dat.rds")) %>%
+              distinct(full_reg,
+                       farm_id,
+                       animal_id,
+                       sex,
+                       genotyped, 
+                       sold)) %>%
+  select(
+    farm_id,
+    animal_id,
+    registration_number = full_reg,
+    sex,
+    epd,
+    epd_accuracy = acc,
+    n_scores,
+    genotype_used = genotyped,
+    sold
+  ) %>%
+  arrange(farm_id, registration_number) %>%
+  mutate(n_scores = case_when(
+    !is.na(animal_id) & is.na(n_scores) ~ 1,
+    TRUE ~ as.double(n_scores)
+  ),
+  genotype_used = if_else(is.na(genotype_used), FALSE, genotype_used)) %>%
+  mutate_at(vars(contains("epd")), ~ round(., digits = 2)) %>% 
+  writexl::write_xlsx("~/Box Sync/HairShedding/ReportedData/EPDs2020/Gelbvieh_April2020EPDs.xlsx")
+```
+

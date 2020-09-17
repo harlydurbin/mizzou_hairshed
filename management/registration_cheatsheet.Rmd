@@ -1,0 +1,62 @@
+---
+title: "UMAG Animal table registration cheatsheet"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r, eval=TRUE, echo=FALSE, message=FALSE}
+read_csv("~/Desktop/breeds.csv") %>% 
+  filter(!is.na(Primary_American_association)) %>% 
+  kableExtra::kable()
+```
+
+# Breed code (column B)
+
+* Use the most accurate breed code BUT make sure to manually change `international_id` columns + mark as `different_international_info` if that `BC` doesn’t correspond to the breed association it’s primarily associated with 
+    + I.e., Simbrah animals registered in American Simmental: mark `BC` as `SIMB` and manually change `international_id` column to reflect SIMUSA
+
+# International IDs
+
+Should always 19 characters long:
+
+* Breed code (3)
+* Country code (3)
+* Sex code (M or F; 1)
+* Registration number padded with zeros (12)
+
+Excel formulas for creating `international_id` (column AA), `sire_international_id`, (column AF), and `dam_international_id` (column AK):
+
+```
+#Animal itself 
+
+=Z2&Y2&G2&RIGHT("00000000000000"&X2,12)
+
+#Sire
+
+=AE2&AD2&"M"&RIGHT("00000000000000"&AC2,12)
+
+#Dam
+
+=AJ2&AI2&"F"&RIGHT("00000000000000"&AH2,12)
+
+
+```
+
+## Sire/dam interanational IDs
+
+* If sire/dam is in closed registry, always use that primary registration
+    * Closed registries:
+        * Hereford
+        * Angus
+        * Brahman
+        * Charolais (kind of… there’s an auxiliary registry for crossbreds)
+        * Brangus (kind of… Ultrablacks have purebred Angus sires)
+            * 
+    * What about registries outside the U.S. we don’t work with, i.e., Canadian Angus bulls sire to American Simmental progeny? Use ASA registration number then?
+* If sire/dam is purebred and in multiple open registries, use that breed
+    * I.e., accessioning a Simmental progeny with full-blood Red Angus sire: use the Red Angus registration number in Sire_reg
+* If sire/dam is crossbred and in multiple open registries, use the registration number corresponding to the breed association the accession (animal itself) is registered in

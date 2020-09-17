@@ -1,0 +1,64 @@
+---
+title: "Untitled"
+author: "Harly Durbin"
+date: "4/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 4/20/20 pull out bull EPDs
+
+```{r}
+full_ped <- read_rds(here::here("data/derived_data/full_ped.rds"))
+```
+
+```{r}
+source(here::here("source_functions/calculate_acc.R"))
+```
+
+
+```{r}
+ohf_bulls <-
+  full_ped %>% 
+  filter(farm_id == "OHF") %>% 
+  distinct(sire_reg) %>% 
+  rename(full_reg = sire_reg)
+```
+
+```{r}
+# blupf90 solutions
+read_table2(
+  here::here("data/derived_data/update_email2020/no_breed/solutions"),
+  col_names = c("trait", "effect", "id_new", "solution", "se"),
+  skip = 1
+) %>%
+  # limit to animal effect
+  filter(effect == 2) %>%
+  select(id_new, solution, se) %>%
+  # Re-attach original IDs
+  left_join(read_table2(
+    here::here("data/derived_data/update_email2020/no_breed/renadd02.ped"),
+    col_names = FALSE
+  ) %>%
+    select(id_new = X1, full_reg = X10)) %>%
+  select(full_reg, everything(), -id_new) %>%
+  right_join(ohf_bulls) %>%
+  filter(!is.na(solution)) %>% 
+  mutate(acc = purrr::map_dbl(.x = se, ~ calculate_acc(
+    e = 0.50472,
+    u = 0.32498,
+    se = .x,
+    option = "bif"
+  )),
+  # divide breeding values by 2 to get epd
+  epd = solution / 2) %>% 
+  select(registration_number = full_reg, epd, epd_accuracy = acc) %>% 
+  mutate_at(vars(contains("epd")), ~ round(., digits = 2)) %>%
+  arrange(epd) %>% 
+  writexl::write_xlsx("~/Box Sync/HairShedding/ReportedData/EPDs2020/ohf_bulls.xlsx")
+  
+```
+

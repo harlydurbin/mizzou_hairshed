@@ -1,0 +1,280 @@
+---
+title: "Thompson sample troubleshooting"
+author: "Harly Durbin"
+date: "2/19/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(stringr)
+library(visdat)
+library(reshape2)
+```
+
+#Phenotypes and Animal table
+
+```{r}
+#was trc_dr
+trc_pheno <- read_excel("/Users/harlyjanedurbin/Box Sync/HairShedding/ReportedData/FilesMissingLabIDs/DataRecording_TRC_2018.xlsx", sheet = 1, trim_ws = TRUE)
+
+#Read in UMAG database Animal table
+animal_table <- Hmisc::mdb.get("/Users/harlyjanedurbin/googledrive/Samples_180604.mdb", tables = "Animal", allow = c("_"))
+
+animal_table <- doctoR::clear_labels(animal_table) %>% 
+  mutate_if(is.factor, as.character)
+
+#Tried to do this in a pipable fashion using the naniar package but the data frame is too large
+animal_table[animal_table == ""] <- NA
+
+```
+
+* Previously created Animal table info for my samples
+
+```{r}
+#Read in Animal table of samples in my project
+trc_finished <- read_excel("~/Box Sync/HairShedding/ReportedData/FilesMissingLabIDs/DataRecording_TRC_2018.xlsx", sheet = "Animal") %>% 
+  setNames(paste0(names(.), "_fin"))
+  
+```
+
+
+##Create full pedigree
+```{r}
+#Create a list of the pedigree filepaths
+filepaths <- list.files("~/googledrive/research_extension/hair_shed/hair_shed/hair_project/data", pattern = "TRC_Pedigree", full.names = TRUE)
+
+#Get pedigree information including BIR numbers (to be used as Reg numbers)
+#list of dataframes; a dataframe for each file
+#trc_bir
+trc_ped_list <- filepaths %>% 
+  #Name the elements of the list based on a stripped down version of the filepath
+  set_names(nm = (basename(.) %>% 
+                    tools::file_path_sans_ext())) %>% 
+  #Create a list of data frames using readxl
+  map_df(read_excel, col_types = "text", sheet = 1, trim_ws = TRUE) %>% 
+  #Rename columns in an R friendly fashion
+  janitor::clean_names()
+```
+
+
+```{r}
+trc_ped <- bind_rows(
+  #Find dams
+  trc_ped_list %>%
+    select(dam_tag, dam_reg_no, mgs_reg_no, mgd_reg_no, mgd_tattoo) %>%
+    rename(Animal_ID = dam_tag, Reg = dam_reg_no, Sire_Reg = mgs_reg_no, Dam_Reg = mgd_reg_no, Dam_ID = mgd_tattoo) %>% 
+    distinct(), 
+  #Find calves
+  trc_ped_list %>%
+    #filter(sex != "B") %>% 
+    select(anm_tag, reg_no, sire_reg_no, dam_reg_no, dam_tattoo) %>%
+    rename(Animal_ID = anm_tag, Reg = reg_no, Sire_Reg = sire_reg_no, Dam_Reg = dam_reg_no, Dam_ID = dam_tattoo) %>% 
+    distinct()
+) 
+
+trc_ped <- trc_ped %>% 
+  #Find animals listed as dams but not as an Animal_ID entry
+  filter(Dam_ID %in% dplyr::setdiff(trc_ped$Dam_ID, trc_ped$Animal_ID)) %>% 
+  select(Dam_Reg, Dam_ID) %>% 
+  rename(Animal_ID = Dam_ID, Reg = Dam_Reg) %>% 
+  bind_rows(trc_ped) %>% 
+  distinct() %>% 
+  setNames(paste0(names(.), "_ped"))
+  
+
+```
+
+#Create genotype and sample table
+
+```{r}
+#Sample table information Helen provided
+trc_sample_geno <- read_excel("~/Box Sync/HairShedding/ReportedData/Thompson/UMCT_samples.xlsx", sheet = 1, col_types = "text") %>%
+  #Genotype check information Bob provided
+  full_join(read_csv("~/Box Sync/HairShedding/ReportedData/Thompson/180711.thompson_genotype_check.csv",
+                     col_types = cols(.default = "c")) %>% 
+              rename(Lab_ID = lab_id) %>% 
+              filter(is.na(do_not_analyze) & !is.na(assay)) %>% 
+              select(Lab_ID) %>% 
+              #Set distinct Lab_IDs
+              distinct() %>% 
+              mutate(viable_genotype = "TRUE") 
+            ) %>% 
+  #Animal table database information by 
+  left_join(animal_table %>% 
+              mutate_all(as.character) %>% 
+              select(Lab_ID:Ref_ID_source3)
+            )
+```
+            
+```{r}
+
+#Repair animal IDs
+trc_sample_geno <- trc_sample_geno %>% 
+  #pull out only fertility project samples (Ref_IDs that start with 'THF')
+  #Create Animal_ID column by pulling ear tag from Producer_Year_EarTag formatted Ref_ID: [,3] selects 3rd item in the list
+  mutate(Animal_ID = if_else(str_detect(Ref_ID, "^THF"),
+                             str_split_fixed(Ref_ID, pattern = '_', n = 3)[,3],
+                             Ref_ID)) %>% 
+  #Extract base eartag number: look for 1 followed by a letter then pull out all following numbers
+  mutate(base_num = str_extract(Animal_ID, "(?<=1[A-Z])[:digit:]+")) %>% 
+  #Remove a's and b's at the end of duplicates
+  mutate(base_num = str_remove(base_num, "a"),
+         base_num = str_remove(base_num, "b")) %>% 
+  #If base_num is less than 3 digits long, pad with zeros in front
+  mutate(base_num = str_pad(base_num, 3, side = c("left"), pad = "0")) %>%
+  #Extract base year of birth letter: look for multiple digits then pull out the preceeding 1 and letter
+  mutate(base_yr = str_extract(Animal_ID, "1[A-Z](?=[:digit:]+)")) %>% 
+  #Create "repaired ID" by pasting together base year (letter) and base eartag number
+  mutate(repaired_id = str_c(base_yr, base_num)) %>% 
+  select(-starts_with("base"), -BC, -NAAB,  -AIPL, -MGS, -NAAB, -duplicate, -AIPL, -Animal_ID) %>%
+  #Add "Animal table" prefix for easier downstream sorting
+  setNames(paste0(names(.), "_AT")) %>% 
+  filter(!is.na(repaired_id_AT))
+  
+
+trc_sample_geno %>% 
+  left_join(trc_ped, by = c("Ref_ID_AT" = "Animal_ID_ped")) %>% 
+  write_csv("~/Desktop/trc_sample_geno.csv", na = "")
+```
+
+#Assign Lab_ID
+
+SURPRISE we found a bunch of samples that have already been genotyped because we didn't realize Thompson has two tissue codes (THF, UMCT)
+
+
+* Fertility project samples with THF source code
+    + All samples relevant to my project were genotyped and are ok to use
+    + Pulled 27 TSUs from box 
+```{r}
+
+umct_samples %>% 
+  #pull out only fertility project samples (Ref_IDs that start with 'THF')
+  filter(str_detect(Ref_ID, "^THF")) %>% 
+  #Create Animal_ID column by pulling ear tag from Producer_Year_EarTag formatted Ref_ID: [,3] selects 3rd item in the list
+  mutate(Animal_ID = str_split_fixed(Ref_ID, pattern = '_', n = 3)[,3]) %>% 
+  #Extract base eartag number: look for 1 followed by a letter then pull out all following numbers
+  mutate(base_num = str_extract(Animal_ID, "(?<=1[A-Z])[:digit:]+")) %>% 
+  #If base_num is less than 3 digits long, pad with zeros in front
+  mutate(base_num = str_pad(base_num, 3, side = c("left"), pad = "0")) %>%
+  #Extract base year of birth letter: look for multiple digits then pull out the preceeding 1 and letter
+  mutate(base_yr = str_extract(Animal_ID, "1[A-Z](?=[:digit:]+)")) %>% 
+  mutate(repaired_id = str_c(base_yr, base_num)) 
+
+
+animal_table %>%
+  #Pull out animal table info for samples that already have Lab_IDs
+  filter(Lab_ID %in% umct_samples$Lab_ID) %>% 
+  #Change all columns to characters for ease of joining
+  mutate_all(as.character) %>% 
+  #Join to list of samples with lab IDs
+  left_join(mutate_all(umct_samples, as.character)) %>% 
+  select(-starts_with("base")) %>% 
+  #Select only samples that are part of my project
+  right_join(mutate_all(trc_finished, as.character) %>% 
+               filter(Ref_ID %in% umct_samples$repaired_id), by = c("repaired_id" = "Ref_ID")) %>% 
+  #Sort columns alphabetically
+  select(sort(current_vars())) 
+```
+
+```{r}
+x <- c("102824", "102828", "102889", "102915", "102920", "102842", "102844", "102845", "102904", "102922", "102855", "102875", "102856", "102846", "102911", "102909", "102898", "102887", "102919", "102866", "102913", "102872", "102867", "102910", "102892", "102896", "102848", "102733")
+
+#All samples relevant to my project were genotyped and are ok to use
+trc_geno_check %>% 
+  right_join(animal_table %>% 
+              filter(Lab_ID %in% x)) %>% 
+  select(Lab_ID, assay, do_not_analyze)
+```
+
+* `Thompson Cow ID_blood_07172014.xlsx`
+
+```{r}
+#Read in sheet with IDs and extraction inforamtion
+trc_14 <- read_excel("~/Box Sync/HairShedding/ReportedData/Thompson/Thompson Cow ID_blood_07172014.xlsx", sheet = 1) %>% 
+  select(ID) %>% 
+  #For all IDs that start with a capital letter then multiple numbers, append a "1" to the front
+  mutate(ID = if_else(str_detect(ID, "(?<=[A-Z])[:digit:]+"),
+                      paste0("1", ID),
+                      ID)) %>% 
+  rename(Ref_ID_sheet = ID) %>% 
+  left_join(trc_sample_geno, by = c("Ref_ID_sheet" = "repaired_id_AT")) %>% 
+  left_join(trc_finished, by = c("Ref_ID_sheet" = "Ref_ID_fin" )) %>% 
+  left_join(trc_ped, by = c("Ref_ID_sheet" = "Animal_ID_ped")) %>% 
+  select(order(colnames(.)))
+
+
+write_csv(trc_14, "~/Desktop/2014_TRC.csv", na = "")
+```
+
+
+* `Thompson_Farm_Heifers_blood(JordanThomas)2011.xlsx`
+
+```{r}
+#Read in sheet with IDs and extraction inforamtion
+read_excel("~/Box Sync/HairShedding/ReportedData/Thompson/Thompson_Farm_Heifers_blood(JordanThomas)2011.xlsx", sheet = 2) %>% 
+  select(`Animal ID`) %>% 
+  rename(Ref_ID_sheet = `Animal ID`) %>% 
+  filter(!Ref_ID_sheet %in% trc_14$Ref_ID_sheet) %>% 
+  left_join(trc_sample_geno, by = c("Ref_ID_sheet" = "repaired_id_AT")) %>% 
+  left_join(trc_finished, by = c("Ref_ID_sheet" = "Ref_ID_fin" )) %>% 
+  left_join(trc_ped, by = c("Ref_ID_sheet" = "Animal_ID_ped")) %>% 
+  select(order(colnames(.))) %>%
+   write_csv("~/Desktop/2011_TRC.csv", na = "")
+```
+
+* 
+
+```{r}
+read_excel("~/Box Sync/HairShedding/ReportedData/FilesMissingLabIDs/DataRecording_TRC_2018.xlsx", sheet = "trc_sample_assignment") %>% 
+  select(Animal_ID, Barcode) %>% 
+  #setNames(paste0(names(.), "_raw")) %>% 
+  rename(repaired_id = Animal_ID) %>% 
+  #Join to 2016 stuff I already went thru
+  left_join(read_excel("~/Box Sync/HairShedding/ReportedData/Thompson/2016 Thompson Heifer Repro Phenotypes.xlsx", 
+                       sheet = "Animal", 
+                       col_types = "text") %>% 
+              setNames(paste0(names(.), "_16")),
+            by = c("repaired_id" = "Ref_ID_16")) %>% 
+  left_join(read_excel("~/Box Sync/HairShedding/ReportedData/Thompson/Thompson Cow ID_blood_07172014.xlsx", 
+                       sheet = "Animal_complete", 
+                       col_types = "text") %>% 
+              setNames(paste0(names(.), "_14")), 
+            by = c("repaired_id" = "repaired_id_14")) %>% 
+  left_join(trc_ped, 
+            by = c("repaired_id" = "Animal_ID_ped")) %>% 
+  left_join(trc_sample_geno, 
+            by = c("repaired_id" = "repaired_id_AT")) %>% 
+  select(order(colnames(.))) %>% 
+  write_csv("~/Desktop/end_me.csv", na = "")
+```
+
+# 7/17/19 F heifer updates
+
+```{r}
+fhef <- 
+  read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_UMCT_2019.xlsx", trim_ws = TRUE) %>%
+  filter(str_detect(Animal_ID, "^1F")) 
+
+
+fhef %>%
+  select(-contains("Registration")) %>% 
+  left_join(
+    read_excel(
+      here::here("/data/raw_data/TRC_Pedigree.2015-2018.4June2018.xlsx"), trim_ws = TRUE
+    ) %>%
+      janitor::clean_names() %>%
+      filter(str_detect(anm_tag, "^1F")) %>%
+      select(
+        Animal_ID = anm_tag,
+        RegistrationNumber = reg_no,
+        SireRegistration = sire_reg_no
+      ),
+    by = c("Animal_ID")
+  ) %>% 
+  select(Farm, Breed_code, RegistrationNumber, SireRegistration, everything()) %>% 
+  writexl::write_xlsx("~/Desktop/fhef.xlsx")
+```
+

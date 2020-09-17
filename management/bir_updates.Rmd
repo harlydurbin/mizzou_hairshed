@@ -1,0 +1,120 @@
+---
+title: "BIR updates"
+author: "Harly Durbin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+```
+
+```{r}
+animal_table <- animal_table <- read_rds(here::here("data/derived_data/animal_table.rds"))
+nested_join <- read_rds(here::here("data/derived_data/nested_join.rds"))
+```
+
+```{r}
+
+nested_join %>% 
+  filter(farm_id == "WVU" & str_detect(registration_number, "^6"))
+
+bir_lab <-
+  nested_join %>%
+  filter(str_detect(registration_number, "^6")) %>%
+  select(Lab_ID, registration_number) %>%
+  bind_rows(long %>%
+              filter(str_detect(comment, "BIR")) %>%
+              select(Lab_ID, registration_number)) %>%
+  bind_rows(animal_table %>%
+              filter_at(vars(contains("Ref")), any_vars(str_detect(., "BIR"))) %>%
+              select(Lab_ID)) %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  distinct()
+
+```
+
+```{r}
+
+bir_lab %>% 
+  left_join(animal_table) %>% 
+  writexl::write_xlsx(here::here("data/derived_data/190606.bir.xlsx"))
+  
+  
+```
+
+```{r}
+bir_sent <-
+  list.files(
+    "~/Box Sync/HairShedding/ReportedData/To_GeneSeek/",
+    pattern = ".xlsx",
+    full.names = TRUE
+  ) %>%
+  # Name the elements of the list based on a stripped down version of the filepath
+  set_names(nm = (basename(.) %>%
+                    tools::file_path_sans_ext())) %>%
+  # Create a list of data frames using readxl
+  map(read_excel, col_types = "text", sheet = 1, trim_ws = TRUE) %>%
+  # Based on the name of the file, create a column for when they were sent to Geneseek
+  imap(~ mutate(.x,
+                sent_date = str_extract(.y,
+                                        "(?<=_)[[0-9]]+"))) %>%
+  # Reduce the list of dataframes to one dataframe
+  reduce(full_join) %>%
+  # Format date column as a date
+  mutate(sent_date = lubridate::mdy(sent_date)) %>%
+  # Select the columns I want
+  select(Lab_ID, sent_date, Barcode) %>%
+  mutate(Lab_ID = as.integer(Lab_ID))
+```
+
+
+```{r}
+bir_lab %>%
+```
+
+
+```{r}
+select(Lab_ID) %>% 
+  left_join(nested_join) %>% 
+  select(-barcode) %>% 
+  filter(!is.na(sent_date)) %>%
+  filter(sent_date < as.Date("2019-06-05")) %>% 
+  left_join(bir_sent %>% 
+              select(-sent_date)) %>% 
+  left_join(animal_table, by = c("Lab_ID")) %>% 
+  select(Lab_ID, registration_number, Barcode, Ref_ID, Ref_ID_source, BC, Sex, DOB, Sire_Reg, Dam_Reg, farm_id) %>% 
+  rename(Reg = 2, 
+         source_code = farm_id) %>% 
+  mutate(BC = "AN") %>% 
+  writexl::write_xlsx("~/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/20190606.AN.xlsx")
+```
+
+I messed up Kasten 
+
+```{r}
+
+
+read_excel("~/Box Sync/HairShedding/ReportedData/2017/DataRecording_KAF_2017.xlsx", sheet = 1) %>% 
+  left_join(read_excel("~/Box Sync/HairShedding/ReportedData/2017/DataRecording_KAF_2017.xlsx", sheet = 2) %>% 
+              select(RegistrationNumber, Animal_ID) %>% 
+              rename(bir = RegistrationNumber),
+            by = c("Animal_ID")) %>% 
+  filter(is.na(bir))
+
+read_excel("~/Box Sync/HairShedding/ReportedData/2017/DataRecording_KAF_2017.xlsx", sheet = 2) 
+
+nested_join %>% 
+  filter(farm_id == "KAF")
+
+
+animal_table %>% 
+  filter(Reg == "1Y038")
+
+tissue %>% 
+  filter(Lab_ID == 82288)
+```
+
+
+

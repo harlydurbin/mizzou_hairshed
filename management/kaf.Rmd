@@ -1,0 +1,39 @@
+---
+title: "KAF"
+author: "Harly Durbin"
+date: "10/8/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+read_excel("/Users/harlyjanedurbin/Box Sync/HairShedding/ReportedData/2017/DataRecording_KAF_2017.xlsx", sheet = 1) %>% 
+  mutate(Animal_ID = as.character(Animal_ID), 
+         RegistrationNumber = as.character(RegistrationNumber),
+         Barcode = as.character(Barcode)) %>% 
+  janitor::remove_empty(which = "rows") %>% 
+  left_join(
+    read_excel(here::here("reg_search.xlsx")) %>% 
+      filter(farm_id == "KAF") %>% 
+      select(Animal_ID = animal_id, an_reg, barcode_an = barcode)
+    ) %>% 
+  mutate(
+    RegistrationNumber = 
+      case_when(
+        !is.na(an_reg) ~ an_reg,
+        TRUE ~ RegistrationNumber
+      ),
+    Barcode = 
+      case_when(
+        !is.na(barcode_an) ~ barcode_an,
+        TRUE ~ Barcode
+      )
+  ) %>% 
+  select(-an_reg, -barcode_an) %>% 
+  writexl::write_xlsx("~/Desktop/kaf17.xlsx")
+  
+```
+

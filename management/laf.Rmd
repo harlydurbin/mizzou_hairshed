@@ -1,0 +1,185 @@
+---
+title: "Lust Angus"
+author: "Harly Durbin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(readxl)
+library(lubridate)
+library(magrittr)
+library(purrr)
+library(tidylog)
+```
+
+# July 16, 2019
+
+```{r}
+lafcows <-
+  read_excel("~/Box Sync/HairShedding/ReportedData/FilesMissingLabIDs/DataRecording_LAF_2019.xlsx", sheet = "original") %>% 
+  mutate(
+    ToxicFescue = "NO", 
+    HairScore = str_to_upper(HairScore),
+    DateScoreRecorded = lubridate::ymd(DateScoreRecorded),
+    Sold2019 = case_when(
+      HairScore %in% c("SOLD", "DIED") ~ "Yes"
+         ),
+    Comment = case_when(
+      HairScore %in% c("DIED") ~ "Died"
+    ),
+    HairScore = case_when(
+      Sold2019 == "Yes" ~ NA_character_,
+      TRUE ~ HairScore
+         ),
+    HairScore = as.integer(HairScore),
+    ) %>% 
+  select(-16)
+```
+
+
+```{r}
+lafhef <-
+  read_excel("~/Box Sync/HairShedding/ReportedData/FilesMissingLabIDs/DataRecording_LAF_2019.xlsx", sheet = "spring2017cows") %>% 
+  janitor::clean_names() %>% 
+  mutate(
+         Farm = "LAF",
+         Breed_code = "AN", 
+         Color = "Black", 
+         DateScoreRecorded = ymd("2019-05-06"),
+         CalvingSeason = "Spring", 
+         ToxicFescue = "NO", 
+         sex = "F",
+         Age = as.integer(lubridate::time_length(DateScoreRecorded - lubridate::ymd(birth_date), unit = "years"))
+         ) %>% 
+  select(
+    Farm,
+    Breed_code,
+    RegistrationNumber = reg_no,
+    SireRegistration = sire,
+    Sex = sex,
+    Color, 
+    Animal_ID = tag,
+    DateScoreRecorded,
+    HairScore = shedding_score_1_5,
+    Age,
+    CalvingSeason,
+    ToxicFescue
+    ) %>% 
+  mutate(
+    HairScore = as.integer(HairScore)
+  )
+```
+
+
+```{r}
+voidlist <-
+  lafcows %>% 
+  left_join(
+    lafhef %>% 
+      select(RegistrationNumber, score2 = HairScore)
+  ) %>% 
+  filter(!is.na(score2)) %>% 
+  filter(HairScore != score2 & !is.na(HairScore)) %>%
+  pull(RegistrationNumber)
+  
+
+lafhef %>% 
+  filter(RegistrationNumber %in% lafcows$RegistrationNumber)
+```
+
+
+```{r}
+lafcows %>% 
+  filter(!RegistrationNumber %in% lafhef$RegistrationNumber) %>% 
+  bind_rows(lafhef %>% 
+              mutate(
+                HairScore = case_when(
+                  RegistrationNumber %in% voidlist ~ NA_integer_,
+                  TRUE ~ HairScore
+                  )
+                )
+            ) %>% 
+  writexl::write_xlsx("~/Desktop/laf.xlsx")
+  
+  # mutate(
+  #   keep = case_when(
+  #     is.na(HairScore) & is.na(Sold2019) ~ "drop",
+  #     TRUE ~ "keep"
+  #     )
+  #   ) %>% 
+  # arrange(keep, RegistrationNumber)
+  # # Drop duplicate rows
+  # filter(keep != "drop") %%>% 
+  # arrange(RegistrationNumber)
+  # # Void out hair score if two different scores on that day
+  # mutate(HairScore = case_when(
+  #   n_distinct(HairScore) > 1 ~ NA_integer_,
+  #   TRUE ~ HairScore
+  # )) %>% 
+  # filter(n() > 1) %>% 
+  # arrange(RegistrationNumber)
+  # filter(HairScore)
+  # ungroup()
+
+```
+
+# January 20, 2020
+
+Trying to figure out what went wrong with AGI - Geneseek transfer
+
+```{r}
+lims_orders <-
+  list("data/raw_data/Geneseek20191010_130955.csv", "data/raw_data/Geneseek20191010_132440.csv") %>% 
+  purrr::map_dfr(~read_csv(here::here(.x)))
+```
+
+
+```{r}
+# Helen's plated DNA
+"To_GeneSeek_Plate_1(06112019)[1].xlsx"
+```
+
+
+```{r}
+# What I sent to request order
+my_requests <-
+  list("data/raw_data/20191004.AN_DNA.XLSX", "data/raw_data/20191004.AN.XLSX") %>% 
+  set_names("plated_dna", "other") %>% 
+  purrr::map_dfr(~read_excel(here::here(.x), col_types = "text"), .id = "source")
+
+my_requests %>% 
+  View()
+```
+
+## Batch 40117
+
+> I think I see the problem. In the xxx file you just sent, what is currently in the “Barcode” column is  the registration number or BIR number. All of the samples in that file were sent to Geneseek as plated DNA and therefore had no barcodes that could be used as sample IDs. So, our lab manager Helen requested that the internal UofM lab ID be used as the sample ID. I’ve attached that as an additional column called “Lab_ID”. 
+
+```{r}
+lims_orders %>% 
+  mutate(Barcode = as.character(Barcode)) %>% 
+  filter(`Batch Id` == 40117) %>% 
+  left_join(my_requests %>% 
+              select(Lab_ID, Reg), 
+            by = c("Barcode" = "Reg")) %>% 
+  write_csv("~/Desktop/HJD_Geneseek20191010_130955.csv", na = "")
+```
+
+## Batch 40118
+
+The Barcodes given in the excel sheet allowed me to pull data from UofM, however the Barcodes provided in LIMS give nothing from UofM as they are not the same. The animal IDs do match for this order. 
+
+```{r}
+lims_orders %>% 
+  mutate(Barcode = as.character(Barcode)) %>% 
+  filter(`Batch Id` == 40118) %>% 
+  left_join(
+    my_requests %>% 
+      select(Lab_ID, Reg, mu_barcode = Barcode),
+    by = c("Barcode" = "Lab_ID")) %>% 
+  write_csv("~/Desktop/HJD_Geneseek20191010_132440.csv", na = "")
+```
+

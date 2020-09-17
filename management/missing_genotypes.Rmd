@@ -1,0 +1,108 @@
+---
+title: "sample management"
+author: "Harly Durbin"
+date: "4/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
+library(tidylog)
+
+```
+
+```{r}
+cleaned <- read_rds(here::here("data/derived_data/cleaned.rds"))
+```
+
+```{r}
+animal_table <- read_rds(here::here("data/derived_data/animal_table.rds"))
+```
+
+
+```{r}
+sample_sheet <-
+  read_delim(here::here("data/raw_data/190802_sample_sheet.csv"),
+             delim = c(","),
+             col_names = TRUE,
+             guess_max = 10000) %>% 
+  rename(Lab_ID = lab_id,
+         Reg = reg) %>% 
+  mutate(date_added = lubridate::ymd(date_added))
+```
+
+
+```{r}
+genotyped <-
+  list.files(
+  "~/Box Sync/HairShedding/ReportedData/To_GeneSeek",
+  pattern = "[[:digit:]]+.xlsx",
+  full.names = TRUE
+) %>%
+  set_names() %>%
+  purrr::map_dfr(
+    ~ read_excel(.x, col_types = "text") %>%
+      janitor::clean_names() %>%
+      select(
+        contains("lab"),
+        contains("reg"),
+        contains("farm"),
+        contains("bar"),
+        contains("tissue")
+      ),
+    .id = "file"
+  ) %>%
+  mutate(
+    farm_id = dplyr::coalesce(!!!syms(c(
+      "tissue_source", "farm_code", "farm"
+    ))),
+    sent_date = lubridate::mdy(str_extract(file, "[[:digit:]]+(?=\\.xlsx)")),
+    Lab_ID = as.numeric(lab_id),
+    file = basename(file)
+  ) %>%
+  rename(registration_number = reg) %>% 
+  # Add Gibbs
+  bind_rows(
+    read_excel(
+      "~/Box Sync/HairShedding/ReportedData/To_GeneSeek/Gibbs Farms - Archived DNA Samples - Release to Dr. Jared Decker (released 3-28-19).xlsx",
+      skip = 1,
+      col_types = "text"
+    ) %>%
+      select(registration_number = 1, animal_id = 2) %>%
+      left_join(
+        cleaned %>%
+          distinct(farm_id, animal_id, registration_number, Lab_ID)
+      ) %>%
+      mutate(sent_date = lubridate::mdy("3/28/2019"),
+             file = "Gibbs Farms - Archived DNA Samples - Release to Dr. Jared Decker (released 3-28-19).xlsx")
+  ) %>%
+  select(Lab_ID,
+         registration_number,
+         file,
+         sent_date) %>%
+  filter(!is.na(Lab_ID)) %>% 
+  # Retests
+  group_by(Lab_ID) %>%
+  arrange(Lab_ID, desc(sent_date)) %>% 
+  slice(1) %>% 
+  ungroup()
+
+```
+
+```{r}
+genotyped %>% 
+  left_join(sample_sheet %>% 
+              select(Lab_ID, assay, date_added)) %>% 
+  filter(is.na(date_added)) %>% 
+  filter(lubridate::year(sent_date) == 2019) %>% 
+  arrange(sent_date) %>% 
+  select(Lab_ID, sent_date) %>% 
+  write_csv(here::here("data/derived_data/200423.missing_genotypes.csv"))
+```
+

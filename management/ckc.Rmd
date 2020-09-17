@@ -1,0 +1,144 @@
+---
+title: "CKC"
+author: "Harly Durbin"
+date: "9/6/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+nested_join %>% 
+  filter(farm_id == "CKC") %>% 
+  filter(str_detect(registration_number, "^6|^1"))
+  select(registration_number, animal_id, sent_date, everything())
+
+```
+
+```{r}
+animal_table %>% 
+  filter(Ref_ID2 %in% c("UM00000865", "UM00000866", "UM00000867", "UM00000870", "UM00000871", "UM00000872", "UM00000873", "UM00000874", "UM00000875", "UM00000876", "UM00000877", "UM00000880", "UM00000884", "UM00000885", "UM00000886", "UM00000887", "UM00000888", "UM00000889", "UM00000890", "UM00000891", "UM00000893", "UM00000895", "UM00000896", "UM00000897", "UM00000904", "UM00000905", "UM00000911", "UM00000912", "UM00000913", "UM00000914", "UM00000915", "UM00000916", "UM00000917", "UM00000918", "UM00000919", "UM00000920", "UM00000921", "UM00000923", "UM00000925", "UM00000927", "UM00000929", "UM00000930", "UM00000931", "UM00000932", "UM00000933", "UM00000937", "UM00000938", "UM00000941", "UM00000942", "UM00000947", "UM00000952", "UM00000953", "UM00000954", "UM00000956", "UM00000957", "UM00000958", "UM00000960", "UM00000961", "UM00000962", "UM00000963", "UM00000964", "UM00000965", "UM00000966", "UM00000968", "UM00000970", "UM00000971", "UM00000975", "UM00000979", "UM00000980", "UM00000981", "UM00000982", "UM00000983", "UM00000988", "UM00000989", "UM00000990", "UM00000991", "UM00001003", "UM00001004", "UM00001007", "UM00001017", "UM00001018", "UM00001019", "UM00001020", "UM00001021", "UM00001022", "UM00001023", "UM00001024", "UM00001025", "UM00001026", "UM00001027", "UM00001028", "UM00001029", "UM00001030", "UM00001031", "UM00001033", "UM00001037", "UM00001039")) %>% 
+  select(Lab_ID, Reg, Barcode = Ref_ID2, Ref_ID, Ref_ID_source, BC, Sex, DOB, Sire_Reg, Dam_Reg, registered, breed_assoc) %>% 
+  mutate(Source_code = "CKC", assoc_code = "AN") %>% 
+  writexl::write_xlsx("~/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/20190906.AN.xlsx")
+  
+
+```
+
+# Barcodes 10/8/19
+
+```{r}
+read_excel("/Users/harlyjanedurbin/Box Sync/HairShedding/ReportedData/2019/DataRecording_CKC_2019.xlsx", sheet = 1) %>% 
+  mutate(Animal_ID = as.character(Animal_ID), 
+         RegistrationNumber = as.character(RegistrationNumber),
+         Barcode = as.character(Barcode)) %>% 
+  left_join(
+    read_excel("/Users/harlyjanedurbin/Box Sync/HairShedding/ReportedData/2019/DataRecording_CKC_2019.xlsx", sheet = "Animal") %>%
+      select(Animal_ID = Ref_ID, barcode_antable = Ref_ID2)
+  ) %>% 
+  janitor::remove_empty(which = "rows") %>% 
+  left_join(
+    read_excel(here::here("reg_search.xlsx")) %>% 
+      filter(farm_id == "FHC") %>% 
+      select(Animal_ID = animal_id, an_reg, barcode_an = barcode)
+    ) %>% 
+  mutate(
+    RegistrationNumber = 
+      case_when(
+        !is.na(an_reg) ~ an_reg,
+        TRUE ~ RegistrationNumber
+      ),
+    Barcode = 
+      case_when(
+        !is.na(barcode_antable) ~ barcode_antable,
+        !is.na(barcode_an) ~ barcode_an,
+        TRUE ~ Barcode
+      )
+  ) %>% 
+  select(-barcode_antable, -an_reg, -barcode_an) %>% 
+  writexl::write_xlsx("~/Desktop/ckc19.xlsx")
+  
+```
+
+# Make 2020 blank file early
+
+```{r}
+blank2020 <-
+  clean %>% 
+  filter(farm_id == "CKC") %>% 
+  filter(sold == FALSE) %>% 
+  filter(year == 2019) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, Sire_Reg)) %>% 
+  mutate(
+    date_score_recorded = NA_character_,
+    hair_score = NA_character_,
+    toxic_fescue = NA_character_,
+    comment = NA_character_,
+    sold = NA_character_,
+    ge_epd = NA_character_,
+    age = age+1
+  ) %>% 
+  select(farm_id, 
+         breed_code, 
+         registration_number,
+         Sire_Reg,
+         sex,
+         color,
+         ge_epd,
+         animal_id,
+         date_score_recorded,
+         hair_score,
+         age,
+         calving_season,
+         toxic_fescue,
+         comment,
+         barcode,
+         sold
+         ) %>% 
+  set_names(
+    c(
+      "Farm",
+      "Breed_code",
+      "RegistrationNumber",
+      "SireRegistration",
+      "Sex",
+      "Color",
+      "GE_EPD",
+      "Animal_ID",
+      "DateScoreRecorded",
+      "HairScore",
+      "Age",
+      "CalvingSeason",
+      "ToxicFescue",
+      "Comment",
+      "Barcode",
+      "Sold"
+    )
+  )
+instructions <-
+  read_excel(here::here("data/raw_data/DataRecording_template_2019.xlsx"),
+             sheet = 2)
+breed_codes <-
+  read_excel(here::here("data/raw_data/DataRecording_template_2019.xlsx"),
+             sheet = 3)
+coat_codes <-
+  read_excel(here::here("data/raw_data/DataRecording_template_2019.xlsx"),
+             sheet = "CoatCodes")
+
+```
+
+```{r}
+writexl::write_xlsx(
+  list(
+    "DataEntry" = blank2020,
+    "Instructions" = instructions,
+    "BreedCodes" = breed_codes,
+    "CoatCodes" = coat_codes
+  ),
+  "/Users/harlyjanedurbin/Box Sync/HairShedding/ReportedData/Blank2020/DataRecording_CKC_2020.xlsx"
+)
+```
+

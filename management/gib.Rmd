@@ -1,0 +1,243 @@
+---
+title: "Gibbs"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+library(purrr)
+library(readxl)
+library(lubridate)
+library(tidylog)
+```
+
+```{r}
+gib19 <-
+  read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_GIB_2019.xlsx", skip = 1) %>%
+  janitor::clean_names() 
+```
+
+```{r}
+gib19 %>% 
+  distinct(farm_location_zip_code)
+```
+
+
+```{r}
+gib19 %>% 
+  mutate(Farm = "GIB",
+         Location = "GAL", 
+         Sold2019 = 
+           case_when(
+             str_detect(comments, "Removed|removed") ~ "Yes",
+             TRUE ~ NA_character_
+             ),
+         blood_card = 
+           case_when(
+             blood_card == "YES" ~ "has blood card",
+             TRUE ~ blood_card
+           ),
+         Sex = 
+           case_when(
+             sex == "C" ~ "F",
+             sex == "B" ~ "M"
+           ),
+         Comment = glue::glue("{comments}; {breed_codes}; {blood_card};"),
+         Comment = str_remove_all(Comment, "NA;")
+         ) %>% 
+  select(
+    Farm, 
+    Breed_code = breed_code, 
+    RegistrationNumber = 3, 
+    SireRegistration = 4, 
+    Sex,
+    Color = color, 
+    GE_EPD = ge_epd, 
+    Animal_ID = animal_id_tattoo_8,
+    DateScoreRecorded = hair_score_date_recorded,
+    HairScore = x2019_hair_score,
+    Age = age_years,
+    CalvingSeason = calving_season,
+    ToxicFescue = toxic_fescue,
+    Comment,
+    Sold2019,
+    Location
+  ) %>% 
+  writexl::write_xlsx("~/Desktop/gib.xlsx")
+```
+
+# 9/17/19
+
+```{r}
+start <-
+  # What Jared sent to ASA?
+  read_csv(here::here("data/raw_data/Copy of 20190830.SIM.csv")) %>%
+  select(
+    barcode = 1,
+    animal_id = 5,
+    registration_number = 6
+  ) %>%
+  # Bob's list of samples without lab IDs
+  full_join(read_table2(here::here(
+    "data/raw_data/190917_samples_not_found.txt"
+  )) %>%
+    select(barcode = ID))  
+  
+start
+```
+
+
+```{r}
+
+
+read_excel(
+  "~/Box Sync/HairShedding/ReportedData/FilesMissingLabIDs/DataRecording_GIB_2019.xlsx",
+  sheet = 2
+) %>%
+  filter(Reg %in% c(
+    c(
+      "SM00014665",
+      "NE00899239",
+      "82115074728",
+      "SM00011440",
+      "82115076515",
+      "82115076307",
+      "82115076570",
+      "82115076312",
+      "82115076272",
+      "82115076588"
+    )
+  )) %>%
+  left_join(
+    read_excel(
+      "~/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/Gibbs Farms - Archived DNA Samples - Release to Dr. Jared Decker (released again with sample bar codes 8-30-19).xlsx",
+      skip = 1
+    ) %>%
+      select(
+        Reg = 1,
+        animal_id = 2,
+        registration_number = 3
+      ) %>% 
+      mutate(Reg = as.character(Reg))
+  ) %>% 
+  filter(is.na(animal_id)) %>% 
+  select(Lab_ID, animal_id, registration_number) %>% 
+  writexl::write_xlsx("~/Desktop/191003.GIB_missing.xlsx")
+```
+
+```{r}
+x <-
+  # Gordon's list of samples to be genotyped
+  read_excel(here::here("data/raw_data/Gibbs Farms - Archived DNA Samples - Release to Dr. Jared Decker (released again with sample bar codes 8-30-19).xlsx"), skip = 1) %>% 
+  select(registration_number = 3, animal_id = 2, barcode = 1) 
+
+x %>% 
+  
+
+```
+
+```{r}
+start %>% 
+  filter(is.na(animal_id)) %>% 
+  select(barcode) %>% 
+  left_join(x %>% 
+              mutate(barcode = as.character(barcode)))
+```
+
+```{r}
+start %>% 
+  filter(is.na(barcode))
+```
+
+
+```{r}
+start %>% 
+  filter(is.na(animal_id)) %>% 
+  mutate(registration_number = as.character(registration_number)) %>%
+  select(barcode) %>% 
+  left_join(
+    nested_join %>% 
+      filter(farm_id == "GIB") %>% 
+      select(animal_id, registration_number, barcode),
+    by = c("barcode")
+  )
+```
+
+```{r}
+nested_join %>% 
+  filter(farm_id == "GIB")
+```
+
+# 3/2/20 Gibbs missing genotypes
+
+```{r}
+source(here::here("source_functions/coalesce_join.R"))
+animal_table <- 
+  readr::read_rds(here::here("data/derived_data/animal_table.rds")) %>% 
+  mutate(DOB = if_else(Lab_ID == 140949, lubridate::ymd("2014-02-13"), DOB))
+cleaned <- 
+  read_rds(here::here("data/derived_data/cleaned.rds"))
+```
+
+
+```{r}
+read_excel(here::here("data/raw_data/20191029.gibbs_no_ge_missing_geno.xlsx")) %>%
+  select(animal_id = 1, registration_number = 2, transfer_date) %>%
+  left_join(
+    cleaned %>%
+      filter(farm_id == "GIB") %>%
+      select(registration_number, Lab_ID, barcode) %>%
+      distinct(),
+    by = "registration_number"
+  ) %>% 
+  arrange(Lab_ID) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, Ref_ID2)) %>% 
+  mutate(barcode = if_else(is.na(barcode), Ref_ID2, barcode)) %>%
+  writexl::write_xlsx("~/Desktop/200302.gibbs_missing.xlsx")
+  
+  
+
+
+
+```
+
+# 7/28/20 Master key for Gordon
+
+```{r}
+cleaned <- read_rds(here::here("data/derived_data/cleaned.rds"))
+```
+
+```{r}
+tissue_table <- get_tissue("190907")
+```
+
+
+```{r}
+gib_all <-
+  cleaned %>% 
+  filter(farm_id == "GIB") %>% 
+  select(registration_number, Lab_ID, animal_id, barcode, dob) %>% 
+  distinct() %>% 
+  left_join(tissue_table %>% 
+              select(Lab_ID, Tissue_ID)) %>% 
+  select(lab_id = Lab_ID, tissue_id = Tissue_ID, everything())
+```
+
+
+```{r}
+gib_all %>% 
+  arrange(lab_id, tissue_id) %>% 
+  writexl::write_xlsx("~/Desktop/200728.GIB_all.xlsx")
+```
+
+```{r}
+gib_all %>% 
+  filter(is.na(tissue_id)) %>% 
+  filter(is.na(lab_id))
+```
+

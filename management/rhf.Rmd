@@ -1,0 +1,345 @@
+---
+title: "rhf"
+author: "Harly Durbin"
+date: "2/21/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Fixing locations
+
+```{r}
+#2016
+
+pre <- read_excel("~/Box Sync/HairShedding/ReportedData/2016/DataRecording_RHF_2016.xlsx", sheet = "original", trim_ws = TRUE) %>% 
+  select(Farm, Animal_ID) %>% 
+  rename(Location = Farm)
+
+post <- read_excel("~/Box Sync/HairShedding/ReportedData/2016/DataRecording_RHF_2016.xlsx", sheet = 1, trim_ws = TRUE) 
+
+post %>% 
+  left_join(pre, by = c("Animal_ID")) %>% 
+  writexl::write_xlsx("~/Desktop/rhf16.xlsx")
+```
+
+```{r}
+#2017
+
+pre <- read_excel("~/Box Sync/HairShedding/ReportedData/2017/DataRecording_RHF_2017.xlsx", sheet = "original", trim_ws = TRUE) %>% 
+  select(Farm, Animal_ID) %>% 
+  rename(Location = Farm)
+
+post <- read_excel("~/Box Sync/HairShedding/ReportedData/2017/DataRecording_RHF_2017.xlsx", sheet = 1, trim_ws = TRUE) 
+
+post %>% 
+  left_join(pre, by = c("Animal_ID")) %>% 
+  writexl::write_xlsx("~/Desktop/rhf17.xlsx")
+
+```
+
+
+# Get test dataset together for Helen
+
+```{r}
+###### First just get to a list of lab IDs #####
+rhf_lab <-
+  anti_join(
+    #Here I'm just basically making sure I also get RHF lab IDs that don't also have tissue IDs
+    nested_join %>%
+      filter(farm_id == "RHF"),
+    tissue %>%
+      filter(Source_code == "RHF") %>%
+      select(Lab_ID) %>%
+      left_join(animal_table, by = c("Lab_ID")),
+    by = c("Lab_ID")
+  ) %>%
+  filter(!is.na(Lab_ID)) %>%
+  select(Lab_ID) %>%
+  bind_rows(
+    tissue %>%
+      filter(Source_code == "RHF") %>%
+      select(Lab_ID) %>%
+      left_join(animal_table, by = c("Lab_ID")) %>%
+      select(Lab_ID)
+  )
+```
+
+
+```{r}
+rhf_lab %>% 
+  left_join(animal_table, by = c("Lab_ID")) %>% 
+  select(1, 2, breed_assoc_reg, contains("_Reg"), breed_assoc)
+
+```
+
+```{r}
+read_excel("/Users/harlyjanedurbin/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/20190108.AN.xlsx") %>% 
+  select(Lab_ID, Ref_ID, breed_assoc, Reg, Sire_Reg, Dam_Reg) %>% 
+  janitor::clean_names() %>% 
+  rename(animal_id = ref_id,
+         source = breed_assoc)
+```
+
+
+```{r}
+
+read_excel(
+  "~/Box Sync/HairShedding/ReportedData/2016/DataRecording_RHF_2016.xlsx",
+  sheet = "original",
+  trim_ws = TRUE
+) %>%
+  janitor::clean_names() %>%
+  select(animal_id, simmental_reg:red_ang_sire_reg)  %>%
+  #remove "AR " from registration number
+  mutate(red_ang_reg = str_remove_all(red_ang_reg, "A|R| ")) %>%
+  #append Lab IDs
+  left_join(
+    rhf_lab %>%
+      left_join(animal_table, by = c("Lab_ID")) %>%
+      select(Lab_ID, Ref_ID) %>%
+      # select(1, 2, breed_assoc_reg, contains("_Reg"), Ref_ID, breed_assoc) %>%
+      janitor::clean_names(),
+    by = c("animal_id" = "ref_id")
+  ) %>%
+  filter(!is.na(lab_id)) %>%
+  reshape2::melt(id = c(
+    "lab_id",
+    "animal_id",
+    "simmental_sire_reg",
+    "red_ang_sire_reg"
+  )) %>%
+  mutate_all(~ as.character(.)) %>%
+  rename(registration_number = value,
+         source = variable) %>%
+  mutate(
+    source = case_when(
+      source == "simmental_reg" ~ "American Simmental Association",
+      source == "red_ang_reg" ~ "Red Angus Association of America"
+    ),
+    sire_reg = case_when(
+      source == "American Simmental Association" ~ simmental_sire_reg,
+      source == "Red Angus Association of America" ~ red_ang_sire_reg
+    ),
+    sire_reg = case_when(
+      str_detect(sire_reg, "AN") ~ NA_character_,
+      str_detect(sire_reg, "A|R| ") ~ str_remove_all(sire_reg, "A|R| "),
+      TRUE ~ as.character(sire_reg)
+    )
+  ) %>%
+  select(-ends_with("_sire_reg")) %>%
+  filter(!is.na(registration_number)) %>%
+  bind_rows(
+    read_excel(
+      "/Users/harlyjanedurbin/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/20190108.AN.xlsx",
+      col_types = "text"
+    ) %>%
+      select(Lab_ID, Ref_ID, breed_assoc, Reg, Sire_Reg, Dam_Reg) %>%
+      janitor::clean_names() %>%
+      rename(animal_id = ref_id,
+             source = breed_assoc,
+             registration_number = reg)
+  ) %>% 
+  arrange(animal_id) %>% 
+  writexl::write_xlsx(here::here("data/derived_data/190312.practice_ped.xlsx"))
+```
+
+
+# Three association transfer 7/8/19
+
+```{r}
+rhf <- 
+  read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_RHF_2019.xlsx", sheet = 2) %>% 
+  janitor::clean_names() %>% 
+  select(breeds:sire_alt_number, sample_status, barcode = bar_code) %>% 
+  left_join(sent %>% 
+              filter(!is.na(barcode))) %>% 
+  filter(!is.na(sent_date))
+
+#ASA
+rhf %>%
+  select(Lab_ID, asa_number, barcode, sire_asa_number) %>%
+  filter(!is.na(asa_number)) %>%
+  left_join(animal_table %>%
+              select(-Reg,-Sire_Reg)) %>%
+  select(
+    Lab_ID,
+    Reg = asa_number,
+    Barcode = barcode,
+    Ref_ID,
+    Ref_ID_source,
+    BC,
+    Sex,
+    DOB,
+    Sire_Reg = sire_asa_number,
+    Dam_Reg,
+    registered,
+    breed_assoc
+  ) %>%
+  mutate(
+    Dam_Reg = NA_character_,
+    breed_assoc = "American Simmental Association",
+    source_code = "RHF",
+    assoc_code = "SIM"
+  ) %>%
+  mutate_all( ~ str_remove_all(., "\\(|\\)")) %>% 
+  writexl::write_xlsx("~/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/20190708.SIM.xlsx")
+
+
+#RAAA
+rhf %>%
+  select(Lab_ID, alt_number, barcode, sire_alt_number) %>%
+  filter(!is.na(alt_number)) %>%
+  left_join(animal_table %>%
+              select(-Reg,-Sire_Reg)) %>%
+  select(
+    Lab_ID,
+    Reg = alt_number,
+    Barcode = barcode,
+    Ref_ID,
+    Ref_ID_source,
+    BC,
+    Sex,
+    DOB,
+    Sire_Reg = sire_alt_number,
+    Dam_Reg,
+    registered,
+    breed_assoc
+  ) %>%
+  mutate(
+    Dam_Reg = NA_character_,
+    breed_assoc = "Red Angus Association of America",
+    source_code = "RHF",
+    assoc_code = "ANR"
+  ) %>%
+  mutate_all( ~ str_remove_all(., "USAAR|USAAN")) %>% 
+  writexl::write_xlsx("~/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/20190708.ANR.xlsx")
+```
+
+## Re-format new heifers
+
+```{r}
+read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_RHF_2019.xlsx",
+           sheet = 2) %>%
+  janitor::clean_names() %>%
+  rename(barcode = bar_code) %>%
+  left_join(sent %>%
+              filter(!is.na(barcode))) %>%
+  left_join(animal_table) %>%
+  mutate(
+    Reg = case_when(
+      is.na(Reg) & !is.na(alt_number) ~ alt_number,
+      is.na(Reg) & !is.na(asa_number) ~ asa_number,
+      TRUE ~ Reg
+    ),
+    sex = "F",
+    color = case_when(
+      color == "B" ~ "BLACK", 
+      color == "R" ~ "RED"
+    ),
+    scored = "5-15-2019",
+    farm_id = "RHF", 
+    bcs = str_c("BCS ", bcs)
+  ) %>% 
+  select(farm_id, BC, Reg, Sire_Reg, sex, color, sample_status, tattoo, scored, hair_score, DOB, calving_season, bcs, barcode) %>% 
+  writexl::write_xlsx("~/Desktop/rhfnew.xlsx")
+```
+
+
+```{r}
+c("~/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/20190708.ANR.xlsx", "~/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/20190708.SIM.xlsx") %>% 
+  map_dfr(readxl::read_excel) %>% 
+  filter(Barcode %in% c("3116067752", "3116043843", "3116067808", "41817028733", "41817028730", "3116043843", "3116067772", "3116067754", "3116067771", "3116067808")) %>% 
+  select(Ref_ID, Barcode) %>% 
+  distinct()
+```
+
+
+# Assign registration numbers to new heifers 9/17/20
+
+```{r}
+library(readxl)
+library(dplyr)
+```
+
+```{r}
+no_reg <-
+  read_excel("~/Box Sync/HairShedding/ReportedData/2020/DataRecording_RHF_2020.xlsx", sheet = 2)
+```
+
+
+```{r}
+anr <-
+  c("RHF.ReportDownload09_16_2020.xlsx", "RHF.ReportDownload09_16_2020.2.xlsx") %>% 
+  purrr::map_dfr(~ read_excel(here::here(glue::glue("data/raw_data/{.x}")))) %>% 
+  janitor::remove_empty(which = "cols") %>% 
+  janitor::clean_names()
+```
+
+```{r}
+anr_found <-
+  no_reg %>% 
+  select(Animal_ID) %>% 
+  left_join(anr %>% 
+              select(Animal_ID = animal_id, Age = birth_date, RegistrationNumber = reg_number)) %>% 
+  filter(!is.na(RegistrationNumber)) %>% 
+  mutate(Breed_code = "ANR", RegistrationNumber = as.character(RegistrationNumber), Color = "RED")
+```
+
+```{r}
+sim <-
+  c("RHF.250581-Info_for_Hair_Data_Report_Download-2020-09-16.2.xlsx", "RHF.250581-Info_for_Hair_Data_Report_Download-2020-09-16.xlsx") %>% 
+  purrr::map_dfr(~ read_excel(here::here(glue::glue("data/raw_data/{.x}")))) %>% 
+  janitor::clean_names()
+```
+
+```{r}
+sim_found <-
+  no_reg %>% 
+  filter(!Animal_ID %in% anr_found$Animal_ID) %>% 
+  select(Animal_ID) %>% 
+  left_join(sim %>% 
+              select(Animal_ID = tattoo, Age = birth_date, RegistrationNumber = asa_number, Color = color)) %>%
+  filter(!is.na(RegistrationNumber)) %>% 
+  mutate(Age = as.character(Age), RegistrationNumber = stringr::str_remove(RegistrationNumber, "\\.0"), Breed_code = "SIM")
+```
+
+```{r}
+sim_found %>%
+  bind_rows(anr_found) %>%
+  left_join(
+    no_reg %>%
+      select(
+        Farm,
+        Sex,
+        Animal_ID,
+        DateScoreRecorded,
+        HairScore,
+        CalvingSeason,
+        ToxicFescue,
+        Barcode,
+        Sold2020,
+        Comment
+      )
+  ) %>%
+  select(
+    Farm,
+    Breed_code,
+    RegistrationNumber,
+    Sex,
+    Color,
+    Animal_ID,
+    DateScoreRecorded,
+    HairScore,
+    Age,
+    CalvingSeason,
+    ToxicFescue,
+    Comment,
+    Barcode,
+    Sold2020
+  ) %>% 
+  writexl::write_xlsx("~/Desktop/RHF.xlsx")
+```
+

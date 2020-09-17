@@ -1,0 +1,49 @@
+---
+title: "Misc. management"
+author: "Harly Durbin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+```
+
+# PVR formatting 7/8/19
+
+```{r}
+pvr <- 
+  read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_PVR_2019.xlsx", skip = 1) %>% 
+  janitor::clean_names() %>% 
+  mutate(tag = as.character(tag)) %>% 
+  right_join(read_excel("~/Box Sync/HairShedding/ReportedData/Blank2019/DataRecording_PVR_2019.xlsx"), by = c("tag" = "Animal_ID"))
+```
+
+## Did any registration numbers change?
+
+```{r}
+pvr %>% 
+  filter(registration != RegistrationNumber & !is.na(registration))
+```
+
+## Wrong ages?
+
+```{r}
+pvr %>% 
+  filter(age_years != Age & !is.na(Age))
+```
+
+```{r}
+pvr %>% 
+  mutate(HairScore = shed_score,
+         ToxicFescue = "NO",
+         DateScoreRecorded = case_when(
+           !is.na(HairScore) ~ as.Date("2019-06-09")
+           ),
+         Sold2019 = case_when(
+           is.na(HairScore) ~ "YES"
+         )) %>% 
+  select(Farm:Sold2019) %>% 
+  writexl::write_xlsx(path = "~/Box Sync/HairShedding/ReportedData/2019/DataRecording_PVR2_2019.xlsx", col_names = TRUE)
+```
+

@@ -11,7 +11,7 @@ data/derived_data/3gen/*
 data/derived_data/import_join_clean/*.xlsx
 data/derived_data/import_join_clean/*.csv
 data/raw_data/*
-management/*
+management/*.xlsx
 *.gdoc
 *.pptx
 talks_articles/2017_sare/*

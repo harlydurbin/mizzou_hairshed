@@ -1,0 +1,272 @@
+---
+title: "IBBA outstanding transfers"
+author: "Harly Durbin"
+date: "10/7/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(ssh)
+library(purrr)
+library(readxl)
+library(tidylog)
+```
+
+# Setup 
+
+## Animal table
+
+```{r}
+animal_table <- read_rds(here::here("data/derived_data/animal_table.rds"))
+```
+
+## Tissue table
+
+```{r}
+tissue <- read_rds(here::here("data/derived_data/tissue.rds"))
+```
+
+
+## Sample sheet
+
+```{r}
+session <- ssh_connect("hjdzpd@128.206.4.152")
+
+# #Will then prompt you for a password
+
+samptable_path <- "/CIFS/MUG01_N/schnabelr/SAMPLE_SHEETS/190802_sample_sheet.csv"
+
+
+# Download it
+scp_download(session, samptable_path, to = here::here("data/raw_data/"))
+```
+
+
+```{r}
+sample_sheet <- read_delim(here::here("data/raw_data/190802_sample_sheet.csv"), delim = c(","), col_names = TRUE, guess_max = 10000) %>% 
+  # This gets annoying so I'm renaming it
+  rename(Lab_ID = lab_id,
+         Reg = reg)
+```
+
+## Sample sent dates
+
+```{r}
+source(here::here("source_functions/sent_samples.R"))
+```
+
+```{r}
+sent %>% 
+  janitor::remove_empty(which = "rows") %>% 
+  filter(is.na(sent_date))
+```
+
+
+## Brangus data
+
+```{r}
+bg_data_raw <-
+  combine(
+    list.files(path = "~/Box Sync/HairShedding/ReportedData/2016", full.names = TRUE),
+    list.files(path = "~/Box Sync/HairShedding/ReportedData/2017", full.names = TRUE),
+    list.files(path = "~/Box Sync/HairShedding/ReportedData/2018", full.names = TRUE),
+    list.files(path = "~/Box Sync/HairShedding/ReportedData/2019", full.names = TRUE)
+  ) %>%
+  set_names(nm = (basename(.) %>%
+                    tools::file_path_sans_ext())) %>%
+  # Create a list of data frames using readxl
+  purrr::map(function(.x) {
+    # Vector of column names
+    (nms <- names(read_excel(.x)))
+    
+    # Assign column types based on column name
+    (ct <- if_else(str_detect(nms, "date|Date"), "date", "text"))
+    
+    read_excel(.x, col_types = ct, trim_ws = TRUE)
+  }) %>%
+  # Remove blank rows and columns
+  purrr::map(janitor::remove_empty, which = c("rows", "cols")) %>%
+  # Standardize column names
+  purrr::map(janitor::clean_names) %>%
+  # Add a year column, pull farm id from file name instead of file itself
+  purrr::imap(~ dplyr::mutate(
+    .x,
+    year = str_extract(.y, "(?<=_)[[:digit:]]{4}"),
+    farm_id = str_extract(.y, "(?<=_)[[:alnum:]]+(?=_)")
+  )) %>%
+  purrr::map(~ dplyr::select(.x,-farm)) %>%
+  # Rename sold_2017 and sold2018 to sold
+  purrr::map(~ dplyr::rename_at(.x,
+                         vars(starts_with("sold")),
+                         #...by removing all numbers and punctuation from column names where the column name contains "sold"
+                         funs(
+                           str_remove_all(., "[[:punct:]]|[[:digit:]]")
+                         ))) %>% 
+  reduce(bind_rows) %>% 
+  filter(farm_id %in% c(        
+        "BAB",
+        "BRB",
+        "CRC",
+        "GEB",
+        "SFB",
+       "SUCC",
+        "SVF",
+        "TCF",
+       "TJMB",
+        "TRR",
+        "KSB",
+        "LRB",
+       "MBMB",
+        "THB",
+        "WET"
+       ))
+```
+
+
+```{r}
+bg_data <-
+  bg_data_raw %>% 
+  filter(!is.na(hair_score)) %>% 
+  distinct(farm_id, registration_number, animal_id) %>% 
+  left_join(animal_table %>% 
+              select(Reg, Lab_ID),
+            by = c("registration_number" = "Reg")) %>% 
+  left_join(sent)
+```
+
+```{r}
+bg_data %>% 
+  group_by(registration_number) %>% 
+  filter(n() > 1)
+```
+
+```{r}
+bg_data %>% 
+  group_by(farm_id, animal_id) %>% 
+  filter(n() > 1) %>% 
+  ungroup() %>% 
+  arrange(farm_id, animal_id) %>% 
+  writexl::write_xlsx("~/Desktop/20191007.IBBA_issue_reg.xlsx")
+```
+
+
+# Data checking
+
+```{r}
+sent %>% 
+  filter(is.na(Lab_ID))
+```
+
+
+# No Lab_ID
+
+```{r}
+
+bg_data %>% 
+  filter(is.na(Lab_ID)) %>% 
+  filter(!is.na(registration_number)) %>% 
+  select(1:3) %>% 
+  writexl::write_xlsx("~/Desktop/191007.IBBA_labid.xlsx")
+  
+```
+
+# No sample_id, failed, etc
+
+* Why do some end up with multiple samples?
+
+```{r}
+
+bg_data %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  left_join(sample_sheet) %>% 
+  group_by(Lab_ID) %>% 
+  filter(n() > 1) %>% 
+  arrange(Lab_ID)
+
+```
+
+
+* Any failed samples?
+
+```{r}
+bg_data %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  left_join(sample_sheet) %>% 
+  distinct(do_not_analyze)
+```
+
+* Lab_ID but no sample_id
+
+```{r}
+
+
+```
+
+# Export
+
+```{r}
+bg_data %>% 
+  # Remove reg questions for now
+  anti_join(
+    bg_data %>% 
+      group_by(farm_id, animal_id) %>% 
+      filter(n() > 1) %>%
+      ungroup() 
+    ) %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  left_join(sample_sheet) %>% 
+  filter(is.na(sample_id)) %>% 
+  # Exclude samples that were recently sent
+  filter(is.na(sent_date)) %>% 
+  bind_rows(
+    bg_data %>% 
+      anti_join(
+        bg_data %>% 
+          group_by(farm_id, animal_id) %>% 
+          filter(n() > 1) %>%
+          ungroup() 
+      ) %>% 
+      filter(is.na(Lab_ID)) %>% 
+      filter(!is.na(registration_number))
+  ) %>% 
+  select(farm_id, registration_number, animal_id, Lab_ID) %>% 
+  writexl::write_xlsx(here::here("data/derived_data/20191007.IBBA_missing.xlsx"))
+  
+```
+
+
+# 10/17/19
+
+```{r}
+read_excel(here::here("data/raw_data/Hair Shedding Missing Barcodes_Tests.xlsx")) %>% 
+  rename(comment = 7) %>% 
+  select(-8) %>% 
+  filter(comment %in% c("Data transfer from shedding project", "records show you received in 2018 shipment")) %>% 
+  select(-Lab_ID) %>% 
+  mutate(registration_number = str_remove_all(registration_number, "[[:space:]]")) %>% 
+  left_join(
+    animal_table %>% 
+      select(Reg, Lab_ID) %>% 
+      mutate(Reg = str_remove_all(Reg, " ")),
+    by = c("registration_number" = "Reg")
+  ) %>% 
+  left_join(sample_sheet, by = "Lab_ID")
+```
+
+
+```{r}
+tissue %>% 
+  filter(Lab_ID == 197879)
+
+animal_table %>% 
+  filter(Reg == "R10317764")
+
+
+
+```
+

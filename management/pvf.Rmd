@@ -1,0 +1,128 @@
+---
+title: "Untitled"
+author: "Harly Durbin"
+date: "2/24/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r}
+hs_id <- "PVF"
+```
+
+```{r}
+#### STEP ONE: RAW FILES ####
+  # Creating a list of files
+  # Requirements for this to work: semi-standardized column names
+  raw <-
+    combine(
+      list.files(path = "~/Box Sync/HairShedding/ReportedData/2016",
+                 full.names = TRUE),
+      list.files(path = "~/Box Sync/HairShedding/ReportedData/2017",
+                 full.names = TRUE),
+      list.files(path = "~/Box Sync/HairShedding/ReportedData/2018",
+                 full.names = TRUE),
+      list.files(path = "~/Box Sync/HairShedding/ReportedData/2019",
+                 full.names = TRUE)
+    ) %>%
+    # Only data for the specifed farm
+    .[str_detect(., glue::glue("_{hs_id}_"))] %>%
+    purrr::set_names(nm = (basename(.) %>%
+                      tools::file_path_sans_ext())) %>%
+    purrr::map(function(.x) {
+      # Vector of column names
+      (nms <- names(read_excel(.x)))
+      # Assign column types based on column name
+      (ct <-
+          if_else(str_detect(nms, "date|Date"), "date", "text"))
+      
+      read_excel(.x, col_types = ct, trim_ws = TRUE)
+    }) %>%
+    # Remove blank rows and columns
+    purrr::map(janitor::remove_empty, which = c("rows", "cols")) %>%
+    # Standardize column names
+    purrr::map(janitor::clean_names)
+  
+  print(glue::glue("{hs_id}: finished importing raw files"))
+```
+
+```{r}
+  clean <-
+    raw %>%
+    # Extract year and farm ID from file name
+    purrr::imap(~ dplyr::mutate(
+      .x,
+      year = str_extract(.y, "(?<=_)[[:digit:]]{4}"),
+      year = as.numeric(year),
+      farm_id = str_extract(.y, "(?<=_)[[:alnum:]]+(?=_)")
+    )) %>%
+      # Add columns if they don't exist
+    purrr::map( ~ fncols(
+      data = .x,
+      cname = c("registration_number", "animal_id", "barcode")
+    ) %>% 
+      mutate_at(vars(c("registration_number", "animal_id", "barcode")), ~as.character(.))) %>% 
+    purrr::map(~ dplyr::select(.x, -one_of("farm"))) %>%
+    # Angus registration number fixes
+    purrr::map(~ dplyr::left_join(.x, angus_reg) %>% 
+                 dplyr::mutate(registration_number = if_else(!is.na(an_reg), an_reg, registration_number)) %>% 
+                 dplyr::select(-an_reg)) %>% 
+    # Rename sold_2017 and sold2018 etc to sold
+    purrr::map(~ dplyr::rename_at(.x,
+                                  vars(starts_with("sold")),
+                                  #...by removing all numbers and punctuation from
+                                  # column names where the column name contains "sold"
+                                  funs(
+                                    str_remove_all(., "[[:punct:]]|[[:digit:]]")
+                                  ))) %>%
+    # Remove sire registration, shearing, ge_epd if they exist
+    purrr::map(~ dplyr::select(.x, -one_of(c("sire_registration", "shearing", "ge_epd")))) %>% 
+    # At all columns that are characters, mutate to uppercase 
+    # (i.e. to standardize Spring/spring/SPRING/sPrInG)
+    purrr::map(~ dplyr::mutate_if(.x,
+                                  is.character,
+                                  .funs = ~ stringr::str_to_upper(.))) %>% 
+    # Remove extraneous blank spaces
+    purrr::map(~ dplyr::mutate_if(.x, is.character,
+                                  .funs = ~ str_squish(.)))
+```
+
+```{r}
+
+  clean %>% 
+  reduce(bind_rows) %>% 
+  group_by(registration_number) %>% 
+  filter(n_distinct(animal_id) > 1) %>% 
+  ungroup() %>% 
+  arrange(registration_number) %>% 
+  select(year, everything())
+```
+
+```{r}
+weird <-
+  clean %>% 
+  reduce(bind_rows) %>% 
+  group_by(registration_number) %>% 
+  ungroup() %>% 
+  filter(n_distinct(animal_id) > 1) %>% 
+  filter(str_detect(animal_id, "^A")) %>% 
+  distinct(animal_id) %>% 
+  pull(animal_id)
+
+```
+
+
+```{r}
+clean %>% 
+  reduce(bind_rows) %>% 
+  filter(animal_id %in% weird) %>% 
+  arrange(animal_id, year) %>% 
+  select(year, everything())
+```
+

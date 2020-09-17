@@ -1,0 +1,65 @@
+---
+title: "fhc"
+author: "Harly Durbin"
+date: "8/23/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+nested_join %>% 
+  filter(farm_id == "FHC" & str_detect(animal_id, "^81")) %>% 
+  arrange(animal_id) %>% 
+  select(animal_id, Lab_ID, sent_date, registration_number, everything())
+```
+
+```{r}
+nested_join %>% 
+  filter(farm_id == "FHC" & animal_id %in%  c("8102", "8108", "8111", "8114", "8120", "8124", "8133", "8141", "8142", "8147", "8176")) %>% 
+  select(Lab_ID) %>% 
+   left_join(animal_table) %>% 
+  select(Lab_ID, Reg, Barcode = Ref_ID2, Ref_ID, Ref_ID_source, BC, Sex, DOB, Sire_Reg, Dam_Reg, registered, breed_assoc) %>% 
+  mutate(Source_code = "FHC", assoc_code = "AN") %>% 
+  writexl::write_xlsx("~/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/20190823.AN.xlsx")
+  
+```
+
+# Adding barcodes 10/8/19
+
+```{r}
+read_excel("/Users/harlyjanedurbin/Box Sync/HairShedding/ReportedData/2016/DataRecording_FHC_2016.xlsx", sheet = 1) %>% 
+  mutate(Animal_ID = as.character(Animal_ID), 
+         RegistrationNumber = as.character(RegistrationNumber),
+         Barcode = as.character(Barcode)) %>% 
+  left_join(
+    read_excel("/Users/harlyjanedurbin/Box Sync/HairShedding/ReportedData/2019/DataRecording_FHC_2019.xlsx", sheet = "Animal") %>%
+      select(reg_antable = Reg, Animal_ID = Ref_ID, barcode_antable = Ref_ID2)
+  ) %>% 
+  janitor::remove_empty(which = "rows") %>% 
+  left_join(
+    read_excel(here::here("reg_search.xlsx")) %>% 
+      filter(farm_id == "FHC") %>% 
+      select(Animal_ID = animal_id, an_reg, barcode_an = barcode)
+    ) %>% 
+  mutate(
+    RegistrationNumber = 
+      case_when(
+        !is.na(an_reg) ~ an_reg,
+        !is.na(reg_antable) ~ reg_antable,
+        TRUE ~ RegistrationNumber
+      ),
+    Barcode = 
+      case_when(
+        !is.na(barcode_antable) ~ barcode_antable,
+        !is.na(barcode_an) ~ barcode_an,
+        TRUE ~ Barcode
+      )
+  ) %>% 
+  select(-reg_antable, -barcode_antable, -an_reg, -barcode_an) %>% 
+  writexl::write_xlsx("~/Desktop/fhc16.xlsx")
+  
+```
+

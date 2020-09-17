@@ -1,0 +1,129 @@
+---
+title: "AGI transfers"
+author: "Harly Durbin"
+date: "10/9/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(lubridate)
+library(purrr)
+library(readxl)
+library(tidylog)
+
+source(here::here("source_functions/animal_table.R"))
+source(here::here("source_functions/tissue_table.R"))
+```
+
+# Setup
+
+```{r}
+animal_table <- get_animal_table("190907")
+
+```
+
+
+```{r}
+
+transferred <-
+  list.files(
+    "~/Box Sync/HairShedding/ReportedData/SendToBreedAssociations",
+    pattern = "\\.AN\\.xlsx|\\.AN_DNA\\.xlsx",
+    full.names = TRUE
+  ) %>%
+  # Name the elements of the list based on a stripped down version of the filepath
+  set_names(nm = (basename(.) %>%
+                    tools::file_path_sans_ext())) %>%
+  map(read_excel, col_types = "text", sheet = 1, trim_ws = TRUE) %>%
+  # Based on the name of the file, create a column for when they were sent to Geneseek
+  imap(~ mutate(.x,
+                transfer_date = str_extract(.y,
+                                        "^[[0-9]]+(?=\\.)"))) %>%
+  # Reduce the list of dataframes to one dataframe
+  reduce(bind_rows) %>%
+  mutate(transfer_date = lubridate::ymd(transfer_date)) %>% 
+  # Select the columns I want
+  select(Lab_ID, transfer_date) %>%
+  mutate(Lab_ID = as.integer(Lab_ID)) %>% 
+  group_by(Lab_ID) %>% 
+  filter(transfer_date == max(transfer_date))
+
+```
+
+```{r}
+geno_check <- 
+  read_rds(here::here("data/derived_data/geno_check.rds")) %>% 
+  left_join(transferred)
+```
+
+# Aggregate list
+
+* Ask about ones that aren't there but should be. Call rate/QC issues?
+
+```{r}
+geno_check %>% 
+  filter(at_agi == "NO" & at_mu == "YES") %>% 
+  filter(!is.na(transfer_date)) %>% 
+  select(farm_id, transfer_date, call_rate, do_not_analyze, everything()) %>%
+  arrange(transfer_date)
+```
+
+```{r}
+geno_check %>% 
+  filter(at_agi == "NO" & at_mu == "YES") %>% 
+  filter(is.na(transfer_date)) %>% 
+  select(farm_id, assay_mu, call_rate, do_not_analyze, everything()) %>% 
+  filter(date_added > lubridate::ymd("20160901")) %>% 
+  filter(is.na(do_not_analyze)) %>% 
+  left_join(animal_table) %>%
+  left_join(tissue %>% 
+              select(Lab_ID, Source_code)) %>% 
+  mutate(Ref_ID_source = "Farm_ID",
+         registered = 1,
+         assoc_code = "AN",
+         breed_assoc = "American Angus Association") %>% 
+  select(
+    Lab_ID,
+    Reg = registration_number,
+    Barcode = Ref_ID2,
+    Ref_ID,
+    BC,
+    Sex,
+    DOB,
+    Sire_Reg,
+    Dam_Reg,
+    registered,
+    breed_assoc,
+    Source_code,
+    assoc_code
+  ) %>% 
+  writexl::write_xlsx("~/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/20191009.AN.xlsx")
+  
+  
+```
+
+```{r}
+animal_table %>% 
+  filter(Lab_ID %in% c(102857, 102691))
+```
+
+# 11/7/19
+
+"Us9001612928 FOR running water appears to be an incorrect reg # C686 is 18407898 not 18455179. So I made that correction.
+ 
+Barcode 31815008592 for Cody Washam’s we actually on a previous project from you posted results for this sample to a tag 354 BIR 624887280 back in 2018, not reg # 17812184
+ 
+Barcode 3116044424 for Doug Frank we actually posted results using that barcode back in 2017 on one of your projects to animal 8511 #16438724 & posted results. On this sheet you reference that sample to animal 16611219 which I think is incorrect as that animals tattoo is 0172."
+
+```{r}
+# C686 is 18407898
+
+animal_table %>% 
+  filter(Lab_ID %in% c(143307, 142869))
+```
+
