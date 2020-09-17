@@ -93,10 +93,13 @@ sh_var <-
   "Paternal Granddam (PGD)", "PGD's Sire", "PGD's Dam",
   "Maternal Grandsire (MGS)", "MGS's Sire", "MGS's Dam",
   "Maternal Granddam (MGD)", "MGD's Sire", "MGD's Dam"
-) 
+)
+```
 
 
+```{r, warning= FALSE, message=FALSE}
 sh_ped <-
+  # Pivot wide pedigree longer
   purrr::pmap(
     list(
       x = sh_var$reg_var,
@@ -113,9 +116,18 @@ sh_ped <-
     }
   ) %>% 
   reduce(bind_rows) %>% 
+  # Animal names are not registration numbers
+  mutate_at(vars(contains("reg")), 
+            ~ if_else(!str_detect(., "[[:digit:]]"), NA_character_, .)) %>% 
+  distinct() %>% 
+  # Update Angus 
   mutate_all( ~ str_replace_all(., "^an", "AAA")) %>%
+  # Update Maine-Anjou
+  mutate_all( ~ str_replace_all(., "^ma", "RDP")) %>%
+  # Clean up registration numbers
   mutate_all( ~ str_remove_all(., "[[:punct:]]|x|X")) %>%
   mutate_all( ~ str_to_upper(.)) %>%
+  # Re-append hair shedding ID metadata
   left_join(
     cleaned %>%
       left_join(animal_table %>%
@@ -125,6 +137,15 @@ sh_ped <-
       distinct(Lab_ID, registration_number, farm_id, animal_id, temp_id) %>%
       filter(!is.na(registration_number))
   ) %>% 
+  # Search for lab IDs
+  id_search(
+    source_col = registration_number,
+    search_df = animal_table %>% 
+      filter(BC == "SH"),
+    search_col = breed_assoc_reg,
+    key_col = Lab_ID
+  ) %>% 
+  # 3-generation pedigree format
   janitor::remove_empty(which = "rows") %>% 
   mutate_at(vars(contains("reg")), 
             ~ case_when(
@@ -132,11 +153,26 @@ sh_ped <-
               str_detect(., "^AAA") ~ .,
               TRUE ~ as.character(glue("BSH{.}"))
             )) %>% 
-  mutate(source = "American Shorthorn Association")
+  mutate(source = "American Shorthorn Association") %>% 
+  # Remove duplicates
+  distinct() %>% 
+  group_by(registration_number) %>% 
+  arrange(registration_number, desc(sire_reg), desc(dam_reg), desc(Lab_ID)) %>% 
+  slice(1) %>% 
+  ungroup()
 
 ```
 
-     
+## Duplicate check
+
+```{r}
+sh_ped %>% 
+  group_by(registration_number) %>% 
+  filter(n() > 1) %>% 
+  arrange(registration_number, desc(sire_reg), desc(dam_reg), desc(Lab_ID))
+
+```
+  
 # Gelbvieh 
 
 ## List of registration numbers
@@ -174,6 +210,7 @@ gel_var <-
 
 
 gel_ped <-
+  # Pivot wide pedigree to long
   purrr::pmap(
     list(
       x = gel_var$reg_var,
@@ -192,7 +229,7 @@ gel_ped <-
     }
   ) %>% 
   reduce(bind_rows) %>% 
-  # Rejoin ID info
+  # Re-append hair shedding ID metadata
   left_join(
     cleaned %>%
       left_join(animal_table %>%
@@ -233,6 +270,27 @@ gel_ped <-
   mutate_at(vars(contains("reg")), ~ str_replace(., "^AMAR", "RAN")) %>% 
   # Braunvieh
   mutate_at(vars(contains("reg")), ~ str_replace(., "^AMBU", "BSW")) %>% 
+  # Search for lab IDs
+  id_search(
+    source_col = registration_number,
+    search_df = animal_table %>% 
+      filter(BC == "GEL"),
+    search_col = breed_assoc_reg,
+    key_col = Lab_ID
+  ) %>% 
+  id_search(
+    source_col = registration_number,
+    search_df = animal_table %>% 
+      filter(BC == "GEL"),
+    search_col = Reg,
+    key_col = Lab_ID
+  )  %>% 
+  # Remove duplicate Lab_IDs, I hate everything
+  group_by(registration_number) %>% 
+  arrange(desc(Lab_ID)) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  # GVH prefix for animals not registered elsewhere
   mutate_at(vars(contains("reg")), 
             ~ case_when(
               is.na(.) ~ "0",
@@ -251,6 +309,16 @@ gel_ped %>%
   distinct(code)
 ```
 
+## Duplicate check
+
+```{r}
+gel_ped %>% 
+  group_by(registration_number) %>% 
+  filter(n() > 1) %>% 
+  left_join(animal_table) %>% 
+  select(Lab_ID, duplicate)
+
+```
 
 # Charolais
 
@@ -273,6 +341,7 @@ cleaned %>%
 
 ```{r, warning=FALSE, message=FALSE}
 cha_ped <-
+  # Import raw data
   read_table2(
     here::here(
       "data/raw_data/200416.CHA.AICA_MUhairshed_pedigree_04162020.txt"
@@ -281,6 +350,7 @@ cha_ped <-
     col_names = c("registration_number", "sire_reg", "dam_reg", "by")
   ) %>%
   select(-by) %>%
+  # Re-append hair shedding ID metadata
   left_join(
     cleaned %>%
       left_join(animal_table %>%
@@ -294,11 +364,35 @@ cha_ped <-
       filter(!str_detect(registration_number, "^6")) %>%
       distinct(registration_number, farm_id, animal_id, temp_id, Lab_ID)
   ) %>% 
+  # Lab_ID search
+  id_search(
+    source_col = registration_number,
+    search_df = animal_table %>% 
+      filter(BC == "CHA"),
+    search_col = breed_assoc_reg,
+    key_col = Lab_ID
+  )  %>% 
   arrange(Lab_ID) %>% 
   mutate_at(vars(contains("reg")), ~ if_else(is.na(.), "0", as.character(glue("CHA{.}")))) %>% 
-  mutate(source = "American International Charolais Association")
+  mutate(source = "American International Charolais Association") %>% 
+  # Remove duplicates
+  group_by(registration_number) %>% 
+  arrange(desc(Lab_ID)) %>% 
+  slice(1) %>% 
+  ungroup()
 ```
 
+## Duplicate check
+
+```{r}
+cha_ped %>% 
+  group_by(registration_number) %>% 
+  filter(n() > 1) %>% 
+  arrange(registration_number) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, duplicate))
+
+```
 
 # Hereford
 
@@ -320,6 +414,7 @@ cleaned %>%
 
 ```{r, warning=FALSE, message=FALSE}
 hfd_ped <-
+  # Import raw pedigree
   read_csv(here::here(
   "data/raw_data/200415.HFD.MU Shedding project pedigree 041520.CSV"
 ), col_types = cols(.default = col_character())) %>%
@@ -337,6 +432,7 @@ hfd_ped <-
          source = "American Hereford Association") %>% 
   # Remove polled code
   mutate_at(vars(contains("reg")), ~ str_remove(., "^P")) %>% 
+  # Re-append hair shedding ID metadata
   left_join(
     cleaned %>%
       left_join(animal_table %>%
@@ -347,9 +443,34 @@ hfd_ped <-
       distinct(Lab_ID, registration_number, farm_id, animal_id, temp_id) %>%
       filter(!is.na(registration_number))
   ) %>% 
-  mutate_at(vars(contains("reg")), ~ if_else(is.na(.), "0", as.character(glue("HER{.}"))))
+  # Lab_ID search
+  id_search(
+    source_col = registration_number,
+    search_df = animal_table %>% 
+      filter(BC == "HFD"),
+    search_col = breed_assoc_reg,
+    key_col = Lab_ID
+  ) %>% 
+  mutate_at(vars(contains("reg")), ~ if_else(is.na(.), "0", as.character(glue("HER{.}")))) %>% 
+  # Remove duplicates
+  group_by(registration_number) %>% 
+  arrange(desc(Lab_ID)) %>% 
+  slice(1) %>% 
+  ungroup()
+  
 ```
 
+## Duplicate check
+
+```{r}
+hfd_ped %>% 
+  group_by(registration_number) %>% 
+  filter(n() > 1) %>% 
+  arrange(registration_number) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, duplicate))
+
+```
 
 # Brangus
 
@@ -446,21 +567,44 @@ gather_brangus <-
 
 ```{r, message=FALSE, warning=FALSE}
 bg_ped <-
+  # Import raw pedigree
   list.files("~/Box Sync/HairShedding/ReportedData/IBBA", full.names = TRUE, pattern = "details") %>% 
   purrr::map(~ gather_brangus(file_path = .x)) %>% 
   reduce(bind_rows) %>% 
   janitor::remove_empty(which = "rows") %>% 
   group_by(registration_number) %>% 
-  fill(c("Lab_ID", "farm_id", "animal_id", "temp_id", "dob", "sex"), .direction = "downup") %>% 
+  fill(c("Lab_ID", "farm_id", "animal_id", "temp_id", "dob", "sex", "sire_reg", "dam_reg"), .direction = "downup") %>% 
   ungroup() %>% 
   distinct() %>% 
+  # Lab_ID search
+  id_search(
+    source_col = registration_number,
+    search_df = animal_table %>% 
+      filter(BC == "BG"),
+    search_col = breed_assoc_reg,
+    key_col = Lab_ID
+  ) %>%  
+  id_search(
+    source_col = registration_number,
+    search_df = animal_table %>% 
+      filter(BC == "BG"),
+    search_col = Reg,
+    key_col = Lab_ID
+  ) %>%   
   mutate_at(vars(contains("reg")), 
             ~ case_when(
               str_detect(., "^AAA") ~ .,
               is.na(.) ~ "0", 
               TRUE ~ as.character(glue("BGR{.}"))
-            )) %>% 
-  filter(registration_number != "0")
+             )) %>% 
+  filter(registration_number != "0") %>%
+  group_by(registration_number) %>%
+  arrange(registration_number, sire_reg, dam_reg, desc(Lab_ID)) %>%
+  slice(1) %>%
+  ungroup()
+
+
+
 ```
 
 * Ask Macee for pedigree of those still missing
@@ -477,6 +621,18 @@ cleaned %>%
   write_csv(here::here("data/derived_data/3gen/200414.BGR_reg.csv"), col_names = FALSE)
 ```
 
+## Duplicate check
+
+```{r}
+bg_ped %>% 
+  group_by(registration_number) %>% 
+  filter(n() > 1) %>% 
+  arrange(registration_number) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, duplicate)) %>% 
+  arrange(registration_number, sire_reg, dam_reg, desc(Lab_ID))
+
+```
 
 # Simmental
 
@@ -501,11 +657,46 @@ cleaned %>%
 
 ```{r, message=FALSE, warning=FALSE}
 sim_ped <-
+  # Import raw pedigree
   read_csv(here::here("data/raw_data/200409.SIM.three-gen-ped.csv"), col_types = cols(.default = col_character()), skip = 1, col_names = c("registration_number", "sire_reg", "dam_reg")) %>% 
+  # Re-append hair shedding ID metadata
   left_join(cleaned %>% 
               select(Lab_ID, registration_number, farm_id, animal_id, temp_id) %>% 
               distinct()) %>% 
-  select(Lab_ID, farm_id, animal_id, temp_id, everything())
+  # Lab_ID search
+  id_search(
+    source_col = registration_number,
+    search_df = animal_table %>% 
+      filter(BC == "SIM"),
+    search_col = breed_assoc_reg,
+    key_col = Lab_ID
+  ) %>%  
+  id_search(
+    source_col = registration_number,
+    search_df = animal_table %>% 
+      filter(BC == "SIM"),
+    search_col = Reg,
+    key_col = Lab_ID
+  ) %>%
+  select(Lab_ID, farm_id, animal_id, temp_id, everything()) %>% 
+  # Remove duplicates
+  group_by(registration_number) %>% 
+  arrange(registration_number, sire_reg, dam_reg, desc(Lab_ID)) %>% 
+  slice(1) %>% 
+  ungroup()
+```
+
+## Duplicate check
+
+```{r}
+sim_ped %>% 
+  group_by(registration_number) %>% 
+  filter(n() > 1) %>% 
+  arrange(registration_number) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, duplicate)) %>% 
+  arrange(registration_number, sire_reg, dam_reg, desc(Lab_ID))
+
 ```
 
 # Red Angus
@@ -526,7 +717,6 @@ cleaned %>%
 ## Three-generation pedigree sent by RAAA
 
 ```{r, message=FALSE, warning=FALSE}
-
 ran_var <-
   tribble(
   ~ reg_var, ~sire_var, ~ dam_var,
@@ -538,8 +728,12 @@ ran_var <-
   "ds_reg", "dss_reg", "dsd_reg", # mgs
   "dd_reg", "dds_reg", "ddd_reg" #mgd
 )
+```
 
+
+```{r, message=FALSE, warning=FALSE}
 ran_ped <-
+  # Import raw pedigree
   purrr::pmap(
     list(
       x = ran_var$reg_var,
@@ -562,7 +756,7 @@ ran_ped <-
   ) %>%
   reduce(bind_rows) %>% 
   filter(!is.na(registration_number)) %>%
-  # only send dam dob for some reason
+  # only sent dam dob for some reason
   left_join(
     read_excel(
       here::here(
@@ -584,6 +778,7 @@ ran_ped <-
       select(registration_number = `reg#`,
              sex = sex_a)
   ) %>%
+  # Re-append hair shedding ID metadata
   left_join(
     cleaned %>%
       left_join(animal_table %>%
@@ -599,7 +794,7 @@ ran_ped <-
   distinct() %>%
   janitor::remove_empty(which = c("rows")) %>%
   group_by(registration_number) %>%
-  fill(c("Lab_ID", "farm_id", "temp_id", "animal_id", "dob" ,"sex"), .direction = "downup") %>%
+  fill(c("Lab_ID", "farm_id", "temp_id", "animal_id", "dob" ,"sex", "sire_reg", "dam_reg"), .direction = "downup") %>%
   ungroup() %>%
   distinct() %>%
   mutate(dob = lubridate::mdy(dob),
@@ -609,6 +804,21 @@ ran_ped <-
            TRUE ~ sex
          ),
          source = "Red Angus Association of America") %>% 
+  # Lab_ID search
+  id_search(
+    source_col = registration_number,
+    search_df = animal_table %>% 
+      filter(BC == "ANR"),
+    search_col = breed_assoc_reg,
+    key_col = Lab_ID
+  ) %>%  
+  id_search(
+    source_col = registration_number,
+    search_df = animal_table %>% 
+      filter(BC == "ANR"),
+    search_col = Reg,
+    key_col = Lab_ID
+  ) %>%
   mutate_at(vars(contains("reg")), ~ if_else(is.na(.), "0", as.character(glue("RAN{.}"))))
 ```
 
@@ -637,6 +847,18 @@ ran_ped %>%
   )
 ```
 
+## Duplicate check
+
+```{r}
+ran_ped %>% 
+  group_by(registration_number) %>% 
+  filter(n() > 1) %>% 
+  arrange(registration_number) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, duplicate)) %>% 
+  arrange(registration_number, sire_reg, dam_reg, desc(Lab_ID))
+
+```
 
 # Angus + Angus in other breed associations
 
@@ -707,22 +929,52 @@ an_reg %<>%
 
 ```{r, eval=FALSE}
 an_reg %>% 
-   write_csv(here::here("data/derived_data/3gen/200413.AN_reg.csv"), col_names = FALSE)
+   write_csv(here::here("data/derived_data/3gen/200917.AN_reg.csv"), col_names = FALSE)
 ```
 
 ## Three-generation pedigree
 
 ```{r, message=FALSE, warning=FALSE}
 an_ped <-
+  # Import raw pedigree
   read_csv(here::here("data/derived_data/3gen/200413.AN_ped.csv")) %>% 
   rename(registration_number = full_reg) %>% 
+  # Re-append hair shedding ID metadata
   left_join(cleaned %>% 
               distinct(Lab_ID, farm_id, animal_id, temp_id)) %>% 
   group_by(registration_number) %>% 
-  fill(c("Lab_ID", "farm_id", "temp_id", "animal_id"), .direction = "downup") %>% 
+  fill(c("Lab_ID", "farm_id", "temp_id", "animal_id", "sire_reg", "dam_reg"), .direction = "downup") %>% 
   ungroup() %>% 
   distinct() %>% 
-  mutate(source = "American Angus Association")
+  mutate(source = "American Angus Association",
+         Reg = str_remove(registration_number, "AAA")) %>% 
+  # Lab_ID search
+  id_search(
+    source_col = Reg,
+    search_df = animal_table %>% 
+      filter(BC == "AN"),
+    search_col = breed_assoc_reg,
+    key_col = Lab_ID
+  ) %>%  
+  select(-Reg) %>% 
+  # Remove duplicates
+  group_by(registration_number) %>% 
+  arrange(registration_number, sire_reg, dam_reg, desc(Lab_ID)) %>% 
+  slice(1) %>% 
+  ungroup()
+```
+
+## Duplicate check
+
+```{r}
+an_ped %>% 
+  group_by(registration_number) %>% 
+  filter(n() > 1) %>% 
+  arrange(registration_number) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, duplicate)) %>% 
+  arrange(registration_number, sire_reg, dam_reg, desc(Lab_ID))
+
 ```
 
 # Join all pedigrees
@@ -1004,6 +1256,15 @@ full_ped %>%
   group_by(dam_reg) %>% 
   tally(sort = TRUE)
 ```
+
+# Duplicate check
+
+```{r}
+full_ped %>% 
+  group_by(full_reg) %>% 
+  filter(n() > 1)
+```
+
 
 # Export
 
