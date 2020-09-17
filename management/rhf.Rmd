@@ -283,9 +283,9 @@ anr_found <-
   no_reg %>% 
   select(Animal_ID) %>% 
   left_join(anr %>% 
-              select(Animal_ID = animal_id, Age = birth_date, RegistrationNumber = reg_number)) %>% 
+              select(Animal_ID = animal_id, Age = birth_date, RegistrationNumber = reg_number, Color = color)) %>% 
   filter(!is.na(RegistrationNumber)) %>% 
-  mutate(Breed_code = "ANR", RegistrationNumber = as.character(RegistrationNumber), Color = "RED")
+  mutate(Breed_code = "ANR", RegistrationNumber = as.character(RegistrationNumber), Color = if_else(Color == 1, "RED", "BLACK"))
 ```
 
 ```{r}

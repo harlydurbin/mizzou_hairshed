@@ -234,7 +234,7 @@ mutate(
   color = 
     case_when(
       # If BC is AN or color is misspelled, change it to BLACK
-      is.na(breed_code) & breed_code == "AN" | color %in% c("BLK", "8LK") ~
+      is.na(breed_code) & breed_code == "AN" | color %in% c("BLK","B", "8LK") ~
         "BLACK",
       # If BC is HFD or misspelled, RED WHITE FACE
       is.na(breed_code) & breed_code == "HFD" | color %in% c("REDWHITEFACE", "R/WF", "RWF") ~
@@ -245,8 +245,10 @@ mutate(
         "RED SPOTTED",
       color %in% c("SMOKE") ~ 
         "GREY",
-      color %in% c("ED") ~ 
+      color %in% c("ED", "R") ~ 
         "RED",
+      color %in% c("Y") ~ 
+        "YELLOW"
       # Color codes from Arkansas, no idea what they're supposed to mean
       color %in% c("GB", "BM", "RM", "YM", "BB", "RB", "RM") ~ NA_character_,
       TRUE ~ 
