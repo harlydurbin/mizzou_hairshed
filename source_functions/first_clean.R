@@ -173,7 +173,6 @@ first_clean <- function(hs_id, ignore = NULL) {
     
   } else {
     first_clean %>%
-      #purrr::map(~ dplyr::filter(.x, !is.na(hair_score))) %>%
       # Use any_of in case one or more columns don't exist
       purrr::map( ~ dplyr::select(.x, any_of(
         c("registration_number", "animal_id", "barcode")
@@ -254,10 +253,20 @@ first_clean <- function(hs_id, ignore = NULL) {
         search_col = breed_assoc_reg,
         key_col = Lab_ID
       ) %>%
-      dplyr::select(-registration_number2) %>% 
+      # If more than 1 Lab_ID match and one of them is from the RAAA/ASA dump 
+      # or Ireland, use the older Lab ID
       dplyr::group_by(animal_id, registration_number, barcode) %>%
+      dplyr::mutate(helper_col = 
+               dplyr::case_when(
+                 dplyr::n_distinct(Lab_ID) > 1 &
+                   stringr::str_detect(Comment, "RAAA|ASA|Teagasc") ~ "DROP"
+               )) %>% 
+      dplyr::filter(helper_col != "DROP") %>% 
+      # For remaining animals with more than one Lab ID match,
+      # use the more recent Lab ID
       dplyr::filter(Lab_ID == max(Lab_ID) | is.na(Lab_ID)) %>%
       dplyr::ungroup() %>%
+      dplyr::select(-registration_number2, -helper_col) %>% 
       dplyr::mutate(temp_id = row_number())
   }
   
