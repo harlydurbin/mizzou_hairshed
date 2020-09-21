@@ -20,3 +20,4 @@ log/slurmout/*
 log/snakemake_log/*
 log/import_join_clean/*.html
 *.ftpconfig
+html/3gen.html
