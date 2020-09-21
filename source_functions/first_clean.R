@@ -1,3 +1,7 @@
+source(here::here("source_functions/fncols.R"))
+source(here::here("source_functions/coalesce_join.R"))
+source(here::here("source_functions/iterative_id_search.R"))
+
 
 first_clean <- function(hs_id, ignore = NULL) {
   
@@ -33,7 +37,6 @@ first_clean <- function(hs_id, ignore = NULL) {
   # Creating a list of files
   # Requirements for this to work: semi-standardized column names
   raw <-
-    raw <-
     combine(
       list.files(path = "~/Box Sync/HairShedding/ReportedData/2016",
                  full.names = TRUE,
@@ -253,6 +256,8 @@ first_clean <- function(hs_id, ignore = NULL) {
         search_col = breed_assoc_reg,
         key_col = Lab_ID
       ) %>%
+      dplyr::left_join(animal_table %>% 
+                         select(Lab_ID, Comment)) %>% 
       # If more than 1 Lab_ID match and one of them is from the RAAA/ASA dump 
       # or Ireland, use the older Lab ID
       dplyr::group_by(animal_id, registration_number, barcode) %>%
@@ -261,12 +266,12 @@ first_clean <- function(hs_id, ignore = NULL) {
                  dplyr::n_distinct(Lab_ID) > 1 &
                    stringr::str_detect(Comment, "RAAA|ASA|Teagasc") ~ "DROP"
                )) %>% 
-      dplyr::filter(helper_col != "DROP") %>% 
+      dplyr::filter(is.na(helper_col)) %>% 
       # For remaining animals with more than one Lab ID match,
       # use the more recent Lab ID
       dplyr::filter(Lab_ID == max(Lab_ID) | is.na(Lab_ID)) %>%
       dplyr::ungroup() %>%
-      dplyr::select(-registration_number2, -helper_col) %>% 
+      dplyr::select(-registration_number2, -helper_col, -Comment) %>% 
       dplyr::mutate(temp_id = row_number())
   }
   

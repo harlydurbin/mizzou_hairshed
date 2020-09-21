@@ -21,7 +21,6 @@ library(assertr)
 source(here::here("source_functions/coalesce_join.R"))
 source(here::here("source_functions/find_dup.R"))
 source(here::here("source_functions/iterative_id_search.R"))
-source(here::here("source_functions/fncols.R"))
 source(here::here("source_functions/first_clean.R"))
 source(here::here("source_functions/impute_age.R"))
 
