@@ -43,6 +43,8 @@ df <-
                     as.character(Reg)
                 ),
                 DOB = stringr::str_remove(DOB, " 00:00:00"),
-                DOB = lubridate::mdy(DOB))
+                DOB = lubridate::mdy(DOB),
+                DOB = if_else(DOB %in% c(lubridate::ymd("1999-12-30"), lubridate::ymd("1899-12-30")), NA_Date_, DOB),
+                )
 return(df)
 }
