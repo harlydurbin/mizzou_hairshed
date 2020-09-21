@@ -546,6 +546,28 @@ ua_clean <-
   ungroup()
 ```
 
+# If more than one breed code, call it CROS
+
+```{r}
+ua_clean %<>% 
+  mutate(breed_code = 
+           case_when(
+             breed_code %in% c("Hereford", "HFD") ~ "HFD",
+             breed_code %in% c("GEL", "BAL") ~ "GEL",
+             breed_code %in% c("SIM", "SIMAN") ~ "SIM",
+             TRUE ~ breed_code
+           )) %>% 
+  group_by(registration_number, farm_id, Lab_ID) %>% 
+  mutate(breed_code = 
+           case_when(
+             n_distinct(breed_code) > 1 ~ "CROS",
+             TRUE ~ breed_code
+           )) %>% 
+  ungroup()
+```
+
+
+# Export 
 
 ```{r}
 ua_clean %>% 
