@@ -178,7 +178,7 @@ first_clean <- function(hs_id, ignore = NULL) {
     first_clean %>%
       # Use any_of in case one or more columns don't exist
       purrr::map( ~ dplyr::select(.x, any_of(
-        c("registration_number", "animal_id", "barcode")
+        c("registration_number", "animal_id", "barcode", "farm_id", "breed_code")
       ))) %>%
       # Add columns if they don't exist
       purrr::map(~ fncols(
@@ -190,9 +190,20 @@ first_clean <- function(hs_id, ignore = NULL) {
       purrr::map( ~ mutate_all(.x, ~ str_remove_all(., "[[:space:]]|[[:punct:]]"))) %>%
       purrr::reduce(coalesce_join, by = c("animal_id")) %>%
       dplyr::distinct() %>%
-      dplyr::mutate(registration_number2 = if_else(str_detect(registration_number, "^6"),
-                                                   glue::glue("BIR{registration_number}"),
-                                                   registration_number)) %>% 
+      dplyr::mutate(
+        # Add Gelbvieh prefixes for Gelbvieh producers
+        registration_number = case_when(
+          farm_id %in% c("J5C", "NOF", "TPF", "YDG") &
+            breed_code == "GEL" &
+            !stringr::str_detect(registration_number, "^AMGV") ~ as.character(glue::glue("AMGV{registration_number}")),
+          TRUE ~ registration_number
+        ),
+        registration_number2 = if_else(
+          str_detect(registration_number, "^6"),
+          glue::glue("BIR{registration_number}"),
+          registration_number
+        )
+      ) %>% 
       # registration_number --> Reg
       id_search(
         source_col = registration_number,
@@ -276,7 +287,7 @@ first_clean <- function(hs_id, ignore = NULL) {
   }
   
   key %<>% 
-    select(-one_of("farm_id"))
+    select(-one_of("farm_id", "breed_code"))
     
   print(glue::glue("{hs_id}: finished creating key")) 
   

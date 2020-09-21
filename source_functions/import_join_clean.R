@@ -333,3 +333,14 @@ cleaned %>%
   left_join(animal_table)
 
 print("Exported cleaned data")
+
+
+now <- 
+  as.character(lubridate::today()) %>% 
+  stringr::str_remove_all(., "-")
+
+rmarkdown::render(input = here::here("source_functions/sanity_check.Rmd"),
+                  output_file = here::here(glue::glue("log/import_join_clean/{now}.sanity_check.html")))
+
+print("Rendered sanity check")
+

@@ -101,9 +101,13 @@ mutate_all: changed one value (1%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 187 new matches, 79 still unmatched
 Found 0 new matches, 79 still unmatched
 Found 0 new matches, 79 still unmatched
@@ -115,7 +119,7 @@ Found 0 new matches, 79 still unmatched
 Found 0 new matches, 79 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 BSG: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -166,9 +170,13 @@ mutate_all: changed 5 values (4%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 131 new matches, 10 still unmatched
 Found 0 new matches, 10 still unmatched
 Found 0 new matches, 10 still unmatched
@@ -180,7 +188,7 @@ Found 0 new matches, 10 still unmatched
 Found 0 new matches, 10 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 CMF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -235,12 +243,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 202 new matches, 1 still unmatched
 Found 0 new matches, 1 still unmatched
 Found 0 new matches, 1 still unmatched
@@ -252,7 +266,7 @@ Found 0 new matches, 1 still unmatched
 Found 0 new matches, 1 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 DPH: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -306,7 +320,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 DRR: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -355,12 +369,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 43 new matches, 9 still unmatched
 Found 0 new matches, 9 still unmatched
 Found 0 new matches, 9 still unmatched
@@ -372,7 +392,7 @@ Found 0 new matches, 9 still unmatched
 Found 0 new matches, 9 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 EKF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -422,6 +442,8 @@ mutate_all: changed one value (2%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 60 new matches, 3 still unmatched
 Found 0 new matches, 3 still unmatched
 Found 0 new matches, 3 still unmatched
@@ -433,7 +455,7 @@ Found 0 new matches, 3 still unmatched
 Found 0 new matches, 3 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 FAV: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -481,9 +503,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 79 new matches, 3 still unmatched
 Found 0 new matches, 3 still unmatched
 Found 0 new matches, 3 still unmatched
@@ -495,7 +521,7 @@ Found 0 new matches, 3 still unmatched
 Found 0 new matches, 3 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 FCF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -550,12 +576,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 405 new matches, 50 still unmatched
 Found 8 new matches, 42 still unmatched
 Found 19 new matches, 23 still unmatched
@@ -567,7 +599,7 @@ Found 0 new matches, 23 still unmatched
 Found 0 new matches, 23 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 FHC: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -621,9 +653,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 29 new matches, 17 still unmatched
 Found 0 new matches, 17 still unmatched
 Found 0 new matches, 17 still unmatched
@@ -635,7 +671,7 @@ Found 0 new matches, 17 still unmatched
 Found 0 new matches, 17 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 FSR: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -686,9 +722,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 245 new matches, 31 still unmatched
 Found 0 new matches, 31 still unmatched
 Found 0 new matches, 31 still unmatched
@@ -700,7 +740,7 @@ Found 0 new matches, 31 still unmatched
 Found 0 new matches, 31 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 FTF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -755,12 +795,18 @@ mutate_all: changed 11 values (1%) of 'registration_number' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 1067 new matches, 79 still unmatched
 Found 0 new matches, 79 still unmatched
 Found 0 new matches, 79 still unmatched
@@ -772,7 +818,7 @@ Found 0 new matches, 73 still unmatched
 Found 0 new matches, 73 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 GIB: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -826,9 +872,13 @@ mutate_all: changed 3 values (5%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 44 new matches, 21 still unmatched
 Found 0 new matches, 21 still unmatched
 Found 0 new matches, 21 still unmatched
@@ -840,7 +890,7 @@ Found 0 new matches, 21 still unmatched
 Found 0 new matches, 21 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 GOF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -891,9 +941,13 @@ mutate_all: changed one value (<1%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 215 new matches, 12 still unmatched
 Found 10 new matches, 2 still unmatched
 Found 1 new matches, 1 still unmatched
@@ -905,7 +959,7 @@ Found 0 new matches, 1 still unmatched
 Found 0 new matches, 1 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 HAF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -956,9 +1010,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 148 new matches, 8 still unmatched
 Found 4 new matches, 4 still unmatched
 Found 0 new matches, 4 still unmatched
@@ -970,7 +1028,7 @@ Found 0 new matches, 4 still unmatched
 Found 0 new matches, 4 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 HAR: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1025,12 +1083,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 102 new matches, 7 still unmatched
 Found 0 new matches, 7 still unmatched
 Found 0 new matches, 7 still unmatched
@@ -1042,7 +1106,7 @@ Found 0 new matches, 7 still unmatched
 Found 0 new matches, 7 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 HBC: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1100,12 +1164,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 11 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -1117,7 +1187,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 HDF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1179,15 +1249,23 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 218 new matches, 26 still unmatched
 Found 1 new matches, 25 still unmatched
 Found 0 new matches, 25 still unmatched
@@ -1199,7 +1277,7 @@ Found 0 new matches, 25 still unmatched
 Found 0 new matches, 25 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 HLC: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1264,27 +1342,35 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
-Found 9 new matches, 99 still unmatched
-Found 0 new matches, 99 still unmatched
-Found 84 new matches, 15 still unmatched
-Found 0 new matches, 15 still unmatched
-Found 0 new matches, 15 still unmatched
-Found 0 new matches, 15 still unmatched
-Found 12 new matches, 3 still unmatched
+* NA -> ...3
+* NA -> ...4
+Found 105 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
+Found 0 new matches, 3 still unmatched
 Found 0 new matches, 3 still unmatched
 Found 0 new matches, 3 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 J5C: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1306,19 +1392,19 @@ ungroup: no grouping variables
 [90m3[39m J5C   Duplicate barcode                 0
 [90m4[39m J5C   Duplicate animal ID               0
 [90m5[39m J5C   Duplicate Lab ID                  0
-Found 76 new matches, 0 still unmatched
-Found 83 new matches, 0 still unmatched
-Found 99 new matches, 0 still unmatched
-Found 3 new matches, 85 still unmatched
-Found 76 new matches, 0 still unmatched
+Found 5 new matches, 71 still unmatched
+Found 5 new matches, 78 still unmatched
+Found 6 new matches, 93 still unmatched
+Found 88 new matches, 0 still unmatched
+Found 2 new matches, 74 still unmatched
+Found 71 new matches, 0 still unmatched
+Found 71 new matches, 7 still unmatched
+Found 91 new matches, 2 still unmatched
 Found 0 new matches, 0 still unmatched
+Found 74 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
-Found 0 new matches, 0 still unmatched
-Found 85 new matches, 0 still unmatched
-Found 0 new matches, 0 still unmatched
-Found 0 new matches, 0 still unmatched
-Found 0 new matches, 0 still unmatched
-Found 0 new matches, 0 still unmatched
+Found 7 new matches, 0 still unmatched
+Found 2 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Joining, by = "temp_id"
@@ -1349,15 +1435,23 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 69 new matches, 36 still unmatched
 Found 0 new matches, 36 still unmatched
 Found 0 new matches, 36 still unmatched
@@ -1369,7 +1463,7 @@ Found 0 new matches, 36 still unmatched
 Found 0 new matches, 36 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 KCF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1434,15 +1528,23 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 40 new matches, 17 still unmatched
 Found 0 new matches, 17 still unmatched
 Found 0 new matches, 17 still unmatched
@@ -1454,7 +1556,7 @@ Found 0 new matches, 17 still unmatched
 Found 0 new matches, 17 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 KKF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1511,7 +1613,7 @@ Found 0 new matches, 3 still unmatched
 Found 0 new matches, 3 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 KLF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1552,6 +1654,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 48 new matches, 15 still unmatched
 Found 0 new matches, 15 still unmatched
 Found 0 new matches, 15 still unmatched
@@ -1563,7 +1667,7 @@ Found 0 new matches, 15 still unmatched
 Found 0 new matches, 15 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 L3F: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1615,12 +1719,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 107 new matches, 24 still unmatched
 Found 3 new matches, 21 still unmatched
 Found 0 new matches, 21 still unmatched
@@ -1632,7 +1742,7 @@ Found 0 new matches, 21 still unmatched
 Found 0 new matches, 21 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 LAF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1682,6 +1792,8 @@ mutate_all: changed 8 values (6%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 144 new matches, 1 still unmatched
 Found 1 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -1693,7 +1805,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 LEF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1741,7 +1853,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 NOF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1790,12 +1902,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 472 new matches, 47 still unmatched
 Found 3 new matches, 44 still unmatched
 Found 1 new matches, 43 still unmatched
@@ -1807,7 +1925,7 @@ Found 0 new matches, 43 still unmatched
 Found 0 new matches, 43 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 OHF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1857,6 +1975,8 @@ mutate_all: changed 22 values (6%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 373 new matches, 11 still unmatched
 Found 3 new matches, 8 still unmatched
 Found 0 new matches, 8 still unmatched
@@ -1868,7 +1988,7 @@ Found 0 new matches, 8 still unmatched
 Found 0 new matches, 8 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 OHG: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1916,9 +2036,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 119 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -1930,7 +2054,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 PVF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -1981,9 +2105,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 100 new matches, 21 still unmatched
 Found 1 new matches, 20 still unmatched
 Found 0 new matches, 20 still unmatched
@@ -1995,7 +2123,7 @@ Found 0 new matches, 20 still unmatched
 Found 0 new matches, 20 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 PVR: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2046,9 +2174,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 462 new matches, 8 still unmatched
 Found 0 new matches, 8 still unmatched
 Found 0 new matches, 8 still unmatched
@@ -2060,7 +2192,7 @@ Found 0 new matches, 8 still unmatched
 Found 0 new matches, 8 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 RAAF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2119,15 +2251,23 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 158 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -2139,7 +2279,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 RCF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2204,15 +2344,23 @@ mutate_all: changed 31 values (7%) of 'registration_number' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 725 new matches, 87 still unmatched
 Found 0 new matches, 87 still unmatched
 Found 0 new matches, 87 still unmatched
@@ -2224,7 +2372,7 @@ Found 0 new matches, 87 still unmatched
 Found 0 new matches, 87 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 RHF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2281,9 +2429,13 @@ mutate_all: changed 28 values (52%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 25 new matches, 42 still unmatched
 Found 22 new matches, 20 still unmatched
 Found 0 new matches, 20 still unmatched
@@ -2295,7 +2447,7 @@ Found 0 new matches, 20 still unmatched
 Found 0 new matches, 20 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 RJF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2346,9 +2498,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 59 new matches, 2 still unmatched
 Found 0 new matches, 2 still unmatched
 Found 0 new matches, 2 still unmatched
@@ -2360,7 +2516,7 @@ Found 0 new matches, 2 still unmatched
 Found 0 new matches, 2 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 SBF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2415,12 +2571,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 102 new matches, 1 still unmatched
 Found 0 new matches, 1 still unmatched
 Found 1 new matches, 0 still unmatched
@@ -2432,7 +2594,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 SFF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2486,9 +2648,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 52 new matches, 36 still unmatched
 Found 0 new matches, 36 still unmatched
 Found 0 new matches, 36 still unmatched
@@ -2500,7 +2666,7 @@ Found 0 new matches, 36 still unmatched
 Found 0 new matches, 36 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 SLF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2559,15 +2725,23 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 265 new matches, 53 still unmatched
 Found 0 new matches, 53 still unmatched
 Found 0 new matches, 53 still unmatched
@@ -2579,7 +2753,7 @@ Found 0 new matches, 53 still unmatched
 Found 0 new matches, 53 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 TBC: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2640,24 +2814,30 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
-Found 10 new matches, 71 still unmatched
-Found 0 new matches, 71 still unmatched
-Found 70 new matches, 1 still unmatched
-Found 0 new matches, 1 still unmatched
-Found 0 new matches, 1 still unmatched
-Found 0 new matches, 1 still unmatched
-Found 1 new matches, 0 still unmatched
+* NA -> ...3
+* NA -> ...4
+Found 81 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
+Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 TPF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2679,14 +2859,14 @@ ungroup: no grouping variables
 [90m3[39m TPF   Duplicate barcode                 0
 [90m4[39m TPF   Duplicate animal ID               0
 [90m5[39m TPF   Duplicate Lab ID                  0
+Found 0 new matches, 63 still unmatched
+Found 0 new matches, 63 still unmatched
+Found 0 new matches, 55 still unmatched
+Found 46 new matches, 0 still unmatched
 Found 63 new matches, 0 still unmatched
 Found 63 new matches, 0 still unmatched
 Found 55 new matches, 0 still unmatched
-Found 8 new matches, 38 still unmatched
 Found 0 new matches, 0 still unmatched
-Found 0 new matches, 0 still unmatched
-Found 0 new matches, 0 still unmatched
-Found 38 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -2801,12 +2981,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 117 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -2818,7 +3004,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 UTA: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2872,9 +3058,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 22 new matches, 18 still unmatched
 Found 0 new matches, 18 still unmatched
 Found 0 new matches, 18 still unmatched
@@ -2886,7 +3076,7 @@ Found 0 new matches, 18 still unmatched
 Found 0 new matches, 18 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 WRF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -2941,12 +3131,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 120 new matches, 68 still unmatched
 Found 0 new matches, 68 still unmatched
 Found 0 new matches, 68 still unmatched
@@ -2958,7 +3154,7 @@ Found 0 new matches, 68 still unmatched
 Found 0 new matches, 68 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 WVU: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3020,18 +3216,26 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
-Found 6 new matches, 35 still unmatched
-Found 1 new matches, 34 still unmatched
-Found 34 new matches, 0 still unmatched
+* NA -> ...3
+* NA -> ...4
+Found 39 new matches, 2 still unmatched
+Found 1 new matches, 1 still unmatched
+Found 1 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -3040,7 +3244,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 YDG: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3062,16 +3266,16 @@ ungroup: no grouping variables
 [90m3[39m YDG   Duplicate barcode                 0
 [90m4[39m YDG   Duplicate animal ID               0
 [90m5[39m YDG   Duplicate Lab ID                  0
-Found 27 new matches, 1 still unmatched
-Found 33 new matches, 1 still unmatched
-Found 35 new matches, 1 still unmatched
-Found 5 new matches, 25 still unmatched
-Found 23 new matches, 1 still unmatched
-Found 1 new matches, 0 still unmatched
-Found 1 new matches, 0 still unmatched
-Found 1 new matches, 0 still unmatched
+Found 3 new matches, 25 still unmatched
+Found 3 new matches, 31 still unmatched
+Found 3 new matches, 33 still unmatched
+Found 29 new matches, 1 still unmatched
+Found 5 new matches, 19 still unmatched
 Found 25 new matches, 0 still unmatched
+Found 31 new matches, 0 still unmatched
+Found 33 new matches, 0 still unmatched
 Found 1 new matches, 0 still unmatched
+Found 19 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -3097,9 +3301,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 41 new matches, 184 still unmatched
 Found 147 new matches, 37 still unmatched
 Found 0 new matches, 37 still unmatched
@@ -3111,7 +3319,7 @@ Found 0 new matches, 37 still unmatched
 Found 0 new matches, 37 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 KAF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3162,9 +3370,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 348 new matches, 85 still unmatched
 Found 11 new matches, 74 still unmatched
 Found 0 new matches, 74 still unmatched
@@ -3176,7 +3388,7 @@ Found 0 new matches, 74 still unmatched
 Found 0 new matches, 74 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 RCR: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3231,12 +3443,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 40 new matches, 16 still unmatched
 Found 0 new matches, 16 still unmatched
 Found 0 new matches, 16 still unmatched
@@ -3248,7 +3466,7 @@ Found 0 new matches, 16 still unmatched
 Found 0 new matches, 16 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 ROR: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3306,12 +3524,18 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 127 new matches, 129 still unmatched
 Found 1 new matches, 128 still unmatched
 Found 0 new matches, 128 still unmatched
@@ -3323,7 +3547,7 @@ Found 0 new matches, 128 still unmatched
 Found 0 new matches, 128 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 UMF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3377,7 +3601,7 @@ Found 0 new matches, 172 still unmatched
 Found 0 new matches, 172 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 WAA: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3418,6 +3642,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 56 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -3429,7 +3655,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 BAB: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3477,7 +3703,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 BMA: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3522,7 +3748,7 @@ Found 0 new matches, 1 still unmatched
 Found 0 new matches, 1 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 BRB: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3577,6 +3803,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 982 new matches, 14 still unmatched
 Found 0 new matches, 14 still unmatched
 Found 10 new matches, 4 still unmatched
@@ -3588,7 +3816,7 @@ Found 0 new matches, 4 still unmatched
 Found 0 new matches, 4 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 CKC: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3632,6 +3860,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 43 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -3643,7 +3873,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 CMA: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3687,6 +3917,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 121 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -3698,7 +3930,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 CRC: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3746,7 +3978,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 GCC: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3787,6 +4019,8 @@ mutate_all: changed 25 values (43%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 58 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -3798,7 +4032,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 GEB: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3846,7 +4080,7 @@ Found 0 new matches, 1 still unmatched
 Found 0 new matches, 1 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 HJD: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3891,7 +4125,7 @@ Found 0 new matches, 13 still unmatched
 Found 0 new matches, 13 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 HRF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3932,6 +4166,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 46 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -3943,7 +4179,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 JKH: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -3987,6 +4223,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 60 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -3998,7 +4236,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 SFB: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4042,6 +4280,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 27 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -4053,7 +4293,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 SPS: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4101,9 +4341,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 32 new matches, 3 still unmatched
 Found 2 new matches, 1 still unmatched
 Found 0 new matches, 1 still unmatched
@@ -4115,7 +4359,7 @@ Found 0 new matches, 1 still unmatched
 Found 0 new matches, 1 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 SRA: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4162,6 +4406,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 105 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -4173,7 +4419,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 SSS: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4217,6 +4463,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 149 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -4228,7 +4476,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 SUCC: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4272,6 +4520,8 @@ mutate_all: changed 11 values (11%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 104 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -4283,7 +4533,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 SVF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4331,9 +4581,13 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 100 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -4345,7 +4599,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 TCF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4392,6 +4646,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 16 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -4403,7 +4659,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 TJMB: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4451,7 +4707,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 TMA: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4492,6 +4748,8 @@ mutate_all: changed 2 values (4%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 50 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -4503,7 +4761,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 TRR: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4549,6 +4807,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 0 new matches, 190 still unmatched
 Found 0 new matches, 190 still unmatched
 Found 0 new matches, 190 still unmatched
@@ -4560,7 +4820,7 @@ Found 0 new matches, 190 still unmatched
 Found 0 new matches, 190 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 UMSF: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4608,7 +4868,7 @@ Found 0 new matches, 4 still unmatched
 Found 0 new matches, 4 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 BCC: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4649,6 +4909,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 61 new matches, 21 still unmatched
 Found 0 new matches, 21 still unmatched
 Found 0 new matches, 21 still unmatched
@@ -4660,7 +4922,7 @@ Found 0 new matches, 21 still unmatched
 Found 0 new matches, 21 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 KSB: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4708,6 +4970,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 70 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -4719,7 +4983,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 LRB: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4763,6 +5027,8 @@ mutate_all: changed 21 values (49%) of 'animal_id' (0 new NA)
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 43 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -4774,7 +5040,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 MBMB: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4818,6 +5084,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 29 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -4829,7 +5097,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 THB: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4873,6 +5141,8 @@ mutate_all: no changes
 New names:
 * NA -> ...1
 * NA -> ...2
+* NA -> ...3
+* NA -> ...4
 Found 34 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
@@ -4884,7 +5154,7 @@ Found 0 new matches, 0 still unmatched
 Found 0 new matches, 0 still unmatched
 select: dropped 39 variables (BC, Reg, NAAB, AIPL, Name, …)
 Joining, by = "Lab_ID"
-select: no changes
+select: dropped 2 variables (farm_id, breed_code)
 WET: finished creating key
 group_by: one grouping variable (registration_number)
 filter (grouped): removed all rows (100%)
@@ -4934,8 +5204,8 @@ left_join: added one column (dob)
            >                 =========
            > rows total        32,019
 mutate: converted 'age' from character to integer (2715 fewer NA)
-        new variable 'age_ped' (integer) with 4,092 unique values and 10% NA
-        new variable 'age_class' (double) with 22 unique values and 11% NA
+        new variable 'age_ped' (integer) with 4,098 unique values and 11% NA
+        new variable 'age_class' (double) with 22 unique values and 12% NA
 filter: removed 276 rows (1%), 31,743 rows remaining
 group_by: 3 grouping variables (farm_id, temp_id, year)
 fill (grouped): changed one value (<1%) of 'age' (1 fewer NA)
@@ -4951,7 +5221,7 @@ group_by: 2 grouping variables (farm_id, temp_id)
 filter (grouped): removed 8 rows (<1%), 36,903 rows remaining
 ungroup: no grouping variables
 [1] "Cleaning breed codes"
-mutate: changed 282 values (1%) of 'breed_code' (0 new NA)
+mutate: changed 5 values (<1%) of 'breed_code' (0 new NA)
 [1] "Cleaning color codes"
 mutate: changed 8,496 values (23%) of 'color' (70 new NA)
 group_by: 2 grouping variables (farm_id, temp_id)
@@ -5157,3 +5427,84 @@ left_join: added 40 columns (BC, Reg, NAAB, AIPL, Name, …)
 [90m#   different_international_info [3m[90m<int>[90m[23m, sire_incorrect [3m[90m<int>[90m[23m,[39m
 [90m#   dam_incorrect [3m[90m<int>[90m[23m, date_updated [3m[90m<chr>[90m[23m[39m
 [1] "Exported cleaned data"
+
+
+processing file: sanity_check.Rmd
+  |                                                                              |                                                                      |   0%  |                                                                              |...                                                                   |   4%
+  ordinary text without R code
+
+  |                                                                              |.....                                                                 |   7%
+label: setup (with options) 
+List of 1
+ $ include: logi FALSE
+
+  |                                                                              |........                                                              |  11%
+  ordinary text without R code
+
+  |                                                                              |..........                                                            |  15%
+label: unnamed-chunk-1
+  |                                                                              |.............                                                         |  19%
+  ordinary text without R code
+
+  |                                                                              |................                                                      |  22%
+label: unnamed-chunk-2
+  |                                                                              |..................                                                    |  26%
+  ordinary text without R code
+
+  |                                                                              |.....................                                                 |  30%
+label: unnamed-chunk-3
+  |                                                                              |.......................                                               |  33%
+  ordinary text without R code
+
+  |                                                                              |..........................                                            |  37%
+label: unnamed-chunk-4
+  |                                                                              |.............................                                         |  41%
+  ordinary text without R code
+
+  |                                                                              |...............................                                       |  44%
+label: unnamed-chunk-5
+  |                                                                              |..................................                                    |  48%
+  ordinary text without R code
+
+  |                                                                              |....................................                                  |  52%
+label: unnamed-chunk-6
+  |                                                                              |.......................................                               |  56%
+  ordinary text without R code
+
+  |                                                                              |.........................................                             |  59%
+label: unnamed-chunk-7
+  |                                                                              |............................................                          |  63%
+  ordinary text without R code
+
+  |                                                                              |...............................................                       |  67%
+label: unnamed-chunk-8
+  |                                                                              |.................................................                     |  70%
+  ordinary text without R code
+
+  |                                                                              |....................................................                  |  74%
+label: unnamed-chunk-9
+  |                                                                              |......................................................                |  78%
+  ordinary text without R code
+
+  |                                                                              |.........................................................             |  81%
+label: unnamed-chunk-10
+  |                                                                              |............................................................          |  85%
+  ordinary text without R code
+
+  |                                                                              |..............................................................        |  89%
+label: unnamed-chunk-11
+  |                                                                              |.................................................................     |  93%
+  ordinary text without R code
+
+  |                                                                              |...................................................................   |  96%
+label: unnamed-chunk-12
+  |                                                                              |......................................................................| 100%
+  ordinary text without R code
+
+
+output file: sanity_check.knit.md
+
+/Applications/RStudio.app/Contents/MacOS/pandoc/pandoc +RTS -K512m -RTS sanity_check.utf8.md --to html4 --from markdown+autolink_bare_uris+tex_math_single_backslash --output /Users/harlyjanedurbin/googledrive/research_extension/mizzou_hairshed/log/import_join_clean/20200921.sanity_check.html --email-obfuscation none --self-contained --standalone --section-divs --template /Library/Frameworks/R.framework/Versions/4.0/Resources/library/rmarkdown/rmd/h/default.html --no-highlight --variable highlightjs=1 --variable 'theme:bootstrap' --include-in-header /var/folders/7h/_xszd0lx7wzctr3r7zhc3hs40000gn/T//RtmptfDSw6/rmarkdown-str21bb3dd2ae3e.html --mathjax --variable 'mathjax-url:https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML' --lua-filter /Library/Frameworks/R.framework/Versions/4.0/Resources/library/rmarkdown/rmd/lua/pagebreak.lua --lua-filter /Library/Frameworks/R.framework/Versions/4.0/Resources/library/rmarkdown/rmd/lua/latex-div.lua --variable code_folding=show --variable code_menu=1 
+
+Output created: log/import_join_clean/20200921.sanity_check.html
+[1] "Rendered sanity check"

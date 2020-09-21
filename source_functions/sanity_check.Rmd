@@ -1,0 +1,110 @@
+---
+title: "Sanity check"
+author: "Harly Durbin"
+output:
+  html_document:
+    df_print: paged
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(tidyr)
+```
+
+```{r}
+glue::glue("Current date and time is {lubridate::now()}")
+```
+
+```{r}
+animal_table <- read_rds(here::here("data/raw_data/import_join_clean/animal_table.rds"))
+```
+
+```{r}
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
+
+# Sanity check `animal_table`
+
+## Erroneous DOB values
+
+```{r}
+animal_table %>% 
+  filter(DOB == lubridate::ymd("1899-12-30"))
+```
+
+```{r}
+animal_table %>% 
+  filter(DOB == lubridate::ymd("1999-12-30"))
+```
+
+# Sanity check `cleaned`
+
+## Multiple Lab IDs
+
+```{r}
+cleaned %>% 
+  group_by(farm_id, temp_id) %>% 
+  filter(n_distinct(Lab_ID) > 1)
+```
+
+## Multiple breed codes
+
+```{r}
+cleaned %>% 
+  group_by(farm_id, temp_id) %>% 
+  filter(n_distinct(breed_code) > 1) %>% 
+  distinct(farm_id, temp_id)
+```
+
+## Breed code in `cleaned` and Animal table breed code do not match
+
+```{r}
+cleaned %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  distinct(farm_id, animal_id, registration_number, breed_code, Lab_ID) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, BC, Reg, Comment)) %>%
+  filter(breed_code != BC) %>% 
+  arrange(farm_id, animal_id)
+```
+
+```{r}
+cleaned %>% 
+  filter(!is.na(Lab_ID)) %>% 
+  distinct(farm_id, animal_id, registration_number, breed_code, Lab_ID) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, BC, Reg, Comment)) %>%
+  filter(breed_code != BC) %>% 
+  group_by(farm_id) %>% 
+  tally(sort = TRUE)
+```
+
+## Erroneous ages and DOBs
+
+```{r}
+cleaned %>% 
+  distinct(farm_id, temp_id, dob) %>% 
+  group_by(dob) %>% 
+  tally(sort = TRUE)
+```
+
+```{r}
+cleaned %>% 
+  filter(age > 16) %>% 
+  arrange(farm_id, temp_id, year) %>% 
+  select(dob, age, everything())
+  
+```
+
+## Registration number formatting issues
+
+* Gelbvieh
+
+```{r}
+cleaned %>% 
+  filter(stringr::str_detect(registration_number, "^AMGV"))
+```
+
