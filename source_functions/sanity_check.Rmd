@@ -64,6 +64,7 @@ cleaned %>%
 ```{r}
 cleaned %>% 
   filter(!is.na(Lab_ID)) %>% 
+  filter(!farm_id %in% c("SAV", "BAT")) %>% 
   distinct(farm_id, animal_id, registration_number, breed_code, Lab_ID) %>% 
   left_join(animal_table %>% 
               select(Lab_ID, BC, Reg, Comment)) %>%

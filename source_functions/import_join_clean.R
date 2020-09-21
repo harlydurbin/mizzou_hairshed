@@ -320,6 +320,14 @@ print("Imputing missing ages")
 cleaned %<>% 
   impute_age(id_vars = c("farm_id", "temp_id"))
 
+# Manual lab ID exclusions that I can't get around
+print("Manually excluding known incorrect Lab IDs")
+cleaned %<>% 
+  mutate(Lab_ID = case_when(
+    registration_number == "3522910" & Lab_ID == 300804 ~ NA_integer_,
+    TRUE ~ as.integer(Lab_ID)
+  ))
+
 readr::write_rds(cleaned, here::here("data/derived_data/import_join_clean/cleaned.rds"))
 
 #' 

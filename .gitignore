@@ -18,4 +18,5 @@ management/*.xlsx
 talks_articles/2017_sare/*
 log/slurmout/*
 log/snakemake_log/*
+log/import_join_clean/*.html
 *.ftpconfig
