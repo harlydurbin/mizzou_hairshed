@@ -352,3 +352,7 @@ rmarkdown::render(input = here::here("source_functions/sanity_check.Rmd"),
 
 print("Rendered sanity check")
 
+rmarkdown::render(input = here::here("notebooks/data_summary.Rmd"),
+                  output_file = here::here("html/data_summary.html"))
+
+print("Rendered data summary")
