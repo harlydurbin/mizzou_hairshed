@@ -16,7 +16,6 @@ source(here::here("source_functions/animal_table.R"))
 
 # Setup
 
-
 ```{r}
 animal_table <- read_rds(here::here("data/raw_data/import_join_clean/animal_table.rds"))
 ```
@@ -49,6 +48,19 @@ geno_dump <-
   arrange(Lab_ID)
 ```
 
+## How many also have sample IDs and should have acceptable genotypes?
+
+```{r}
+geno_dump %>% 
+  left_join(sample_table %>% 
+              select(Lab_ID = lab_id, sample_id, call_rate, do_not_analyze)) %>% 
+  # Has sample ID
+  filter(!is.na(sample_id)) %>% 
+  # do_not_analyze = FALSE
+  filter(is.na(do_not_analyze)) %>% 
+  distinct(Lab_ID)
+```
+
 ## Export Lab ID list
 
 ```{r}
@@ -56,6 +68,48 @@ geno_dump %>%
   write_tsv(here::here("data/derived_data/200921.geno_dump.txt"), col_names = FALSE)
 ```
 
-# Commentary
+# Post-imputation tally
 
+* 11,776 unique lab IDs with at least one sample ID not marked `do_not_analyze`
+* Imputation pipeline removed:
+    + 11 ULD 
+    + 144 F250
+    + 38 other assay
+
+
+
+```{r}
+fam <-
+  read_table2(here::here("data/raw_data/geno_dump/200921_HairShed.850K.fam"), col_names = FALSE) %>% 
+  select(international_id = X1) %>% 
+  left_join(sample_table %>% 
+              select(international_id, Lab_ID = lab_id)) %>% 
+  distinct()
+```
+
+```{r}
+full_ped %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, duplicate)) %>% 
+  # left_join(fam,
+  #           by = c("duplicate" = "Lab_ID")) %>% 
+  # filter(!is.na(international_id))
+  mutate(international_id = NA_character_) %>% 
+  id_search(
+    source_col = duplicate,
+    search_df = fam,
+    search_col = Lab_ID,
+    key_col = international_id
+  ) %>% 
+  id_search(
+    source_col = Lab_ID,
+    search_df = fam,
+    search_col = Lab_ID,
+    key_col = international_id
+  )  
+```
+
+
+
+# Commentary
 
