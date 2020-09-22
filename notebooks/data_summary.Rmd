@@ -44,23 +44,10 @@ cleaned %>%
   tally()
 ```
 
-```{r}
-cleaned %>% 
-  filter(is.na(sex)) %>% 
-  distinct(farm_id, temp_id) %>% 
-  left_join(cleaned) %>% 
-  arrange(farm_id, temp_id, year) %>% 
-  left_join(animal_table) %>% 
-  select(Sex, animal_id, everything()) %>% 
-  View()
-```
-
-
 ## Number of scores
 
 ```{r}
 cleaned %>% 
-  distinct(farm_id, temp_id, sex) %>% 
   group_by(sex) %>% 
   tally()
 ```
