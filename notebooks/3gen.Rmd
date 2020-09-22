@@ -1,5 +1,5 @@
 ---
-title: "Multi-breed 3-generation pedigree for 2020 update email"
+title: "Multi-breed 3-generation pedigree"
 author: "Harly Durbin"
 output:
   html_document:

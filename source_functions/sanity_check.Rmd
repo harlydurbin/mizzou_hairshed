@@ -59,6 +59,14 @@ cleaned %>%
   distinct(farm_id, temp_id)
 ```
 
+## Missing breed codes
+
+```{r}
+cleaned %>% 
+  distinct(farm_id, temp_id, animal_id, breed_code) %>% 
+  filter(is.na(breed_code))
+```
+
 ## Breed code in `cleaned` and Animal table breed code do not match
 
 ```{r}
