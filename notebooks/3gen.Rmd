@@ -39,6 +39,13 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
   mutate(registration_number = if_else(registration_number == "126247", "1262647", registration_number))
 ```
 
+```{r}
+sample_table <- 
+  read_csv(here::here("data/raw_data/import_join_clean/200820_sample_sheet.csv"),
+           trim_ws = TRUE,
+           guess_max = 100000)
+```
+
 
 # Notes & questions
 
@@ -1247,6 +1254,50 @@ full_ped %<>%
                         TRUE ~ .)) %>% 
   filter(full_reg != "0")
 ```
+
+# Any animals without genotypes under assigned Lab ID but with genotypes under duplicate Lab ID? 
+
+```{r}
+full_ped %<>% 
+  # Append duplicate Lab ID
+  left_join(animal_table %>% 
+              select(Lab_ID, duplicate)) %>% 
+  # Append call rate & assay for original Lab ID
+  left_join(sample_table %>% 
+              select(assay_orig = assay, call_rate_orig = call_rate, lab_id),
+            by = c("Lab_ID" = "lab_id")) %>% 
+  # Append call rate & assay for duplicate Lab ID
+  left_join(sample_table %>% 
+              select(assay_dup = assay, call_rate_dup = call_rate, lab_id),
+            by = c("duplicate" = "lab_id"))
+```
+
+```{r}
+full_ped %<>%
+  # Prioritize Lab IDs
+  mutate(
+    Lab_ID_final = case_when(
+      # If original Lab ID missing sample
+      is.na(assay_orig) & !is.na(assay_dup) ~ duplicate,
+      # If duplcate sample has F250 or HD
+      str_detect(assay_dup, "F250|HD") &
+        call_rate_dup > 0.89 ~ duplicate,
+      TRUE ~ Lab_ID
+    )
+  ) %>% 
+  group_by(full_reg) %>% 
+  arrange(desc(Lab_ID_final)) %>% 
+  slice(1) %>% 
+  ungroup()
+
+```
+
+```{r}
+full_ped %<>% 
+  select(Lab_ID = Lab_ID_final, farm_id, animal_id, temp_id, full_reg, sire_reg, dam_reg, source, dob, sex) %>% 
+  distinct() 
+```
+
 
 # Tallies
 
