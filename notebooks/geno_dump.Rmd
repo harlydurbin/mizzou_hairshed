@@ -38,16 +38,18 @@ sample_table <-
 
 ```{r}
 geno_dump <-
-  # 11,713
   cleaned %>% 
   distinct(Lab_ID) %>% 
-  # 12,932 - 11,713 = 1,219
   bind_rows(full_ped %>% 
               distinct(Lab_ID)) %>% 
   distinct() %>% 
   filter(!is.na(Lab_ID))
+```
 
-geno_dump %>% 
+
+```{r}
+geno_dump %<>% 
+  # Add in duplicate lab IDs
   bind_rows(geno_dump %>% 
               left_join(animal_table %>% 
                           select(duplicate, Lab_ID)) %>% 
@@ -65,15 +67,14 @@ geno_dump %>%
   # Has sample ID
   filter(!is.na(sample_id)) %>% 
   # do_not_analyze = FALSE
-  filter(is.na(do_not_analyze)) %>% 
-  distinct(Lab_ID)
+  filter(is.na(do_not_analyze)) 
 ```
 
 ## Export Lab ID list
 
 ```{r}
 geno_dump %>% 
-  write_tsv(here::here("data/derived_data/200921.geno_dump.txt"), col_names = FALSE)
+  write_tsv(here::here("data/derived_data/geno_dump/200923.geno_dump.txt"), col_names = FALSE)
 ```
 
 # Post-imputation tally
