@@ -6,6 +6,7 @@ management/*.xlsx
 source_functions/api_keys
 data/derived_data/update_email2020/*
 data/derived_data/angus_hairshed/*
+data/derived_data/geno_dump/*
 data/derived_data/import_join_clean/*.xlsx
 data/derived_data/import_join_clean/*.csv
 data/derived_data/import_join_clean/*.rds
@@ -20,4 +21,4 @@ log/slurmout/*
 log/snakemake_log/*
 log/import_join_clean/*.html
 *.ftpconfig
-html/3gen.html
+html/*

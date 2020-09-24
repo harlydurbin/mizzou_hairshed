@@ -142,3 +142,12 @@ writexl::write_xlsx(
 )
 ```
 
+# 9/24/20 pull samples
+
+```{r}
+cleaned %>% 
+  filter(farm_id == "CKC") %>% 
+  filter(registration_number %in% c("17229778", "17279925", "17458502", "17506213")) %>% 
+  distinct(registration_number, animal_id, Lab_ID)
+```
+

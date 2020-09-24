@@ -9,25 +9,27 @@ knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(dplyr)
 library(tidyr)
+library(magrittr)
+library(tidylog)
 
 source(here::here("source_functions/iterative_id_search.R"))
 ```
 
 # Setup
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 animal_table <- read_rds(here::here("data/raw_data/import_join_clean/animal_table.rds"))
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 sample_table <- 
   read_csv(here::here("data/raw_data/import_join_clean/200820_sample_sheet.csv"),
            trim_ws = TRUE,
@@ -58,7 +60,16 @@ geno_dump %<>%
               filter(Lab_ID != 0))
 ```
 
-## How many also have sample IDs and should have acceptable genotypes?
+## Export Lab ID list
+
+```{r, warning=FALSE, message=FALSE}
+geno_dump %>% 
+  write_tsv(here::here("data/derived_data/geno_dump/200923.geno_dump.txt"), col_names = FALSE)
+```
+
+# Missing genotypes
+
+## How many animals have sample IDs and should have acceptable genotypes?
 
 ```{r}
 geno_dump %>% 
@@ -66,15 +77,28 @@ geno_dump %>%
               select(Lab_ID = lab_id, sample_id, call_rate, do_not_analyze)) %>% 
   # Has sample ID
   filter(!is.na(sample_id)) %>% 
-  # do_not_analyze = FALSE
-  filter(is.na(do_not_analyze)) 
+  # Not marked as do_not_analyze
+  filter(is.na(do_not_analyze)) %>% 
+  filter(!is.na(call_rate))
 ```
 
-## Export Lab ID list
+## Sample IDs actually dumped 
+
+* ~2,000 samples missing, compare ID files with list of what I expected 
 
 ```{r}
-geno_dump %>% 
-  write_tsv(here::here("data/derived_data/geno_dump/200923.geno_dump.txt"), col_names = FALSE)
+list.files(here::here("data/derived_data/geno_dump"), pattern = "ID", full.names = TRUE) %>% 
+  set_names(nm = (basename(.) %>%
+                    tools::file_path_sans_ext())) %>%
+  purrr::map_dfr(~ read_table2(.x, col_names = c("rownum", "international_id")), .id = "file") %>% 
+  full_join(geno_dump %>% 
+              left_join(sample_table %>% 
+              select(Lab_ID = lab_id, sample_id, do_not_analyze, call_rate, assay, international_id))) %>% 
+  filter(is.na(file)) %>% 
+  filter(!is.na(sample_id)) %>% 
+  filter(is.na(do_not_analyze)) %>% 
+  left_join(cleaned %>% 
+              distinct(Lab_ID, farm_id, animal_id)) 
 ```
 
 # Post-imputation tally
@@ -93,29 +117,6 @@ fam <-
               select(international_id, Lab_ID = lab_id)) %>% 
   distinct()
 ```
-
-```{r}
-full_ped %>% 
-  left_join(animal_table %>% 
-              select(Lab_ID, duplicate)) %>% 
-  # left_join(fam,
-  #           by = c("duplicate" = "Lab_ID")) %>% 
-  # filter(!is.na(international_id))
-  mutate(international_id = NA_character_) %>% 
-  id_search(
-    source_col = duplicate,
-    search_df = fam,
-    search_col = Lab_ID,
-    key_col = international_id
-  ) %>% 
-  id_search(
-    source_col = Lab_ID,
-    search_df = fam,
-    search_col = Lab_ID,
-    key_col = international_id
-  )  
-```
-
 
 
 # Commentary
