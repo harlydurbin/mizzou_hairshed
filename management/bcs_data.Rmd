@@ -1,0 +1,96 @@
+---
+title: "Body condition score data"
+author: "Harly Durbin"
+date: "9/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(tidyr)
+library(dplyr)
+library(readxl)
+```
+
+# Notes & questions
+
+* Getting BCS data together for Katelyn's undergrad project
+
+# Setup
+
+```{r}
+cleaned <- readr::read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
+
+# RHF data
+
+## 2019
+
+```{r}
+# Sheet with data from cows
+rhbcs19 <-
+  read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_RHF_2019.xlsx",
+             sheet = "original_old") %>% 
+  janitor::clean_names() %>% 
+  select(animal_id, bcs) %>% 
+  # Sheet with data from heifers
+  bind_rows(read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_RHF_2019.xlsx",
+                       sheet = "Original_heifers") %>% 
+              janitor::clean_names() %>% 
+              select(animal_id = tattoo, bcs)) %>% 
+  # Remove if no BCS
+  filter(!is.na(bcs)) %>% 
+  # Remove punctuation from animal IDs to match cleaned
+  mutate(animal_id = stringr::str_remove_all(animal_id, "[[:punct:]]|[[:space:]]")) %>% 
+  left_join(cleaned %>% 
+              filter(farm_id == "RHF") %>% 
+              filter(year == 2019) %>% 
+              select(year, farm_id, breed_code, registration_number, Lab_ID, animal_id)) 
+```
+
+## 2018
+
+```{r}
+rhbcs18 <-
+  read_excel("~/Box Sync/HairShedding/ReportedData/2018/DataRecording_RHF_2018.xlsx",
+             sheet = "original") %>% 
+  janitor::clean_names() %>% 
+  select(animal_id, bcs) %>% 
+  # Remove if no BCS
+  filter(!is.na(bcs)) %>% 
+  # Remove punctuation from animal IDs to match cleaned
+  mutate(animal_id = stringr::str_remove_all(animal_id, "[[:punct:]]|[[:space:]]")) %>% 
+  left_join(cleaned %>% 
+              filter(farm_id == "RHF") %>% 
+              filter(year == 2018) %>% 
+              select(year, farm_id, breed_code, registration_number, Lab_ID, animal_id)) 
+  
+```
+
+## 2017
+
+```{r}
+rhbcs17 <-
+  read_excel("~/Box Sync/HairShedding/ReportedData/2017/DataRecording_RHF_2017.xlsx",
+             sheet = "original") %>% 
+  janitor::clean_names() %>% 
+  select(animal_id, bcs) %>% 
+  # Remove if no BCS
+  filter(!is.na(bcs)) %>% 
+  # Remove punctuation and spacesfrom animal IDs to match cleaned
+  mutate(animal_id = stringr::str_remove_all(animal_id, "[[:punct:]]|[[:space:]]")) %>% 
+  left_join(cleaned %>% 
+              filter(farm_id == "RHF") %>% 
+              filter(year == 2017) %>% 
+              select(year, farm_id, breed_code, registration_number, Lab_ID, animal_id))
+
+```
+
+## Export
+
+```{r}
+bind_rows(rhbcs19, rhbcs18, rhbcs17) %>% 
+  write_csv("~/Box Sync/HairShedding/BCS/rhf_bcs.csv", na = "")
+```
+
