@@ -1,4 +1,4 @@
-rules: ['transpose_genotypes', 'format_genotypes', 'format_genotypes2', 'copy_par', 'renumf90', 'airemlf90']
+rules: ['transpose_genotypes', 'format_genotypes', 'append_id', 'copy_par', 'renumf90', 'airemlf90']
 
 model: "no_breed"
 

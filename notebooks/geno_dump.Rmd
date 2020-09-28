@@ -10,6 +10,7 @@ library(readr)
 library(dplyr)
 library(tidyr)
 library(magrittr)
+library(stringr)
 library(tidylog)
 
 source(here::here("source_functions/iterative_id_search.R"))
@@ -99,20 +100,37 @@ post_dump <-
               select(Lab_ID = lab_id, international_id))
 ```
 
-# Post-imputation tally
+## Variation in density
 
-* 11,776 unique lab IDs with at least one sample ID not marked `do_not_analyze`
-* Imputation pipeline removed:
-    + 11 ULD 
-    + 144 F250
-    + 38 other assay
+```{r, warning=FALSE, message=FALSE}
+
+list.files(here::here("data/derived_data/geno_dump"), pattern = "ID") %>% 
+  set_names(nm = (basename(.) %>%
+                    tools::file_path_sans_ext())) %>% 
+  as_tibble() %>% 
+  mutate(density = str_extract(value, "^[[:digit:]]+(?=\\.)"),
+         density = as.numeric(density)) %>% 
+  arrange(density)
+```
 
 ```{r}
-fam <-
-  read_table2(here::here("data/raw_data/geno_dump/200921_HairShed.850K.fam"), col_names = FALSE) %>% 
+list.files(here::here("data/derived_data/geno_dump"), pattern = "ID", full.names = TRUE) %>% 
+  set_names(nm = (basename(.) %>%
+                    tools::file_path_sans_ext())) %>%
+  purrr::map_dfr(~ read_table2(.x, col_names = c("rownum", "international_id")), .id = "file") %>% 
+  mutate(density = str_extract(file, "^[[:digit:]]+(?=\\.)"),
+         density = as.numeric(density)) %>% 
+  group_by(density) %>% 
+  tally(sort = TRUE)
+```
+
+
+# Post-imputation tally
+
+```{r}
+
+read_table2(here::here("data/derived_data/geno_dump/200924_HairShed.850K.fam"), col_names = FALSE) %>% 
   select(international_id = X1) %>% 
-  left_join(sample_table %>% 
-              select(international_id, Lab_ID = lab_id)) %>% 
   distinct()
 ```
 
@@ -133,3 +151,5 @@ post_dump %>%
 ```
 
 Genotype data was available for 10,709 phenotyped animals and an additional 1,089 relatives. 
+
+---

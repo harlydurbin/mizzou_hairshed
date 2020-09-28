@@ -1286,6 +1286,13 @@ full_ped %>%
   tally(sort = TRUE)
 ```
 
+```{r}
+full_ped %>% 
+  mutate(in_project = if_else(!is.na(farm_id), "yes", NA_character_)) %>% 
+  group_by(in_project) %>% 
+  tally(sort = TRUE)
+```
+
 # Duplicate check
 
 ```{r}
@@ -1304,10 +1311,5 @@ full_ped %>%
 
 # Commentary
 
-```{r}
-full_ped %>% 
-  mutate(in_project = if_else(!is.na(farm_id), "yes", NA_character_)) %>% 
-  group_by(in_project) %>% 
-  tally(sort = TRUE)
-```
+
 

@@ -22,7 +22,6 @@ rule transpose_genotypes:
 		mgf = config['geno_prefix'] + '.mgf.gz'
 	params:
 		java_module = config['java_module'],
-		psrecord = "log"
 	output:
 		transposed = config['geno_prefix'] + '.t.txt'
 	shell:
@@ -45,7 +44,7 @@ rule format_genotypes:
 		"""
 
 # I'm lazy and cant figure out how to pipe to awk -v
-rule format_genotypes2:
+rule append_id:
 	input:
 		temp = config['geno_prefix'] + '.t.temp.txt',
 		sample_ids = config['sample_ids']
