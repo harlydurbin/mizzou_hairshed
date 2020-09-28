@@ -1,6 +1,0 @@
-{
-	"rundate" : "190428",
-	"cv_mod": ["full_fct_age"],
-	"mod": ["reduced_int_age", "reduced_fct_age", "full_fct_age", "PC2_fct_age", "full_random_temp"],
-	"cv" : [1, 2, 3]
-}

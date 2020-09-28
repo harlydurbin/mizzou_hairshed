@@ -36,9 +36,9 @@ sample_table <-
            guess_max = 100000)
 ```
 
-# Animals with Lab IDs
+# Generate `geno_dump` list of animals with Lab IDs
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 geno_dump <-
   cleaned %>% 
   distinct(Lab_ID) %>% 
@@ -48,8 +48,7 @@ geno_dump <-
   filter(!is.na(Lab_ID))
 ```
 
-
-```{r}
+```{r, warning=FALSE, message=FALSE}
 geno_dump %<>% 
   # Add in duplicate lab IDs
   bind_rows(geno_dump %>% 
@@ -60,9 +59,9 @@ geno_dump %<>%
               filter(Lab_ID != 0))
 ```
 
-## Export Lab ID list
+## Export `geno_dump` list
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, eval = FALSE}
 geno_dump %>% 
   write_tsv(here::here("data/derived_data/geno_dump/200923.geno_dump.txt"), col_names = FALSE)
 ```
@@ -71,7 +70,7 @@ geno_dump %>%
 
 ## How many animals have sample IDs and should have acceptable genotypes?
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 geno_dump %>% 
   left_join(sample_table %>% 
               select(Lab_ID = lab_id, sample_id, call_rate, do_not_analyze)) %>% 
@@ -84,21 +83,20 @@ geno_dump %>%
 
 ## Sample IDs actually dumped 
 
-* ~2,000 samples missing, compare ID files with list of what I expected 
+* ~~2,000 samples missing, compare ID files with list of what I expected~~
+    + Ended up being issue with how Bob stored BOVGV2 genotypes
 
-```{r}
-list.files(here::here("data/derived_data/geno_dump"), pattern = "ID", full.names = TRUE) %>% 
+# Post-genotype dump tally
+
+```{r, warning=FALSE, message=FALSE}
+post_dump <-
+  list.files(here::here("data/derived_data/geno_dump"), pattern = "ID", full.names = TRUE) %>% 
   set_names(nm = (basename(.) %>%
                     tools::file_path_sans_ext())) %>%
   purrr::map_dfr(~ read_table2(.x, col_names = c("rownum", "international_id")), .id = "file") %>% 
-  full_join(geno_dump %>% 
-              left_join(sample_table %>% 
-              select(Lab_ID = lab_id, sample_id, do_not_analyze, call_rate, assay, international_id))) %>% 
-  filter(is.na(file)) %>% 
-  filter(!is.na(sample_id)) %>% 
-  filter(is.na(do_not_analyze)) %>% 
-  left_join(cleaned %>% 
-              distinct(Lab_ID, farm_id, animal_id)) 
+  distinct(international_id) %>% 
+  left_join(sample_table %>% 
+              select(Lab_ID = lab_id, international_id))
 ```
 
 # Post-imputation tally
@@ -118,6 +116,20 @@ fam <-
   distinct()
 ```
 
-
 # Commentary
 
+```{r, message=TRUE, warning=FALSE}
+post_dump %>% 
+  left_join(cleaned %>% 
+              distinct(Lab_ID, farm_id, animal_id, temp_id)) %>% 
+  select(-Lab_ID) %>% 
+  mutate(in_project = if_else(!is.na(farm_id), "yes", NA_character_)) %>% 
+  group_by(international_id) %>% 
+  fill(in_project, .direction = "downup") %>% 
+  ungroup() %>% 
+  distinct(international_id, in_project) %>% 
+  group_by(in_project) %>% 
+  tally()
+```
+
+Genotype data was available for 10,709 phenotyped animals and an additional 1,089 relatives. 

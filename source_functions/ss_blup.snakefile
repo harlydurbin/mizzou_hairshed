@@ -11,6 +11,9 @@ for x in expand("log/slurm_out/ss_blup/{rules}", rules = config['rules']):
 
 os.makedirs("log/psrecord/ss_blup", exist_ok = True)
 
+for x in expand("log/psrecord/ss_blup/{rules}", rules = config['rules']):
+    os.makedirs(x, exist_ok = True)
+
 rule all:
 	input: expand("data/derived_data/update_email2020/{model}/solutions", model = config['model'])
 
@@ -18,13 +21,14 @@ rule transpose_genotypes:
 	input:
 		mgf = config['geno_prefix'] + '.mgf.gz'
 	params:
-		java_module = config['java_module']
+		java_module = config['java_module'],
+		psrecord = "log"
 	output:
 		transposed = config['geno_prefix'] + '.t.txt'
 	shell:
 		"""
 		module load {params.java_module}
-		zcat {input.mgf} | sed 's/,/ /g' | java -jar source_functions/transpose.jar > {output.transposed}
+		psrecord "zcat {input.mgf} | sed 's/,/ /g' | java -jar source_functions/transpose.jar > {output.transposed}" --log {params.psrecord} --include-children --interval 5
 		"""
 
 # I'm lazy and cant figure out how to pipe to awk -v

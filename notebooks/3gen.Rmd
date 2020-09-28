@@ -1297,8 +1297,17 @@ full_ped %>%
 
 # Export
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 full_ped %>% 
   write_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+```
+
+# Commentary
+
+```{r}
+full_ped %>% 
+  mutate(in_project = if_else(!is.na(farm_id), "yes", NA_character_)) %>% 
+  group_by(in_project) %>% 
+  tally(sort = TRUE)
 ```
 
