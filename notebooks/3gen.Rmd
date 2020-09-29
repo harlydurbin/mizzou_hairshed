@@ -1312,7 +1312,7 @@ full_ped %>%
   tally(sort = TRUE)
 ```
 
-# Duplicate check
+# Duplicate & quality check
 
 ```{r}
 full_ped %>% 
@@ -1325,6 +1325,17 @@ full_ped %>%
   group_by(Lab_ID) %>% 
   filter(n() > 1 & !is.na(Lab_ID)) %>% 
   arrange(Lab_ID)
+```
+
+```{r}
+bind_rows(full_ped %>% 
+              select(full_reg),
+            full_ped %>% 
+              select(full_reg = sire_reg),
+            full_ped %>% 
+              select(full_reg = dam_reg)) %>% 
+  distinct() %>% 
+  filter(str_detect(full_reg, "GVHAMGV"))
 ```
 
 # Export

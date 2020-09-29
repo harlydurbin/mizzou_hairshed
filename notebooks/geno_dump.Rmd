@@ -16,6 +16,15 @@ library(tidylog)
 source(here::here("source_functions/iterative_id_search.R"))
 ```
 
+# Notes and questions
+
+* ~~Need to figure out best way to transpose VCF~~
+    + ~~`.mgf` is comma-separated with columns `chr:pos`, `ref`, `alt` then individuals~~
+    + Use PLINK's `.raw` file type
+
+assertr::verify(length(international_id) == length(fam$international_id)) %>% 
+  assertr::verify(!is.na(full_reg))
+
 # Setup
 
 ```{r, warning=FALSE, message=FALSE}
@@ -124,14 +133,13 @@ list.files(here::here("data/derived_data/geno_dump"), pattern = "ID", full.names
   tally(sort = TRUE)
 ```
 
-
 # Post-imputation tally
 
 ```{r}
-
-read_table2(here::here("data/derived_data/geno_dump/200924_HairShed.850K.fam"), col_names = FALSE) %>% 
-  select(international_id = X1) %>% 
-  distinct()
+fam <- 
+  read_table2(here::here("data/raw_data/geno_dump/200924_HairShed.850K.fam"),
+              col_names = FALSE) %>% 
+  select(international_id = 1)
 ```
 
 # Commentary
