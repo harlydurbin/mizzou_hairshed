@@ -6,29 +6,35 @@ import os
 configfile: "source_functions/config/ss_blup.config.yaml"
 
 # Make log directories if they don't exist
-for x in expand("log/slurm_out/ss_blup/{rules}", rules = config['rules']):
+os.makedirs("log/psrecord/base_varcomp", exist_ok = True)
+for x in expand("log/slurm_out/base_varcomp/{rules}", rules = config['rules']):
     os.makedirs(x, exist_ok = True)
 
-os.makedirs("log/psrecord/ss_blup", exist_ok = True)
-
-for x in expand("log/psrecord/ss_blup/{rules}", rules = config['rules']):
+os.makedirs("log/psrecord/base_varcomp", exist_ok = True)
+for x in expand("log/psrecord/base_varcomp/{rules}", rules = config['rules']):
     os.makedirs(x, exist_ok = True)
 
 rule all:
-	input: expand("data/derived_data/update_email2020/{model}/solutions", model = config['model'])
+	input: expand("data/derived_data/base_varcomp/{model}/solutions", model = config['model'])
 
-rule transpose_genotypes:
+rule recode_a:
 	input:
-		mgf = config['geno_prefix'] + '.mgf.gz'
+		plink = expand("{prefix}.{extension}", prefix = config['geno_prefix'], extension = ['bed', 'bim', 'fam'])
 	params:
-		java_module = config['java_module'],
+		plink_module = config['plink_module'],
+        nt = config['plink_nt'],
+        prefix = config['geno_prefix']
 	output:
-		transposed = config['geno_prefix'] + '.t.txt'
+		recoded = expand("{prefix}.raw", prefix = config['prefix'])
 	shell:
 		"""
-		module load {params.java_module}
-		psrecord "zcat {input.mgf} | sed 's/,/ /g' | java -jar source_functions/transpose.jar > {output.transposed}" --log {params.psrecord} --include-children --interval 5
+		module load {params.plink_module}
+		plink --bfile {params.prefix} --double-id --cow --threads {params.nt} --recode A --out {params.prefix}
 		"""
+
+rule match_id:
+    input
+
 
 # I'm lazy and cant figure out how to pipe to awk -v
 rule format_genotypes:

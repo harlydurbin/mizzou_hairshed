@@ -25,6 +25,32 @@ cleaned <- readr::read_rds(here::here("data/derived_data/import_join_clean/clean
 
 # RHF data
 
+## 2020
+
+```{r}
+# Sheet with data from cows
+rhbcs20 <-
+  read_excel("~/Box Sync/HairShedding/ReportedData/2020/DataRecording_RHF_2020.xlsx") %>% 
+  janitor::clean_names() %>% 
+  select(animal_id) %>% 
+  # Remove if no BCS
+  # Remove punctuation from animal IDs to match cleaned
+  mutate(animal_id = stringr::str_remove_all(animal_id, "[[:punct:]]|[[:space:]]")) %>% 
+  left_join(cleaned %>% 
+              filter(farm_id == "RHF") %>% 
+              filter(year == 2020) %>% 
+              select(year, farm_id, breed_code, registration_number, Lab_ID, animal_id)) %>% 
+  mutate(year = 2020,
+         farm_id = "RHF",
+         registration_number = if_else(animal_id == "357G",
+                                       "3666958",
+                                       registration_number),
+         breed_code = if_else(animal_id == "357G",
+                                       "SIM",
+                                       breed_code),
+         bcs = NA_integer_) 
+```
+
 ## 2019
 
 ```{r}
@@ -90,7 +116,7 @@ rhbcs17 <-
 ## Export
 
 ```{r}
-bind_rows(rhbcs19, rhbcs18, rhbcs17) %>% 
-  write_csv("~/Box Sync/HairShedding/BCS/rhf_bcs.csv", na = "")
+bind_rows(rhbcs17, rhbcs18, rhbcs19, rhbcs20) %>% 
+  write_csv("~/Box Sync/HairShedding/BCS/data/raw_data/rhf_bcs.csv", na = "")
 ```
 

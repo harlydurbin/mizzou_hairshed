@@ -1266,6 +1266,25 @@ full_ped %<>%
 ```
 
 ```{r}
+# 9/28/20 deal with Lab ID duplicates
+full_ped %<>%
+  mutate(Lab_ID2 = if_else(is.na(Lab_ID_final),
+                           full_reg,
+                           as.character(Lab_ID_final))) %>% 
+  group_by(Lab_ID2) %>% 
+  # This is stupid but apparently I have duplicates in my pedigree
+  mutate(drop = case_when(n() > 1 & !is.na(farm_id) ~ 1,
+                          n() > 1 & str_detect(full_reg, "BIR") ~ 1,
+                          TRUE ~ 2)) %>% 
+  arrange(drop, full_reg) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  select(-drop, -Lab_ID2)
+
+```
+
+
+```{r}
 full_ped %<>% 
   select(Lab_ID = Lab_ID_final, farm_id, animal_id, temp_id, full_reg, sire_reg, dam_reg, source, dob, sex) %>% 
   distinct() 
@@ -1301,6 +1320,12 @@ full_ped %>%
   filter(n() > 1)
 ```
 
+```{r}
+full_ped %>% 
+  group_by(Lab_ID) %>% 
+  filter(n() > 1 & !is.na(Lab_ID)) %>% 
+  arrange(Lab_ID)
+```
 
 # Export
 

@@ -2,9 +2,11 @@ rules: ['transpose_genotypes', 'format_genotypes', 'append_id', 'copy_par', 'ren
 
 model: "no_breed"
 
-geno_prefix: "data/raw_data/190215_hair_shedding.hard"
+geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
-java_module: "java/openjdk/java-1.8.0-openjdk"
+plink_module: "plink/plink-1.90b"
+
+plink_nt: 12
 
 sample_ids: "data/raw_data/190215_hair_shedding.geno_key"
 
