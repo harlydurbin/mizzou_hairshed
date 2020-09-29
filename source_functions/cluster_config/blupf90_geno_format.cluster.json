@@ -1,0 +1,38 @@
+{
+    "__default__":
+    {
+        "p" : "BioCompute,htc4,hpc5",
+        "account" : "animalsci",
+        "mem" : 1G,
+        "c": 1,
+        "t": "01:00:00",
+        "o": "log/slurm_out/blupf90_geno_format/{rule}/{wildcards}.%j.out",
+        "mail-user" : "hjdurbin@mail.missouri.edu",
+        "mail-type" : "NONE"
+    },
+    "recode_a":
+    {
+        "mem" : 24G,
+        "c": 12,
+        "t": "02:00:00",
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    },
+    "match_id":
+    {
+        "mem" : 8G,
+        "t": "02:00:00",
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    },
+    "format_genotypes":
+    {
+        "mem" : 24G,
+        "t": "02:00:00",
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    },
+    "append_id":
+    {
+        "mem" : 8G,
+        "t": "01:00:00",
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    }
+}

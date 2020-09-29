@@ -1,12 +1,11 @@
 # snakemake -s source_functions/ss_blup.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/ss_blup.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/200420.ss_blup.log
 
-
 import os
 
 configfile: "source_functions/config/ss_blup.config.yaml"
 
 # Make log directories if they don't exist
-os.makedirs("log/psrecord/base_varcomp", exist_ok = True)
+os.makedirs("log/slurm_out/base_varcomp", exist_ok = True)
 for x in expand("log/slurm_out/base_varcomp/{rules}", rules = config['rules']):
     os.makedirs(x, exist_ok = True)
 
@@ -17,6 +16,7 @@ for x in expand("log/psrecord/base_varcomp/{rules}", rules = config['rules']):
 rule all:
 	input: expand("data/derived_data/base_varcomp/{model}/solutions", model = config['model'])
 
+# Convert PLINK bed/bim/bam to PLINK .raw additive file
 rule recode_a:
 	input:
 		plink = expand("{prefix}.{extension}", prefix = config['geno_prefix'], extension = ['bed', 'bim', 'fam'])
@@ -25,15 +25,31 @@ rule recode_a:
         nt = config['plink_nt'],
         prefix = config['geno_prefix']
 	output:
-		recoded = expand("{prefix}.raw", prefix = config['prefix'])
+		recoded = config['prefix'] + ".raw"
 	shell:
 		"""
 		module load {params.plink_module}
 		plink --bfile {params.prefix} --double-id --cow --threads {params.nt} --recode A --out {params.prefix}
 		"""
 
+# Match up genotype dump international_id to full_ped full_reg
 rule match_id:
-    input
+    input:
+        fam = config['geno_prefix'] + ".fam",
+        script = "source_functions/pull_full_reg.R",
+        cleaned = "data/derived_data/import_join_clean/cleaned.rds",
+        full_ped = "data/derived_data/3gen/full_ped.rds",
+        sample_table = config['sample_table']
+    params:
+        r_module = config['r_module'],
+        geno_prefix = config['geno_prefix']
+    output:
+        full_reg = config['geno_prefix'] + ".full_reg.txt"
+    shell:
+        """
+        module load {params.r_module}
+        Rscript --vanilla {input.script} {params.geno_prefix}
+        """
 
 
 # I'm lazy and cant figure out how to pipe to awk -v

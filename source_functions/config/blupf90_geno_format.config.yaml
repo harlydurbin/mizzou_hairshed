@@ -1,0 +1,11 @@
+rules: ['recode_a', 'match_id', 'format_genotypes', 'append_id']
+
+geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
+
+plink_module: "plink/plink-1.90b"
+
+plink_nt: 12
+
+r_module: "r/r-3.4.2"
+
+sample_table: "data/raw_data/import_join_clean/200820_sample_sheet.csv"
