@@ -6,6 +6,6 @@ plink_module: "plink/plink-1.90b"
 
 plink_nt: 12
 
-r_module: "r/r-3.4.2"
+r_module: "r/r-3.6.2-python-2.7.14-tk"
 
 sample_table: "data/raw_data/import_join_clean/200820_sample_sheet.csv"

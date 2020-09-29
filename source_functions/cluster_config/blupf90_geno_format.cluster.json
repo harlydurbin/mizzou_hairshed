@@ -19,8 +19,8 @@
     },
     "match_id":
     {
-        "mem" : 8G,
-        "t": "02:00:00",
+        "mem" : 2G,
+        "t": "01:00:00",
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     },
     "format_genotypes":
