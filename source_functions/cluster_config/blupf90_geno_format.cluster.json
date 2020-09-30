@@ -34,5 +34,9 @@
         "mem" : 8G,
         "t": "01:00:00",
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    },
+    "mapfile":
+    {
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
     }
 }

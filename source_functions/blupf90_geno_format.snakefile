@@ -9,7 +9,7 @@ os.makedirs("log/slurm_out/blupf90_geno_format", exist_ok = True)
 for x in expand("log/slurm_out/blupf90_geno_format/{rules}", rules = config['rules']):
 	os.makedirs(x, exist_ok = True)
 
-rule all:
+rule format_all:
 	input: config['geno_prefix'] + '.format.txt', config['geno_prefix'] + '.chrinfo.txt', config['geno_prefix'] + '.chr_pos.txt'
 
 # Convert PLINK bed/bim/bam to PLINK .raw additive file

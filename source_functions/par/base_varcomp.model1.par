@@ -1,0 +1,44 @@
+DATAFILE
+data.txt
+TRAITS
+3
+FIELDS_PASSED TO OUTPUT
+1
+WEIGHT(S)
+
+RESIDUAL_VARIANCE
+0.5
+# CG effect
+EFFECT
+2 cross alpha
+# animal effect
+EFFECT
+1 cross alpha
+RANDOM
+animal
+OPTIONAL
+pe
+FILE
+ped.txt
+FILE_POS
+1 2 3 0 0
+SNP_FILE
+genotypes.txt
+PED_DEPTH
+3
+OPTION minfreq 0.0001
+INBREEDING
+pedigree
+(CO)VARIANCES
+0.3
+(CO)VARIANCES_PE
+0.07
+OPTION minfreq 0.0001
+OPTION chrinfo ../../../raw_data/geno_dump/200924_HairShed.850K.chr_info.txt
+OPTION residual
+OPTION sol se
+OPTION conv_crit 1e-12
+OPTION use_yams
+OPTION sex_chr 30
+OPTION excludeCHR
+OPTION maxsnp 1000000

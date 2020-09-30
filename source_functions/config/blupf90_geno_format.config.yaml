@@ -1,4 +1,4 @@
-rules: ['recode_a', 'match_id', 'format_genotypes', 'append_id']
+rules: ['recode_a', 'match_id', 'format_genotypes', 'append_id', 'mapfile']
 
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 

@@ -6,26 +6,14 @@
         "mem" : 1G,
         "c": 1,
         "t": "01:00:00",
-        "o": "log/slurm_out/ss_blup/{rule}/{wildcards}.%j.out",
+        "o": "log/slurm_out/base_varcomp/{rule}/{wildcards}.%j.out",
         "mail-user" : "hjdurbin@mail.missouri.edu",
         "mail-type" : "NONE"
     },
-    "transpose_genotypes":
+    "setup_data":
     {
-        "mem" : 48G,
-        "t": "02:00:00",
-        "p" : "General,Lewis,BioCompute,htc4,hpc5"
-    },
-    "format_genotypes":
-    {
-        "mem" : 48G,
-        "t": "02:00:00",
-        "p" : "General,Lewis,BioCompute,htc4,hpc5"
-    },
-    "format_genotypes2":
-    {
-        "mem" : 48G,
-        "t": "02:00:00",
+        "t": "01:00:00",
+        "mem" : 6G,
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     },
     "copy_par":
@@ -42,8 +30,8 @@
     {
         "t": "12:00:00",
         "p" : "BioCompute,htc4,hpc5",
-        "mem" : 250G,
-        "c": 36,
+        "mem" : 94G,
+        "c": 72,
         "mail-type" : "END"
     }
 }
