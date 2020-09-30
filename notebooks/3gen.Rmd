@@ -1345,6 +1345,18 @@ full_ped %>%
   write_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
 
+```{r}
+full_ped %>% 
+  select(full_reg, sire_reg, dam_reg) %>% 
+  assertr::verify(!is.na(full_reg)) %>% 
+  assertr::verify(!is.na(sire_reg)) %>% 
+  assertr::verify(!is.na(dam_reg)) %>% 
+  write_delim(here::here("data/derived_data/3gen/blupf90_ped.txt"),
+              delim = " ",
+              col_names = FALSE)
+```
+
+
 # Commentary
 
 

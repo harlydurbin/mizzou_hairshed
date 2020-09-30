@@ -143,18 +143,6 @@ dat %<>%
 
 #'
 #' # Export
-#'
-#' ## Pedigree
-#'
-## -----------------------------------------------------------------------------------------------------------------------
-full_ped %>%
-  select(full_reg, sire_reg, dam_reg) %>%
-  assertr::verify(!is.na(full_reg)) %>%
-  assertr::verify(!is.na(sire_reg)) %>%
-  assertr::verify(!is.na(dam_reg)) %>%
-  write_tsv(here::here("data/derived_data/base_varcomp/model1/ped.txt"))
-
-#'
 #' ## Data
 #'
 ## -----------------------------------------------------------------------------------------------------------------------

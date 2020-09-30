@@ -1,0 +1,40 @@
+---
+title: "Basic variance components and genetic parameters"
+author: "Harly Durbin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(glue)
+library(readxl)
+library(magrittr)
+library(tidylog)
+
+source(here::here("source_functions/cg_tallies.R"))
+
+```
+
+# Notes & questions
+
+## Model key
+
+* Model 1
+    + Exactly the same contemporary grouping as AGI model/April 2020 model
+    + No breed effect
+    + Remove contemporary groups with fewer than 5 animals
+
+# Setup 
+
+```{r, warning=FALSE, message=FALSE}
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
+
+```{r, warning=FALSE, message=FALSE}
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+```
+

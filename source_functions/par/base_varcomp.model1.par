@@ -33,7 +33,10 @@ pedigree
 0.3
 (CO)VARIANCES_PE
 0.07
+# Nof filtering on allele frequency
 OPTION minfreq 0.0001
+# Turn off filtering on call rate in order to use same SNPs across all analyses
+OPTION callrate 0
 OPTION chrinfo ../../../raw_data/geno_dump/200924_HairShed.850K.chr_info.txt
 OPTION residual
 OPTION sol se

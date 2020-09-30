@@ -1,4 +1,4 @@
-# snakemake -s source_functions/blupf90_geno_format.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/blupf90_geno_format.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/blupf90_geno_format/200929.blupf90_geno_format.log
+# snakemake -s source_functions/blupf90_geno_format.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/blupf90_geno_format.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/blupf90_geno_format/200930.blupf90_geno_format.log
 
 import os
 
@@ -10,7 +10,7 @@ for x in expand("log/slurm_out/blupf90_geno_format/{rules}", rules = config['rul
 	os.makedirs(x, exist_ok = True)
 
 rule format_all:
-	input: config['geno_prefix'] + '.format.txt', config['geno_prefix'] + '.chrinfo.txt', config['geno_prefix'] + '.chr_pos.txt'
+	input: config['geno_prefix'] + '.fwf.txt', config['geno_prefix'] + '.chrinfo.txt', config['geno_prefix'] + '.chr_pos.txt'
 
 # Convert PLINK bed/bim/bam to PLINK .raw additive file
 rule recode_a:
@@ -51,7 +51,7 @@ rule format_genotypes:
 	input:
 		recoded = config['geno_prefix'] + ".raw"
 	output:
-		temp = temp(config['geno_prefix'] + '.temp.txt')
+		temp = config['geno_prefix'] + '.temp.txt'
 	# cut -d " " -f 7- removed first 6 columns
 	# 1d removes header line
 	# s/ //g removes spaces such that each row is an 850K long string
@@ -90,4 +90,14 @@ rule mapfile:
 		"""
 		module load {params.r_module}
 		Rscript --vanilla {input.script} {params.geno_prefix}
+		"""
+
+rule fwf:
+	input:
+		formatted = config['geno_prefix'] + '.format.txt'
+	output:
+		fwf = formatted = config['geno_prefix'] + '.fwf.txt'
+	shell:
+		"""
+		awk '{{printf "%-20s %s\\n", $1, $2}}' {input.formatted} &> {output.fwf}
 		"""

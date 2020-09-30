@@ -1,0 +1,24 @@
+{
+    "__default__":
+    {
+        "p" : "BioCompute,htc4,hpc5",
+        "account" : "animalsci",
+        "mem" : 1G,
+        "c": 1,
+        "t": "01:00:00",
+        "o": "log/slurm_out/seekparentf90/{rule}/{wildcards}.%j.out",
+        "mail-user" : "hjdurbin@mail.missouri.edu",
+        "mail-type" : "NONE"
+    },
+    "setup":
+    {
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    },
+    "seekparentf90":
+    {
+        "mem" : 24G,
+        "c": 12,
+        "t": "02:00:00",
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    }
+}

@@ -1,0 +1,103 @@
+---
+title: "Random regression"
+author: "Harly Durbin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(glue)
+library(readxl)
+library(magrittr)
+library(tidylog)
+
+```
+
+# Notes & questions
+
+# Setup
+
+```{r, warning=FALSE, message=FALSE}
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
+
+```{r, warning=FALSE, message=FALSE}
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+```
+
+# Contemporary grouping
+
+First, remove males
+
+```{r}
+dat <-
+  cleaned %>%
+  # Females only
+  filter(sex == "F") 
+```
+
+## Calving season
+
+```{r}
+dat %<>% 
+  # If calving season missing, impute using most recent calving season
+  group_by(farm_id, temp_id) %>% 
+  arrange(date_score_recorded) %>% 
+  fill(calving_season, .direction = "downup") %>% 
+  ungroup() %>% 
+  # If calving season still missing, impute using DOB
+  mutate(calving_season = case_when(farm_id == "UMCT" ~ "SPRING",
+                                    farm_id == "UMF" ~ "FALL",
+                                    is.na(calving_season) &
+                                      between(lubridate::month(dob),
+                                              left = 1,
+                                              right = 6) ~ "SPRING",
+                                    is.na(calving_season) &
+                                      between(lubridate::month(dob),
+                                              left = 7,
+                                              right = 12) ~ "FALL",
+                                    TRUE ~ calving_season))
+  
+```
+
+```{r}
+print("Missing calving season:")
+dat %>% 
+  summarise(missing_cs = sum(is.na(calving_season)),
+            has_cs = sum(!is.na(calving_season)))
+```
+
+```{r}
+print("Missing calving season, by farm:")
+dat %>% 
+  filter(is.na(calving_season)) %>% 
+  group_by(farm_id) %>% 
+  tally(sort = TRUE)
+```
+
+## Age group
+
+* Need to add Angus pedigree age updates
+
+```{r}
+dat %<>%
+  mutate(age_group = case_when(age == 1 ~ "yearling",
+                               age == 2 ~ "fch",
+                               age == 3 ~ "three",
+                               age >= 4 ~ "mature"))
+```
+
+```{r}
+print("Missing age group, by farm:")
+dat %>% 
+  filter(is.na(age_group)) %>% 
+  group_by(farm_id) %>% 
+  tally(sort = TRUE)
+
+```
+
+

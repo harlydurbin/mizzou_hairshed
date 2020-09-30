@@ -1,5 +1,7 @@
 # snakemake -s source_functions/base_varcomp.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/base_varcomp.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/base_varcomp/200930.base_varcomp.log
 
+include: "blupf90_geno_format.snakefile"
+
 import os
 
 configfile: "source_functions/config/base_varcomp.config.yaml"
@@ -12,8 +14,6 @@ for x in expand("log/slurm_out/base_varcomp/{rules}", rules = config['rules']):
 os.makedirs("log/psrecord/base_varcomp", exist_ok = True)
 os.makedirs("log/psrecord/base_varcomp/airemlf90", exist_ok = True)
 
-include: "blupf90_geno_format.snakefile"
-
 rule base_all:
 	input: expand("data/derived_data/base_varcomp/{model}/solutions", model = config['model'])
 
@@ -25,7 +25,6 @@ rule setup_data:
 	params:
 		r_module = config['r_module']
 	output:
-		ped = "data/derived_data/base_varcomp/{model}/ped.txt",
 		sanity_key = "data/derived_data/base_varcomp/{model}/sanity_key.csv",
 		data = "data/derived_data/base_varcomp/{model}/data.txt"
 	shell:
@@ -36,15 +35,17 @@ rule setup_data:
 rule copy_par:
 	input:
 		par = "source_functions/par/base_varcomp.{model}.par",
-		formatted_geno = config['geno_prefix'] + '.format.txt'
+		fwf = config['geno_prefix'] + '.fwf.txt',
+		blupf90_ped = "data/derived_data/3gen/blupf90_ped.txt"
 	output:
 		par = "data/derived_data/base_varcomp/{model}/base_varcomp.{model}.par",
-		moved_geno = "data/derived_data/base_varcomp/{model}/genotypes.txt"
+		moved_geno = "data/derived_data/base_varcomp/{model}/genotypes.txt",
+		ped = "data/derived_data/base_varcomp/{model}/ped.txt",
 	shell:
-	# awk command creates fixed width file
 		"""
-		awk '{{printf "%-20s %s\\n", $1, $2}}' {input.formatted_geno} &> {output.moved_geno}
+		cp {input.fwf} {output.moved_geno}
 		cp {input.par} {output.par}
+		cp {input.blupf90_ped} {output.ped}
 		"""
 
 rule renumf90:

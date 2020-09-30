@@ -38,5 +38,10 @@
     "mapfile":
     {
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    },
+    "fwf":
+    {
+        "p" : "General,Lewis,BioCompute,htc4,hpc5",
+        "mem" : 4G,
     }
 }
