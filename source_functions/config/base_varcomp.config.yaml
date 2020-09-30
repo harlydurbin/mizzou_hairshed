@@ -1,11 +1,5 @@
 rules: ['transpose_genotypes', 'format_genotypes', 'append_id', 'copy_par', 'renumf90', 'airemlf90']
 
-plink_module: "plink/plink-1.90b"
-
-plink_nt: 12
-
-r_module: "r/r-3.4.2"
-
 renumf90_path: "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_functions/renumf90"
 
 aireml_path: "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_functions/airemlf90"
@@ -15,3 +9,5 @@ mapfile: "data/raw_data/190215_hair_shedding.chrinfo.txt"
 sample_table: "data/raw_data/import_join_clean/200820_sample_sheet.csv"
 
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
+
+model: ['model1']
