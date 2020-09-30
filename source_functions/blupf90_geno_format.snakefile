@@ -10,7 +10,7 @@ for x in expand("log/slurm_out/blupf90_geno_format/{rules}", rules = config['rul
 	os.makedirs(x, exist_ok = True)
 
 rule all:
-	input: config['geno_prefix'] + '.format.txt'
+	input: config['geno_prefix'] + '.format.txt', config['geno_prefix'] + '.chrinfo.txt', config['geno_prefix'] + '.chr_pos.txt'
 
 # Convert PLINK bed/bim/bam to PLINK .raw additive file
 rule recode_a:
@@ -71,4 +71,23 @@ rule append_id:
 	shell:
 		"""
 		awk -v f2={input.temp} ' {{ c = $1; getline < f2; print c, $1; }} ' {input.full_reg} > {output.formatted}
+		"""
+
+# Some blupf90 programs want a map file as chr:pos
+# Some blupf90 programs want a map file as "snp_name chr pos"
+# Creates both
+rule mapfile:
+	input:
+		bim = config['geno_prefix'] + '.bim',
+		script = "source_functions/blupf90_map.R"
+	params:
+		geno_prefix = config['geno_prefix'],
+		r_module = config['r_module']
+	output:
+		chrinfo = config['geno_prefix'] + '.chrinfo.txt',
+		chr_pos = config['geno_prefix'] + '.chr_pos.txt'
+	shell:
+		"""
+		module load {params.r_module}
+		Rscript --vanilla {input.script} {params.geno_prefix}
 		"""
