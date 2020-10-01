@@ -1283,6 +1283,22 @@ full_ped %<>%
 
 ```
 
+# Set discordant parents to missing
+
+```{r}
+full_ped %<>% 
+  left_join(read_csv(here::here("data/derived_data/seekparentf90/parentage_conflicts.csv"),
+                     col_types = cols(.default = "c"))) %>% 
+  mutate(sire_reg = if_else(!is.na(wrong_sire),
+                            wrong_sire,
+                            sire_reg),
+         dam_reg = if_else(!is.na(wrong_dam),
+                           wrong_dam,
+                           dam_reg))
+```
+
+
+# Final
 
 ```{r}
 full_ped %<>% 

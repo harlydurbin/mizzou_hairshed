@@ -1,0 +1,95 @@
+---
+title: "Pedigree corrections using `seekparentf90`"
+author: "Harly Durbin"
+date: "10/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(ggplot2)
+```
+
+# Notes & questions
+
+# Setup
+
+```{r, warning=FALSE, message=FALSE}
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
+
+```{r, warning=FALSE, message=FALSE}
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+```
+
+```{r}
+conflicts <-
+  read_table2(here::here("data/derived_data/seekparentf90/Parent_Progeny_Conflicts.condensed.txt"),
+              col_names = FALSE) %>% 
+  select(comparison = X1,
+         full_reg = X2, 
+         parent_reg = X3,
+         n_conflicts = X4, 
+         percent_conflicts = X6,
+         result = X16) 
+
+```
+
+# Plot
+
+```{r}
+conflicts %>%
+  filter(2.5 >= percent_conflicts) %>% 
+  ggplot(aes(x = percent_conflicts)) +
+  geom_density()
+```
+
+```{r}
+conflicts %>%
+  filter(2.5 >= percent_conflicts) %>% 
+  ggplot(aes(x = percent_conflicts)) +
+  geom_histogram(bins = 40) + 
+  geom_vline(xintercept = 0.25) +
+  labs(x = "Percent discordant", 
+       y = "N comparisons")
+```
+
+# Incorrect genotypes
+
+```{r}
+conflicts %>% 
+  filter(result == "No-Match") %>% 
+  group_by(parent_reg) %>% 
+  tally(sort = TRUE) 
+```
+
+```{r}
+conflicts %>% 
+  filter(result == "No-Match") %>% 
+  group_by(parent_reg) %>% 
+  tally() %>% 
+  filter(n > 2) %>% 
+  select(parent_reg) %>% 
+  write_tsv(here::here("data/derived_data/seekparentf90/remove_genotype.txt"),
+            col_names = FALSE)
+```
+
+# Create and export blacklist
+
+```{r}
+conflicts %>% 
+  filter(percent_conflicts > 0.5) %>% 
+  mutate(wrong_sire = if_else(stringr::str_detect(comparison, "Sire"),
+                              "0",
+                              NA_character_),
+         wrong_dam = if_else(stringr::str_detect(comparison, "Dam"),
+                              "0",
+                              NA_character_)) %>% 
+  select(full_reg, contains("wrong")) %>% 
+  write_csv(here::here("data/derived_data/seekparentf90/parentage_conflicts.csv"),
+            na = "")
+  
+```
+
