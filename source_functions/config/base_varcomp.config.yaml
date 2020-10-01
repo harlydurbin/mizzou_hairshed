@@ -8,4 +8,4 @@ aireml_path: "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_func
 
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
-model: ['model1']
+model: ['agi_model', 'fixed_1']

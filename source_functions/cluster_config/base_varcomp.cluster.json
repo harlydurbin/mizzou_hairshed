@@ -30,8 +30,8 @@
     {
         "t": "12:00:00",
         "p" : "BioCompute,htc4,hpc5",
-        "mem" : 94G,
-        "c": 72,
+        "mem" : 100G,
+        "c": 32,
         "mail-type" : "END"
     }
 }

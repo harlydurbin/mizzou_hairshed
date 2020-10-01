@@ -1,6 +1,4 @@
-# snakemake -s source_functions/base_varcomp.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/base_varcomp.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/base_varcomp/200930.base_varcomp.log
-
-include: "blupf90_geno_format.snakefile"
+# snakemake -s source_functions/base_varcomp.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/base_varcomp.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/base_varcomp/201001.base_varcomp.log
 
 import os
 
@@ -78,7 +76,7 @@ rule airemlf90:
 		aireml_out_name = "aireml.base_varcomp.{model}.out",
 		aireml_log_name = "airemlf90.base_varcomp.{model}.log",
 		aireml_path = config['aireml_path'],
-		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/hair_shed/log/psrecord/base_varcomp/airemlf90.base_varcomp.{model}.psrecord"
+		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/log/psrecord/base_varcomp/airemlf90/airemlf90.{model}.psrecord"
 	output:
 		aireml_solutions = "data/derived_data/base_varcomp/{model}/solutions",
 		aireml_log = "data/derived_data/base_varcomp/{model}/airemlf90.{model}.log"

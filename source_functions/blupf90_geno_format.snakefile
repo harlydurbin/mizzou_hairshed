@@ -94,10 +94,15 @@ rule mapfile:
 
 rule fwf:
 	input:
-		formatted = config['geno_prefix'] + '.format.txt'
+		formatted = config['geno_prefix'] + '.format.txt',
+		conflicts = "data/derived_data/seekparentf90/remove_genotype.txt"
 	output:
-		fwf = formatted = config['geno_prefix'] + '.fwf.txt'
+		fwf = config['geno_prefix'] + '.fwf.txt',
+		removed = config['geno_prefix'] + '.removed.txt',
+	# awk command creats fixed width file
+	# grep command removes genotypes for ids in conflict file
 	shell:
 		"""
 		awk '{{printf "%-20s %s\\n", $1, $2}}' {input.formatted} &> {output.fwf}
+		grep -Fxv -f {output.fwf} {input.conflicts} > {output.removed}
 		"""
