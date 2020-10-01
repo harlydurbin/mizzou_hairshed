@@ -16,8 +16,8 @@
     },
     "seekparentf90":
     {
-        "mem" : 24G,
-        "c": 12,
+        "mem" : 96G,
+        "c": 36,
         "t": "02:00:00",
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     }

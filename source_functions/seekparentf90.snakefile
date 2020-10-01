@@ -42,5 +42,6 @@ rule seekparentf90:
 	shell:
 		"""
 		cd {params.directory}
+		ulimit -s unlimited
 		{params.path} --pedfile ped.txt --snpfile genotypes.txt --mapfile map.txt --seektype {params.seektype} --trio --maxsnp 1000000 --full_log_checks --duplicate --chr_x 30
 		"""

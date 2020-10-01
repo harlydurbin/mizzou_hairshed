@@ -169,14 +169,14 @@ matched <-
 ## -----------------------------------------------------------------------------------------------------------------------
 matched %>%
   distinct(Lab_ID,farm_id, animal_id, temp_id, registration_number, full_reg) %>%
-  write_csv(here::here("data/derived_data/base_varcomp/model1/sanity_key.csv"),
+  write_csv(here::here("data/derived_data/base_varcomp/agi_model/sanity_key.csv"),
             na = "")
 
 #'
 ## -----------------------------------------------------------------------------------------------------------------------
 matched %>%
   select(full_reg, cg_num, hair_score) %>%
-  write_delim(here::here("data/derived_data/base_varcomp/model1/data.txt"),
+  write_delim(here::here("data/derived_data/base_varcomp/agi_model/data.txt"),
               col_names = FALSE)
 
 #'

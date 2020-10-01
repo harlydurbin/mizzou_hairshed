@@ -1,0 +1,79 @@
+farm_id,street,city,state,zip,address,lat,long,geo_method
+CMF,393 Spring Garden Road,Olean,MO,65064,"Olean, MO, 65064",38.4108631,-92.5293537,osm
+CRC,PO BOX 365,Concord,AR,72523,"Concord, AR, 72523",35.6636886,-91.8476443,osm
+DPH,1082 State Hwy 97,Lockwood,MO,65682,"Lockwood, MO, 65682",37.3856044,-93.9532705,osm
+FAV,6779 Fox Rd,Dixon,CA,95620,"Dixon, CA, 95620",38.4454641,-121.8232958,osm
+FCF,14042 HWY FF,Thompson,MO,65285,"Thompson, MO, 65285",39.1886523,-91.9829518,osm
+FSR,20036 Hwy W,Verona,MO,65769,"Verona, MO, 65769",36.9639476,-93.7957591,osm
+FTF,16777 Ridder Road,Marthasville,MO,63357,"Marthasville, MO, 63357",38.6283838,-91.057645,osm
+GEB,691 East C Hwy,Lamar,MO,64759,"Lamar, MO, 64759",37.4950527,-94.2768736,osm
+HAF,505 FM 3333,Farewell,TX,79325,"Farewell, TX, 79325",30.151637,-96.410318,osm
+HAR,30487 Hwy J,Wentworth,MO,64873,"Wentworth, MO, 64873",36.993735,-94.0756420162357,osm
+HLC,27577 State Hwy CC,Maryville,MO,64468,"Maryville, MO, 64468",40.3460468,-94.8723858,osm
+J5C,29 Breeding Ln.,Gainesville,MO,65655,"Gainesville, MO, 65655",36.6031184,-92.428217,osm
+JKH,22466 Hwy 266,Ash Grove,MO,65604,"Ash Grove, MO, 65604",37.3153257,-93.5852004,osm
+KAF,PO Box 40,Millersville,MO,63766,"Millersville, MO, 63766",37.4328299,-89.799543,osm
+KCF,2400 S Christian Lane,Atoka,OK,74525,"Atoka, OK, 74525",34.3284948,-96.017838,osm
+KLF,14272 Hwy 97,Stotts City,MO,65756,"Stotts City, MO, 65756",37.1036682,-93.9496552,osm
+KSB,900 E 300 N,Declo,ID,83323,"Declo, ID, 83323",42.5182428,-113.6280649,osm
+LAF,2946 IH 27,Abernathy,TX,79311,"Abernathy, TX, 79311",33.8323038,-101.8429491,osm
+MBMB,650 Stockdale Ranch Road,Paige,TX,78659,"Paige, TX, 78659",30.2116519,-97.1132832,osm
+OHF,4613 Hickory Nut Ridge Rd,Smith's Grove,KY,42171,"Smith's Grove, KY, 42171",37.0525453,-86.2077608,osm
+PVF,6096 Hwy z,Monroe City,MO,63456,"Monroe City, MO, 63456",39.6536529,-91.7346056,osm
+PVR,1050 County Rd JJ,Fowler,CO,81039,"Fowler, CO, 81039",38.1291721,-104.0232934,osm
+RAAF,11990 Rd H NE,Moses Lake,WA,98837,"Moses Lake, WA, 98837",47.1301417,-119.2780771,osm
+RCF,945 Woodsdale Rd,Roxboro,NC,27574,"Roxboro, NC, 27574",36.3937519,-78.9827881,osm
+RHF,900 Max Roark Rd,Scottsville,KY,42164,"Scottsville, KY, 42164",36.7533781,-86.1905424,osm
+SAV,18001 N U of A Beef Farm Rd,Fayetteville,AR,72704,"Fayetteville, AR, 72704",36.0625843,-94.1574328,osm
+SBF,1904 West Broadway,West Plains,MO,65775,"West Plains, MO, 65775",36.7281652,-91.8525756,osm
+SFB,91 CR 2308,Texarkana,TX,75503,"Texarkana, TX, 75503",33.44628645,-94.07638067493534,osm
+SFF,171 Sugar Hill Road,Glasgow,KY,42141,"Glasgow, KY, 42141",36.9958841,-85.9119215,osm
+SLF,367 Hwy 40,Lecompton,KS,66050,"Lecompton, KS, 66050",39.0450538,-95.3949264,osm
+SSS,338 Polk 200,Grannis,AR,71944,"Grannis, AR, 71944",34.2406665,-94.3349306,osm
+THB,2630 Settlers Way,Seguin,TX,78156,"Seguin, TX, 78156",29.5688411,-97.9647269,osm
+TPF,3845 Highway AB,Mansfield,MO,65704,"Mansfield, MO, 65704",37.1067189,-92.5807231,osm
+TRR,90W CR 465,Gonzales,TX,78629,"Gonzales, TX, 78629",29.5068721,-97.4496293,osm
+UMCT,668 NW Highway C,Spickard,MO,64679,"Spickard, MO, 64679",40.2439002,-93.5943878,osm
+UMF,14548 Highway H,Mt. Vernon,MO,65712,"Mt. Vernon, MO, 65712",37.1036666,-93.8185401,osm
+UTA,P.O. Box 389,Grand Junction,TN,38039,"Grand Junction, TN, 38039",35.0489782,-89.1870119,osm
+WAA,Hwy E,Clarksburg,MO,65025,"Clarksburg, MO, 65025",38.6591919,-92.6635246,osm
+BSG,9898 Garrett Rd.,Greens Fork,IN,47345,"9898 Garrett Rd., Greens Fork, IN, 47345",39.86338,-85.061806,census
+DRR,,Drexel,MO,64742,"Drexel, MO, 64742",38.4794593,-94.6085663,osm
+EKF,233 N Bast,Jackson           ,MO,63755,"233 N Bast, Jackson           , MO, 63755",37.382117445721626,-89.67898010523795,osm
+FHC,,New Bloomfield,MO,65251,"New Bloomfield, MO, 65251",38.7203167,-92.0912956,osm
+GIB,2118 County Road 23,Ranburne,AL,36273,"2118 County Road 23, Ranburne, AL, 36273",33.519585,-85.31525,census
+GOF,822 E Rachel,Republic,MO,65738,"822 E Rachel, Republic, MO, 65738",37.10964,-93.46547,census
+HBC,4613 Hickory Nut Ridge Rd,Granite Falls,NC,28630,"4613 Hickory Nut Ridge Rd, Granite Falls, NC, 28630",35.80117,-81.514725,census
+HDF,201 W. Wall Street,Harrisonville,MO,64701,"201 W. Wall Street, Harrisonville, MO, 64701",38.654206,-94.349634,osm
+KKF,72516 Hartman RD,Tipton,MO,65081,"72516 Hartman RD, Tipton, MO, 65081",38.60365,-92.795135,census
+L3F,,Rogersville,MO,65742,"Rogersville, MO, 65742",37.1169951,-93.0557343,osm
+LEF,13328 Lawrence 1010,Sarcoxie,MO,64862,"13328 Lawrence 1010, Sarcoxie, MO, 64862",37.089676,-94.039856,census
+NOF,,Owensville,MO,65066,"Owensville, MO, 65066",38.3456023,-91.5015487,osm
+OHG,1701 Porter Wagner Blvd,West Plains,MO,65775,"1701 Porter Wagner Blvd, West Plains, MO, 65775",36.74611,-91.87263,census
+RJF,,Long Lane,MO,65590,"Long Lane, MO, 65590",37.6114305,-92.9093477,osm
+TBC,770 CR 412,Campbellton,TX,78008,"770 CR 412, Campbellton, TX, 78008",28.71091,-98.24372,census
+WRF,7426 Chestnut Hill Rd,Cambridge,OH,43725,"7426 Chestnut Hill Rd, Cambridge, OH, 43725",40.134457,-81.592445,census
+WVU,,Wardensville,WV,26851,"Wardensville, WV, 26851",39.0751067,-78.5977904,osm
+YDG,2832 Fischer Rd,Lohman,MO,65053,"2832 Fischer Rd, Lohman, MO, 65053",38.543552,-92.41087,census
+BAT,70 Experiment Station Dr,Batesville,AR,72501,"70 Experiment Station Dr, Batesville, AR, 72501",35.827076,-91.7751,census
+RCR,15829 Susan Peak Rd,San Angelo,TX,76904,"15829 Susan Peak Rd, San Angelo, TX, 76904",31.197233,-100.214117,osm
+ROR,1776 322nd Street,Bedford,IA,50833,"1776 322nd Street, Bedford, IA, 50833",40.58657,-94.78674,census
+BAB,,Menard,TX,76859,"Menard, TX, 76859",30.9204906,-99.7837464,osm
+BMA,,Otley,IA,50214,"Otley, IA, 50214",41.4647917,-93.034328,osm
+BRB,134 Paradise Ln,Mansfield,LA,71052,"134 Paradise Ln, Mansfield, LA, 71052",32.13908,-93.62133,census
+CKC,232 Cruise Road,Hope Hull,AL,36043,"232 Cruise Road, Hope Hull, AL, 36043",32.247753,-86.456406,census
+CMA,,Plattsburg,MO,64477,"Plattsburg, MO, 64477",39.5665926,-94.447923,osm
+GCC,5922 S Brush Creek Road,Stillwater,OK,74074,"5922 S Brush Creek Road, Stillwater, OK, 74074",36.054,-97.01598,census
+HJD,,Marquez,TX,75846,"Marquez, TX, 75846",31.2393469,-96.2535765,osm
+HRF,135 Holt Ridge Road,Bloomfield,KY,40008,"135 Holt Ridge Road, Bloomfield, KY, 40008",37.879814,-85.22402,census
+SPS,,Columbia,MO,65201,"Columbia, MO, 65201",38.951883,-92.3337366,osm
+SRA,,Columbia,MO,65251,"Columbia, MO, 65251",38.951883,-92.3337366,osm
+SUCC,1647 200th St,Eureka,KS,67045,"1647 200th St, Eureka, KS, 67045",37.897533,-96.21471,census
+SVF,,Fairmount,GA,30139,"Fairmount, GA, 30139",34.4362013,-84.6999346,osm
+TCF,,West Point,MS,39773,"West Point, MS, 39773",33.6076186,-88.6503255,osm
+TJMB,,Eureka,KS,67045,"Eureka, KS, 67045",37.8239167,-96.2891703,osm
+TMA,9282 E. Indian Line Rd,Richards,MO,64778,"9282 E. Indian Line Rd, Richards, MO, 64778",37.927973,-94.52394,osm
+UMSF,3600 East New Haven Road,Columbia,MO,65201,"3600 East New Haven Road, Columbia, MO, 65201",38.91269696933465,-92.28348965714464,osm
+BCC,,Alachua,FL,32616,"Alachua, FL, 32616",29.675568,-82.3640109,osm
+LRB,13155 N 280 RD,Okmulgee,OK,74447,"13155 N 280 RD, Okmulgee, OK, 74447",35.666187,-95.87304,census
+WET,23253 93rd Drive,O'Brien,FL,32071,"23253 93rd Drive, O'Brien, FL, 32071",30.026886,-82.9399,census

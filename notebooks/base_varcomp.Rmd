@@ -23,10 +23,12 @@ source(here::here("source_functions/cg_tallies.R"))
 
 ## Model key
 
-* Model 1
+* `agi_model`
     + Exactly the same contemporary grouping as AGI model/April 2020 model
     + No breed effect
     + Remove contemporary groups with fewer than 5 animals
+* `fixed_1`
+    + `{farm_id} + {year} + {calving_season} + {age} + {days_from_May1} + {toxic_fescue} + {latitude}`. Everything would be fit as a categorical factor, except for days from May 1 and latitude
 
 # Setup 
 
