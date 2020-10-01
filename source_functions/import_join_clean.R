@@ -302,8 +302,8 @@ cleaned %<>%
 # Fescue code standardization
 mutate(
   toxic_fescue = case_when(
-    toxic_fescue == "Y" ~ "YES",
-    toxic_fescue == "N" ~ "NO",
+    toxic_fescue %in% c("Y", "TRUE") ~ "YES",
+    toxic_fescue %in% c("N", "FALSE") ~ "NO",
     # Savoy Arkansas cows graze hot fescue
     #location == "UAS" ~ "YES",
     TRUE ~ as.character(toxic_fescue)

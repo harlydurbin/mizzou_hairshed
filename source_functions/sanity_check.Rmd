@@ -117,3 +117,11 @@ cleaned %>%
   filter(stringr::str_detect(registration_number, "^AMGV"))
 ```
 
+## Missing `date_score_recorded`
+
+```{r}
+cleaned %>% 
+  filter(is.na(date_score_recorded)) %>% 
+  group_by(year, farm_id) %>% 
+  tally()
+```

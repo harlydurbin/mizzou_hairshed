@@ -1,4 +1,4 @@
-rules: ['setup', 'seekparentf90']
+rules: ['setup', 'seekparentf90', 'condense']
 
 seekparentf90_path: "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_functions/seekparentf90"
 

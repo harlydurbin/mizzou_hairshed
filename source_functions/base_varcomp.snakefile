@@ -81,7 +81,7 @@ rule airemlf90:
 		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/hair_shed/log/psrecord/base_varcomp/airemlf90.base_varcomp.{model}.psrecord"
 	output:
 		aireml_solutions = "data/derived_data/base_varcomp/{model}/solutions",
-		aireml_log = "data/derived_data/base_varcomp/{model}/airemlf90.base_varcomp.{model}.log"
+		aireml_log = "data/derived_data/base_varcomp/{model}/airemlf90.{model}.log"
 	shell:
 		"""
 		cd {params.dir}

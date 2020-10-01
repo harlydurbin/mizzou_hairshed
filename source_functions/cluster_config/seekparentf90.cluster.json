@@ -20,5 +20,10 @@
         "c": 36,
         "t": "02:00:00",
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
-    }
+    },
+    "condense":
+    {
+        "p" : "General,Lewis,BioCompute,htc4,hpc5",
+        "mem" : 5G,
+    },
 }

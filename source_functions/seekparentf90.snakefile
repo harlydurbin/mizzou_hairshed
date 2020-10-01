@@ -1,4 +1,4 @@
-# snakemake -s source_functions/seekparentf90.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/seekparentf90.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/seekparentf90/200930.seekparentf90.log
+# snakemake -s source_functions/seekparentf90.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/seekparentf90.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/seekparentf90/201001.seekparentf90.log
 
 import os
 
@@ -10,7 +10,7 @@ for x in expand("log/slurm_out/seekparentf90/{rules}", rules = config['rules']):
 	os.makedirs(x, exist_ok = True)
 
 rule seekparent_all:
-	input: "data/derived_data/seekparentf90/Check_Parent_Pedigree.txt"
+	input: "data/derived_data/seekparentf90/Check_Parent_Pedigree.txt", "data/derived_data/seekparentf90/Parent_Progeny_Conflicts.condensed.txt"
 
 rule setup:
 	input:
@@ -18,9 +18,9 @@ rule setup:
 		blupf90_ped = "data/derived_data/3gen/blupf90_ped.txt",
 		chr_info = config['geno_prefix'] + '.chr_info.txt'
 	output:
-		genotypes = "data/derived_data/seekparentf90/genotypes.txt",
-		ped = "data/derived_data/seekparentf90/ped.txt",
-		map = "data/derived_data/seekparentf90/map.txt"
+		genotypes = temp("data/derived_data/seekparentf90/genotypes.txt"),
+		ped = temp("data/derived_data/seekparentf90/ped.txt"),
+		map = temp("data/derived_data/seekparentf90/map.txt")
 	shell:
 		"""
 		cp {input.fwf} {output.genotypes}
@@ -36,12 +36,27 @@ rule seekparentf90:
 	params:
 		path = config['seekparentf90_path'],
 		directory = "data/derived_data/seekparentf90",
-		seektype = config['seektype']
+		seektype = config['seektype'],
+		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/log/psrecord/seekparentf90/seekparentf90/seekparentf90.log"
 	output:
-		check = "data/derived_data/seekparentf90/Check_Parent_Pedigree.txt"
+		check = "data/derived_data/seekparentf90/Check_Parent_Pedigree.txt",
+		conflicts = temp("data/derived_data/seekparentf90/Parent_Progeny_Conflicts.txt"),
+		conflicts_trio = temp("data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.txt")
 	shell:
 		"""
 		cd {params.directory}
-		ulimit -s unlimited
-		{params.path} --pedfile ped.txt --snpfile genotypes.txt --mapfile map.txt --seektype {params.seektype} --trio --maxsnp 1000000 --full_log_checks --duplicate --chr_x 30
+		psrecord "{params.path} --pedfile ped.txt --snpfile genotypes.txt --mapfile map.txt --seektype {params.seektype} --trio --maxsnp 1000000 --full_log_checks --chr_x 30" --log {params.psrecord} --include-children --interval 2
+		"""
+
+# For some reason it print the genotypes in the results file what the fuck
+rule condense:
+	input:
+		conflicts = "data/derived_data/seekparentf90/Parent_Progeny_Conflicts.txt",
+		conflicts_trio = "data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.txt"
+	output:
+		condensed = "data/derived_data/seekparentf90/Parent_Progeny_Conflicts.condensed.txt",
+		condensed_trio = "data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.condensed.txt"
+	shell:
+		"""
+		sed '1d' {input.conflicts} | grep -a "^Animal" > {output.condensed}
 		"""
