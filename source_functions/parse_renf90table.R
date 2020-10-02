@@ -16,7 +16,9 @@ parse_renf90table <-
       readr::read_table2(path,
                          skip = rownum + 1,
                          n_max = levels,
-                         col_names = c("id_original", "n", "id_renamed"))
+                         col_names = c("id_original", "n", "id_renamed")) %>% 
+      mutate(id_original = as.character(id_original),
+             id_renamed = as.character(id_renamed))
     
     effect_table <- 
       if (effect_key == TRUE) {

@@ -37,10 +37,18 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 fixed1_key <-
-  parse_renf90table(here::here("data/derived_data/base_varcomp/fixed_1/renf90.tables"),
-                  effect_num = 1,
-                  effect_key = TRUE)
+  c(1:7) %>% 
+  purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/base_varcomp/fixed1/renf90.tables"),
+                                     effect_num = .x,
+                                     effect_key = TRUE))
+  
 ```
+
+```{r}
+fixed1_sol <-
+  read_ta
+```
+
 

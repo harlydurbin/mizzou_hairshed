@@ -26,3 +26,6 @@ html/*
 *.out
 *renf90.tables
 *renf90.par
+*solutions
+*ped
+*sanity_key.csv
