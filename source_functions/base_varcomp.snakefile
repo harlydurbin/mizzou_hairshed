@@ -52,7 +52,7 @@ rule renumf90:
 		datafile = "data/derived_data/base_varcomp/{model}/data.txt",
 		moved_geno = "data/derived_data/base_varcomp/{model}/genotypes.txt",
 		pedfile = "data/derived_data/base_varcomp/{model}/ped.txt",
-		map = config['geno_prefix'] + '.chr_info.txt'
+		map = config['geno_prefix'] + '.chrinfo.txt'
 	params:
 		dir = "data/derived_data/base_varcomp/{model}",
 		renumf90_path = config['renumf90_path'],
@@ -69,7 +69,7 @@ rule renumf90:
 rule airemlf90:
 	input:
 		renf90_par = "data/derived_data/base_varcomp/{model}/renf90.par",
-		map = config['geno_prefix'] + '.chr_info.txt',
+		map = config['geno_prefix'] + '.chrinfo.txt',
 		moved_geno = "data/derived_data/base_varcomp/{model}/genotypes.txt"
 	params:
 		dir = "data/derived_data/base_varcomp/{model}",

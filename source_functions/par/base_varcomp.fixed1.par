@@ -55,7 +55,7 @@ pedigree
 OPTION minfreq 0.0001
 # Turn off filtering on call rate in order to use same SNPs across all analyses
 OPTION callrate 0
-OPTION chrinfo ../../../raw_data/geno_dump/200924_HairShed.850K.chr_info.txt
+OPTION chrinfo ../../../raw_data/geno_dump/200924_HairShed.850K.chrinfo.txt
 OPTION residual
 OPTION sol se
 OPTION conv_crit 1e-12
