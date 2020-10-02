@@ -13,7 +13,7 @@ os.makedirs("log/psrecord/base_varcomp", exist_ok = True)
 os.makedirs("log/psrecord/base_varcomp/airemlf90", exist_ok = True)
 
 rule base_all:
-	input: expand("data/derived_data/base_varcomp/{model}/solutions", model = config['model'])
+	input: expand("data/derived_data/base_varcomp/{model}/airemlf90.{model}.log", model = config['model'])
 
 rule setup_data:
 	input:
@@ -78,11 +78,10 @@ rule airemlf90:
 		aireml_path = config['aireml_path'],
 		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/log/psrecord/base_varcomp/airemlf90/airemlf90.{model}.psrecord"
 	output:
-		aireml_solutions = "data/derived_data/base_varcomp/{model}/solutions",
 		aireml_log = "data/derived_data/base_varcomp/{model}/airemlf90.{model}.log"
 	shell:
 		"""
 		cd {params.dir}
 		psrecord "{params.aireml_path} renf90.par &> {params.aireml_out_name}" --log {params.psrecord} --include-children --interval 2
-		mv airemlf90.log {params.aireml_log_name}
+		cp airemlf90.log {params.aireml_log_name}
 		"""

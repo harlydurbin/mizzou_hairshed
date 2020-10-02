@@ -10,6 +10,13 @@
         "mail-user" : "hjdurbin@mail.missouri.edu",
         "mail-type" : "NONE"
     },
+    "qc":
+    {
+        "mem" : 24G,
+        "c": 12,
+        "t": "02:00:00",
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    },
     "recode_a":
     {
         "mem" : 24G,

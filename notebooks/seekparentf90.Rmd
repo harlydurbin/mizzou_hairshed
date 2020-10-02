@@ -1,7 +1,6 @@
 ---
 title: "Pedigree corrections using `seekparentf90`"
 author: "Harly Durbin"
-date: "10/1/2020"
 output: html_document
 ---
 
@@ -37,6 +36,21 @@ conflicts <-
 
 ```
 
+```{r}
+
+  read_table2(here::here("data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.condensed.txt"),
+              col_names = FALSE) %>% 
+  filter(X1 == "Animal-Sire-Dam") %>% 
+  select(comparison = X1,
+         full_reg = X2, 
+         sire_reg = X3,
+         dam_reg = X4,
+         n_conflicts = X6, 
+         percent_conflicts = X7,
+         result = X20) %>% 
+  filter(result == "No-Match")
+```
+
 # Plot
 
 ```{r}
@@ -70,8 +84,10 @@ conflicts %>%
   filter(result == "No-Match") %>% 
   group_by(parent_reg) %>% 
   tally() %>% 
-  filter(n > 2) %>% 
-  select(parent_reg) %>% 
+  filter(n > 1) %>% 
+  mutate(fid = parent_reg) %>% 
+  select(parent_reg,
+         fid) %>% 
   write_tsv(here::here("data/derived_data/seekparentf90/remove_genotype.txt"),
             col_names = FALSE)
 ```
