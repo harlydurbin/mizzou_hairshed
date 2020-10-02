@@ -24,4 +24,5 @@ html/*
 *.txt
 *.log
 *.out
-data/derived_data/*.par
+*renf90.tables
+*renf90.par
