@@ -13,6 +13,8 @@ library(ggplot2)
 
 # Notes & questions
 
+* Trio Header: Parent-Check                 Animal                 Sire                  Dam  #Conflict Total_SNP %Conflict  #Call_An #Call_Sire  #Call_Dam #Call_Trio   #NoCall_An #NoCall_Sire  #NoCall_Dam #NoCall_Trio    CR_Anim    CR_Sire     CR_Dam    CR_Trio   Result
+
 # Setup
 
 ```{r, warning=FALSE, message=FALSE}

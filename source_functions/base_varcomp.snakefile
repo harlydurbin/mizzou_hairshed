@@ -1,4 +1,4 @@
-# snakemake -s source_functions/base_varcomp.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/base_varcomp.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/base_varcomp/201001.base_varcomp.log
+# snakemake -s source_functions/base_varcomp.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/base_varcomp.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/base_varcomp/201002.base_varcomp.log
 
 import os
 
@@ -59,7 +59,9 @@ rule renumf90:
 		renf90_in_name = "base_varcomp.{model}.par",
 		renf90_out_name = "renf90.base_varcomp.{model}.out"
 	output:
-		renf90_par = "data/derived_data/base_varcomp/{model}/renf90.par"
+		renf90_par = "data/derived_data/base_varcomp/{model}/renf90.par",
+		renf90_tables = "data/derived_data/base_varcomp/{model}/renf90.tables",
+		renf90_dat = "data/derived_data/base_varcomp/{model}/renf90.dat"
 	shell:
 		"""
 		cd {params.dir}
@@ -69,6 +71,8 @@ rule renumf90:
 rule airemlf90:
 	input:
 		renf90_par = "data/derived_data/base_varcomp/{model}/renf90.par",
+		renf90_tables = "data/derived_data/base_varcomp/{model}/renf90.tables",
+		renf90_dat = "data/derived_data/base_varcomp/{model}/renf90.dat",
 		map = config['geno_prefix'] + '.chrinfo.txt',
 		moved_geno = "data/derived_data/base_varcomp/{model}/genotypes.txt"
 	params:

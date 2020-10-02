@@ -19,7 +19,7 @@ bim %>%
   select(SNP_ID, CHR = X1, POS = X4) %>%
   write_delim(here::here(glue::glue("{geno_prefix}.chrinfo.txt")),
               delim = " ",
-              col_names = TRUE)
+              col_names = FALSE)
 
 bim %>%
   mutate(chrpos = glue::glue("{X1}:{X4}")) %>%
