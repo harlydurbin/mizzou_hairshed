@@ -15,7 +15,7 @@ rule format_all:
 rule remove_list_key:
 	input:
 		fam = config['geno_prefix'] + '.fam',
-		remove_list = "data/derived_data/seekparentf90/parentage_conflicts.remove_list",
+		remove_list = "data/derived_data/seekparentf90/parentage_conflicts.removelist",
 		script = "source_functions/remove_list_key.R"
 	params:
 		r_module = config['r_module'],
@@ -48,7 +48,7 @@ rule qc:
 	shell:
 		"""
 		module load {params.plink_module}
-		plink --bfile {params.prefix_in} --double-id --cow --threads {params.nt} --remove {input.remove_list} --maf {params.maf} --update-id {input.update_id} --make-bed --out {params.prefix_out}
+		plink --bfile {params.prefix_in} --double-id --cow --threads {params.nt} --remove {input.remove_list} --maf {params.maf} --update-ids {input.update_id} --make-bed --out {params.prefix_out}
 		"""
 
 # Some blupf90 programs want a map file as chr:pos

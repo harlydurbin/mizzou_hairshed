@@ -10,7 +10,7 @@ for x in expand("log/slurm_out/seekparentf90/{rules}", rules = config['rules']):
 	os.makedirs(x, exist_ok = True)
 
 rule seekparent_all:
-	input: "data/derived_data/seekparentf90/Check_Parent_Pedigree.txt", "data/derived_data/seekparentf90/Parent_Progeny_Conflicts.condensed.txt", "data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.condensed.txt"
+	input: "data/derived_data/seekparentf90/Parent_Progeny_Conflicts.condensed.txt", "data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.condensed.txt"
 
 rule setup:
 	input:
@@ -40,7 +40,6 @@ rule seekparentf90:
 		seektype = config['seektype'],
 		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/log/psrecord/seekparentf90/seekparentf90/seekparentf90.log"
 	output:
-		"data/derived_data/seekparentf90/Check_Parent_Pedigree.txt",
 		"data/derived_data/seekparentf90/Parent_Progeny_Conflicts.txt",
 		"data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.txt"
 	shell:

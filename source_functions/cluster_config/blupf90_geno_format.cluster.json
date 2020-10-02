@@ -10,6 +10,10 @@
         "mail-user" : "hjdurbin@mail.missouri.edu",
         "mail-type" : "NONE"
     },
+    "remove_list_key":
+    {
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    },
     "qc":
     {
         "mem" : 24G,
@@ -18,10 +22,6 @@
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     },
     "mapfile":
-    {
-        "p" : "General,Lewis,BioCompute,htc4,hpc5"
-    },
-    "match_id":
     {
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     },

@@ -45,3 +45,4 @@ OPTION use_yams
 OPTION sex_chr 30
 OPTION excludeCHR
 OPTION maxsnp 1000000
+OPTION missing -999

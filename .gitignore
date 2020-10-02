@@ -24,3 +24,4 @@ html/*
 *.txt
 *.log
 *.out
+data/derived_data/*.par

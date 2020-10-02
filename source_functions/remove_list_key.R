@@ -2,6 +2,7 @@ library(readr)
 library(dplyr)
 library(stringr)
 library(tidyr)
+library(glue)
 
 # Setup
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
@@ -59,5 +60,7 @@ remove_list %>%
   left_join(key) %>%
   assertr::verify(length(international_id) == length(remove_list$full_reg)) %>%
   assertr::verify(!is.na(international_id)) %>% 
+  mutate(fid = full_reg) %>% 
+  select(full_reg, fid) %>% 
   write_tsv(here::here(glue::glue("{geno_prefix}.remove.txt")),
             col_names = FALSE) 
