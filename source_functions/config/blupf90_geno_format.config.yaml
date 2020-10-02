@@ -1,4 +1,4 @@
-rules: ['qc', 'recode_a', 'match_id', 'format_genotypes', 'append_id', 'mapfile', 'fwf']
+rules: ['remove_list_key', 'qc', 'mapfile', 'recode_a', 'remove_spaces', 'append_id', 'fwf']
 
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 

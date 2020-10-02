@@ -31,24 +31,38 @@ conflicts <-
          full_reg = X2, 
          parent_reg = X3,
          n_conflicts = X4, 
-         percent_conflicts = X6,
-         result = X16) 
+         percent_conflicts = X6) 
 
 ```
 
 ```{r}
-
+trio_conflicts <-
   read_table2(here::here("data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.condensed.txt"),
               col_names = FALSE) %>% 
   filter(X1 == "Animal-Sire-Dam") %>% 
-  select(comparison = X1,
-         full_reg = X2, 
+  select(full_reg = X2, 
          sire_reg = X3,
          dam_reg = X4,
-         n_conflicts = X6, 
-         percent_conflicts = X7,
-         result = X20) %>% 
-  filter(result == "No-Match")
+         trio_conflicts = X5, 
+         percent_trio_conflicts = X7,
+         trio_result = X20) %>% 
+  left_join(read_table2(here::here("data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.condensed.txt"),
+                        col_names = FALSE) %>% 
+              filter(X1 == "Animal-Sire") %>% 
+              select(full_reg = X2,
+                     sire_reg = X3,
+                     sire_conflicts = X4,
+                     percent_sire_conflicts = X6,
+                     sire_result = X16)) %>% 
+  left_join(read_table2(here::here("data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.condensed.txt"),
+                        col_names = FALSE) %>% 
+              filter(X1 == "Animal-Dam") %>% 
+              select(full_reg = X2,
+                     dam_reg = X3,
+                     dam_conflicts = X4,
+                     percent_dam_conflicts = X6,
+                     dam_result = X16)) %>% 
+  select(contains("reg"), contains("result"), contains("percent"), contains("conflicts"))
 ```
 
 # Plot
@@ -72,12 +86,53 @@ conflicts %>%
 
 # Incorrect genotypes
 
+At what number of incorrect failed comparisons parent-progeny comparisons do you exclude an animal???
+
 ```{r}
-conflicts %>% 
-  filter(result == "No-Match") %>% 
+single_tally <-
+  conflicts %>% 
+  filter(0.5 > percent_conflicts) %>% 
   group_by(parent_reg) %>% 
-  tally(sort = TRUE) 
+  summarise(pass_single = n()) %>% 
+  full_join(conflicts %>% 
+              filter(percent_conflicts >= 0.5) %>% 
+              group_by(parent_reg) %>% 
+              summarise(fail_single = n())) %>% 
+  arrange(desc(fail_single)) %>% 
+  replace_na(list(pass_single = 0, fail_single = 0)) 
 ```
+
+```{r}
+trio_tally <-
+  trio_conflicts %>% 
+  filter(0.5 > percent_sire_conflicts) %>% 
+  group_by(sire_reg) %>% 
+  summarise(pass_trio = n()) %>% 
+  full_join(trio_conflicts %>% 
+              filter(percent_sire_conflicts >= 0.5) %>% 
+              group_by(sire_reg) %>% 
+              summarise(fail_trio = n())) %>% 
+  replace_na(list(pass_trio = 0, fail_trio = 0))
+```
+
+```{r}
+trio_tally %>% 
+  left_join(single_tally %>% 
+              rename(sire_reg = parent_reg)) %>% 
+  arrange(desc(fail_trio))
+```
+
+
+
+# Create and export blacklist
+
+```{r}
+trio_conflicts %>% 
+  filter(percent_trio_conflicts > 0.5) %>% 
+  arrange(desc(percent_trio_conflicts))
+```
+
+
 
 ```{r}
 conflicts %>% 
@@ -91,8 +146,6 @@ conflicts %>%
   write_tsv(here::here("data/derived_data/seekparentf90/remove_genotype.txt"),
             col_names = FALSE)
 ```
-
-# Create and export blacklist
 
 ```{r}
 conflicts %>% 

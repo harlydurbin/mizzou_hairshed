@@ -17,7 +17,7 @@ bim %>%
   select(X1, X4) %>%
   mutate(SNP_ID = row_number()) %>%
   select(SNP_ID, CHR = X1, POS = X4) %>%
-  write_delim(here::here(glue::glue("{geno_prefix}.chr_info.txt")),
+  write_delim(here::here(glue::glue("{geno_prefix}.chrinfo.txt")),
               delim = " ",
               col_names = TRUE)
 

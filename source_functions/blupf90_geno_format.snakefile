@@ -10,12 +10,30 @@ for x in expand("log/slurm_out/blupf90_geno_format/{rules}", rules = config['rul
 	os.makedirs(x, exist_ok = True)
 
 rule format_all:
-	input: config['geno_prefix'] + '.fwf.txt', config['geno_prefix'] + '.chrinfo.txt', config['geno_prefix'] + '.chr_pos.txt'
+	input: config['geno_prefix'] + '.fwf.txt', config['geno_prefix'] + '.chrinfo.txt', config['geno_prefix'] + '.chrpos.txt'
+
+rule remove_list_key:
+	input:
+		fam = config['geno_prefix'] + '.fam',
+		remove_list = "data/derived_data/seekparentf90/parentage_conflicts.remove_list",
+		script = "source_functions/remove_list_key.R"
+	params:
+		r_module = config['r_module'],
+		geno_prefix = config['geno_prefix']
+	output:
+		update_id = config['geno_prefix'] + '.update_id.txt',
+		remove_list = config['geno_prefix'] + '.remove.txt'
+	shell:
+		"""
+		module load {params.r_module}
+		Rscript --vanilla {input.script} {params.geno_prefix}
+		"""
 
 rule qc:
 	input:
 		plink = expand("{prefix}.{extension}", prefix = config['geno_prefix'], extension = ['bed', 'bim', 'fam']),
-		remove_list = "data/derived_data/seekparentf90/remove_genotype.txt"
+		update_id = config['geno_prefix'] + '.update_id.txt',
+		remove_list = config['geno_prefix'] + '.remove.txt'
 	params:
 		plink_module = config['plink_module'],
 		nt = config['plink_nt'],
@@ -24,73 +42,13 @@ rule qc:
 		maf = config['maf']
 	output:
 		plink = expand("{prefix}.qc.{extension}", prefix = config['geno_prefix'], extension = ['bed', 'bim', 'fam'])
-	# Remove flagged genotypes
+	# Remove flagged samples
 	# Filter on MAF
+	# Update IDs
 	shell:
 		"""
 		module load {params.plink_module}
-		plink --bfile {params.prefix_in} --double-id --cow --threads {params.nt} --remove {input.remove_list} --maf {params.maf} --make-bed --out {params.prefix_out}
-		"""
-
-# Convert PLINK bed/bim/bam to PLINK .raw additive file
-rule recode_a:
-	input:
-		plink = expand("{prefix}.qc.{extension}", prefix = config['geno_prefix'], extension = ['bed', 'bim', 'fam'])
-	params:
-		plink_module = config['plink_module'],
-		nt = config['plink_nt'],
-		prefix = config['geno_prefix']
-	output:
-		recoded = config['geno_prefix'] + '.raw'
-	shell:
-		"""
-		module load {params.plink_module}
-		plink --bfile {params.prefix} --double-id --cow --threads {params.nt} --recode A --out {params.prefix}
-		"""
-
-# Match up genotype dump international_id to full_ped full_reg
-rule match_id:
-	input:
-		fam = config['geno_prefix'] + ".qc.fam",
-		script = "source_functions/pull_full_reg.R",
-		cleaned = "data/derived_data/import_join_clean/cleaned.rds",
-		full_ped = "data/derived_data/3gen/full_ped.rds",
-		sample_table = config['sample_table']
-	params:
-		r_module = config['r_module'],
-		geno_prefix = config['geno_prefix']
-	output:
-		full_reg = config['geno_prefix'] + ".full_reg.txt"
-	shell:
-		"""
-		module load {params.r_module}
-		Rscript --vanilla {input.script} {input.fam} {params.geno_prefix}
-		"""
-
-rule format_genotypes:
-	input:
-		recoded = config['geno_prefix'] + ".raw"
-	output:
-		temp = temp(config['geno_prefix'] + '.temp.txt')
-	# cut -d " " -f 7- removed first 6 columns
-	# 1d removes header line
-	# s/ //g removes spaces such that each row is an 850K long string
-	shell:
-		"""
-		cut -d " " -f 7- {input.recoded} | sed '1d; s/ //g' > {output.temp}
-		"""
-
-# I'm lazy and cant figure out how to pipe to awk -v
-rule append_id:
-	input:
-		temp = config['geno_prefix'] + '.temp.txt',
-		full_reg = config['geno_prefix'] + ".full_reg.txt"
-	output:
-		formatted = temp(config['geno_prefix'] + '.format.txt')
-	# paste IDs
-	shell:
-		"""
-		awk -v f2={input.temp} ' {{ c = $1; getline < f2; print c, $1; }} ' {input.full_reg} > {output.formatted}
+		plink --bfile {params.prefix_in} --double-id --cow --threads {params.nt} --remove {input.remove_list} --maf {params.maf} --update-id {input.update_id} --make-bed --out {params.prefix_out}
 		"""
 
 # Some blupf90 programs want a map file as chr:pos
@@ -105,16 +63,61 @@ rule mapfile:
 		geno_prefix = config['geno_prefix']
 	output:
 		chrinfo = config['geno_prefix'] + '.chrinfo.txt',
-		chr_pos = config['geno_prefix'] + '.chr_pos.txt'
+		chr_pos = config['geno_prefix'] + '.chrpos.txt'
 	shell:
 		"""
 		module load {params.r_module}
 		Rscript --vanilla {input.script} {input.bim} {params.geno_prefix}
 		"""
 
+# Convert PLINK bed/bim/bam to PLINK .raw additive file
+rule recode_a:
+	input:
+		plink = expand("{prefix}.qc.{extension}", prefix = config['geno_prefix'], extension = ['bed', 'bim', 'fam'])
+	params:
+		plink_module = config['plink_module'],
+		nt = config['plink_nt'],
+		prefix_in = config['geno_prefix'] + '.qc',
+		prefix_out = config['geno_prefix']
+	output:
+		recoded = config['geno_prefix'] + '.raw'
+	shell:
+		"""
+		module load {params.plink_module}
+		plink --bfile {params.prefix_in} --double-id --cow --threads {params.nt} --recode A --out {params.prefix_out}
+		"""
+
+rule remove_spaces:
+	input:
+		recoded = config['geno_prefix'] + ".raw"
+	output:
+		temp = temp(config['geno_prefix'] + '.temp1.txt'),
+		full_reg = config['geno_prefix'] + '.full_reg.txt'
+	# cut -d " " -f 7- removed first 6 columns
+	# 1d removes header line
+	# s/ //g removes spaces such that each row is an 850K long string
+	shell:
+		"""
+		awk '{{print $1}}' {input.recoded} | sed '1d' > {output.full_reg}
+		cut -d " " -f 7- {input.recoded} | sed '1d; s/ //g' > {output.temp}
+		"""
+
+# I'm lazy and cant figure out how to pipe to awk -v
+rule append_id:
+	input:
+		temp = config['geno_prefix'] + '.temp1.txt',
+		full_reg = config['geno_prefix'] + ".full_reg.txt"
+	output:
+		formatted = temp(config['geno_prefix'] + '.temp2.txt')
+	# paste IDs
+	shell:
+		"""
+		awk -v f2={input.temp} ' {{ c = $1; getline < f2; print c, $1; }} ' {input.full_reg} > {output.formatted}
+		"""
+
 rule fwf:
 	input:
-		formatted = config['geno_prefix'] + '.format.txt'
+		formatted = config['geno_prefix'] + '.temp2.txt'
 	output:
 		fwf = config['geno_prefix'] + '.fwf.txt'
 	# awk command creats fixed width file

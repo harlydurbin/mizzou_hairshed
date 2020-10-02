@@ -1,4 +1,4 @@
-# snakemake -s source_functions/seekparentf90.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/seekparentf90.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/seekparentf90/201001.seekparentf90.log
+# snakemake -s source_functions/seekparentf90.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/seekparentf90.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/seekparentf90/201002.seekparentf90.log
 
 import os
 
@@ -10,22 +10,23 @@ for x in expand("log/slurm_out/seekparentf90/{rules}", rules = config['rules']):
 	os.makedirs(x, exist_ok = True)
 
 rule seekparent_all:
-	input: "data/derived_data/seekparentf90/Check_Parent_Pedigree.txt", "data/derived_data/seekparentf90/Parent_Progeny_Conflicts.condensed.txt"
+	input: "data/derived_data/seekparentf90/Check_Parent_Pedigree.txt", "data/derived_data/seekparentf90/Parent_Progeny_Conflicts.condensed.txt", "data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.condensed.txt"
 
 rule setup:
 	input:
 		fwf = config['geno_prefix'] + '.fwf.txt',
 		blupf90_ped = "data/derived_data/3gen/blupf90_ped.txt",
-		chr_info = config['geno_prefix'] + '.chr_info.txt'
+		chr_info = config['geno_prefix'] + '.chrinfo.txt'
 	output:
 		genotypes = temp("data/derived_data/seekparentf90/genotypes.txt"),
 		ped = temp("data/derived_data/seekparentf90/ped.txt"),
 		map = temp("data/derived_data/seekparentf90/map.txt")
 	shell:
+		# echo command adds header seekparentf90 needs to map file
 		"""
 		cp {input.fwf} {output.genotypes}
 		cp {input.blupf90_ped} {output.ped}
-		cp {input.chr_info} {output.map}
+		echo -e "SNP_ID CHR POS" | cat - {input.chr_info} > {output.map}
 		"""
 
 rule seekparentf90:
@@ -39,9 +40,9 @@ rule seekparentf90:
 		seektype = config['seektype'],
 		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/log/psrecord/seekparentf90/seekparentf90/seekparentf90.log"
 	output:
-		check = "data/derived_data/seekparentf90/Check_Parent_Pedigree.txt",
-		conflicts = temp("data/derived_data/seekparentf90/Parent_Progeny_Conflicts.txt"),
-		conflicts_trio = temp("data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.txt")
+		"data/derived_data/seekparentf90/Check_Parent_Pedigree.txt",
+		"data/derived_data/seekparentf90/Parent_Progeny_Conflicts.txt",
+		"data/derived_data/seekparentf90/Parent_Progeny_Conflicts_Trio.txt"
 	shell:
 		"""
 		cd {params.directory}

@@ -13,13 +13,15 @@ sample_table <-
            trim_ws = TRUE,
            guess_max = 100000)
 
-fam_path <- as.character(commandArgs(trailingOnly = TRUE)[1])
+remove_list <- 
+  read_table2(here::here("data/derived_data/seekparentf90/parentage_conflicts.removelist"),
+              col_names = "full_reg")
 
-geno_prefix <- as.character(commandArgs(trailingOnly = TRUE)[2])
+geno_prefix <- as.character(commandArgs(trailingOnly = TRUE)[1])
 
 # Import fam file
 fam <-
-  read_table2(here::here(fam_path),
+  read_table2(here::here(glue("{geno_prefix}.fam")),
               col_names = FALSE) %>%
   select(international_id = 1)
 
@@ -43,11 +45,19 @@ key <-
                                 full_reg),
          full_reg = str_replace(full_reg, "AAN", "AAA"))
 
-# Re-join to fam to make sure rows are in the correct order
-fam %>%
+# Write out PLINK --update-id file
+fam %>% 
   left_join(key) %>%
   assertr::verify(length(full_reg) == length(fam$international_id)) %>%
   assertr::verify(!is.na(full_reg)) %>%
-  select(full_reg) %>%
-  write_tsv(here::here(glue::glue("{geno_prefix}.full_reg.txt")),
+  mutate(fid = international_id, new_fid = full_reg) %>% 
+  select(international_id, fid, full_reg, new_fid) %>%
+  write_tsv(here::here(glue::glue("{geno_prefix}.update_id.txt")),
             col_names = FALSE)
+
+remove_list %>% 
+  left_join(key) %>%
+  assertr::verify(length(international_id) == length(remove_list$full_reg)) %>%
+  assertr::verify(!is.na(international_id)) %>% 
+  write_tsv(here::here(glue::glue("{geno_prefix}.remove.txt")),
+            col_names = FALSE) 

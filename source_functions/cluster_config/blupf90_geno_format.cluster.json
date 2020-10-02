@@ -17,20 +17,21 @@
         "t": "02:00:00",
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     },
-    "recode_a":
+    "mapfile":
     {
-        "mem" : 24G,
-        "c": 12,
-        "t": "02:00:00",
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     },
     "match_id":
     {
-        "mem" : 2G,
-        "t": "01:00:00",
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     },
-    "format_genotypes":
+    "recode_a":
+    {
+        "mem" : 12G,
+        "c": 12,
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    },
+    "remove_spaces":
     {
         "mem" : 24G,
         "t": "02:00:00",
@@ -39,11 +40,6 @@
     "append_id":
     {
         "mem" : 8G,
-        "t": "01:00:00",
-        "p" : "General,Lewis,BioCompute,htc4,hpc5"
-    },
-    "mapfile":
-    {
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     },
     "fwf":
