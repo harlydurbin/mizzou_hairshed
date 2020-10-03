@@ -25,10 +25,10 @@ EFFECT
 6 cross alpha
 # from_may1 effect
 EFFECT
-7 cross numer
+7 cov numer
 # latitude effect
 EFFECT
-8 cross numer
+8 cov numer
 # animal effect
 EFFECT
 1 cross alpha
