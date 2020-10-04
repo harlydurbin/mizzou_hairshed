@@ -12,6 +12,7 @@ library(stringr)
 library(dplyr)
 library(glue)
 library(readxl)
+library(ggplot2)
 library(magrittr)
 library(purrr)
 library(tidygeocoder)
@@ -27,6 +28,25 @@ source(here::here("source_functions/coalesce_join.R"))
 ```{r, warning=FALSE, message=FALSE}
 cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
 ```
+
+# Days from May 1 summary
+
+```{r}
+cleaned %>% 
+  filter(!is.na(date_score_recorded)) %>% 
+  mutate(from_may1 = as.numeric(date_score_recorded - lubridate::ymd(glue("{year}/05/01")))) %>% 
+  summarise(mean = mean(from_may1),
+            median = median(from_may1))
+```
+
+```{r}
+cleaned %>% 
+  filter(!is.na(date_score_recorded)) %>% 
+  mutate(from_may1 = as.numeric(date_score_recorded - lubridate::ymd(glue("{year}/05/01")))) %>% 
+  ggplot(aes(x = from_may1)) +
+  geom_density()
+```
+
 
 # Latitude coordinate key
 
@@ -89,6 +109,11 @@ weather <-
 ```
 
 ```{r}
-
+weather %>% 
+  group_by(date_score_recorded, lat, long) %>% 
+  summarise(mean_high = mean(daily_high)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = mean_high)) +
+  geom_density()
 ```
 
