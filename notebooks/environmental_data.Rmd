@@ -27,8 +27,7 @@ source(here::here("source_functions/coalesce_join.R"))
 cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
 ```
 
-
-# Create coordinate key
+# Latitude coordinate key
 
 ```{r}
 coord_key <-
@@ -71,8 +70,19 @@ coord_key %>%
             na = "")
 ```
 
-
 # Weather data
+
+## List of dates to pull data for
+
+```{r}
+cleaned %>% 
+  filter(!is.na(date_score_recorded)) %>% 
+  left_join(read_csv(here::here("data/derived_data/environmental_data/coord_key.csv")) %>% 
+              select(farm_id, lat, long)) %>% 
+  distinct(date_score_recorded, lat, long)
+```
+
+
 
 ```{r, eval = FALSE}
 

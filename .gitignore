@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+api_keys
 management/*.xlsx
 source_functions/api_keys
 data/derived_data/update_email2020/*

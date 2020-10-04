@@ -5,11 +5,15 @@ library(stringr)
 library(dplyr)
 library(magrittr)
 
-weather <- readr::read_rds(here::here("data/derived_data/weather.rds"))
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
 
 # `weather` is a 3 column data frame: latitude, longitude, yyyy-mm-dd
-weather %>% 
-  View()
+weather <- 
+  cleaned %>% 
+  filter(!is.na(date_score_recorded)) %>% 
+  left_join(read_csv(here::here("data/derived_data/environmental_data/coord_key.csv")) %>% 
+              select(farm_id, lat, long)) %>% 
+  distinct(date_score_recorded, lat, long)
 
 # Need to get a darksky API key and set it in the global environment
 # https://darksky.net/dev/login?next=/account
@@ -26,9 +30,9 @@ timestamp_chr <-
 # This establishes a function to get weather history
 # given a date, lat, and lng
 get_history <-
-  function(lat, lng, date) {
+  function(lat, long, date_score_recorded) {
     darksky::get_forecast_for(latitude = lat,
-                              longitude = lng,
+                              longitude = long,
                               timestamp = timestamp_chr(date),
                               exclude = "currently")
   }

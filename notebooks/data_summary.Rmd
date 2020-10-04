@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(tidyr)
 library(dplyr)
+library(ggplot2)
 ```
 
 # Setup
@@ -24,6 +25,12 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
 
 ```{r}
 animal_table <- read_rds(here::here("data/raw_data/import_join_clean/animal_table.rds"))
+```
+
+
+```{r}
+cleaned %>% 
+  visdat::vis_miss()
 ```
 
 # Total number of individuals
@@ -53,6 +60,13 @@ cleaned %>%
 ```
 
 # Tally by age
+
+```{r}
+cleaned %>% 
+  group_by(age) %>% 
+  tally()
+  
+```
 
 # Tally by year
 
@@ -121,11 +135,26 @@ cleaned %>%
   tally(sort = TRUE)
 ```
 
+# Hair score summary 
+
+```{r}
+cleaned %>% 
+  summarise(mean = mean(hair_score),
+            sd = sd(hair_score),
+            median = median(hair_score))
+```
+
+```{r}
+cleaned %>% 
+  ggplot(aes(x = hair_score)) +
+  geom_histogram(bins = 5)
+```
+
 
 # Commentary
 
 Data was collected over 9 years by 77 beef cattle producers and university groups.
 
-When an animal's date of birth was available, its "age class" was calculated based on the date the score was recorded, where nreported score dates were assumed to be May 1 of the scoring year for the purposes of age class calculation. Age class was calculated as (n*365d)-90d to ((n+1)*365d)-90d, where n is the age classification and d is days. This means that animals that hadn't yet reached their first birthday could still be classified as yearlings and so on. Age class calculations were based on the BIF age-of-dam definitions and hair shedding scores recorded on animals fewer than 275 (i.e., 365-90) days of age were excluded. Animals with differing sexes reported across multiple years were also excluded. After filtering, 36,899 phenotypes from 13,364 cattle were retained for analysis. Most cattle were hair shedding scored once per year between mid-April and mid-June, but some groups chose to score multiple times across the span of several months. This resulted in between 1 and 8 scores per animal per year. Most cattle were scored in at least two separate years (8,839 or 66.11% of all individuals).
+When an animal's date of birth was available, its "age class" was calculated based on the date the score was recorded, where reported score dates were assumed to be May 1 of the scoring year for the purposes of age class calculation. Age class was calculated as (n*365d)-90d to ((n+1)*365d)-90d, where n is the age classification and d is days. This means that animals that hadn't yet reached their first birthday could still be classified as yearlings and so on. Age class calculations were based on the BIF age-of-dam definitions and hair shedding scores recorded on animals fewer than 275 (i.e., 365-90) days of age were excluded. Animals with differing sexes reported across multiple years were also excluded. After filtering, 36,899 phenotypes from 13,364 cattle were retained for analysis. Most cattle were hair shedding scored once per year between mid-April and mid-June, but some groups chose to score multiple times across the span of several months. This resulted in between 1 and 8 scores per animal per year. Most cattle were scored in at least two separate years (8,839 or 66.11% of all individuals).
 
 
