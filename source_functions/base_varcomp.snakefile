@@ -1,4 +1,4 @@
-# snakemake -s source_functions/base_varcomp.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/base_varcomp.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/base_varcomp/201002.base_varcomp.log
+# snakemake -s source_functions/base_varcomp.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/base_varcomp.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/base_varcomp/201003.base_varcomp.log
 
 import os
 
@@ -57,7 +57,7 @@ rule renumf90:
 		dir = "data/derived_data/base_varcomp/{model}",
 		renumf90_path = config['renumf90_path'],
 		renf90_in_name = "base_varcomp.{model}.par",
-		renf90_out_name = "renf90.base_varcomp.{model}.out"
+		renf90_out_name = "renf90.{model}.out"
 	output:
 		renf90_par = "data/derived_data/base_varcomp/{model}/renf90.par",
 		renf90_tables = "data/derived_data/base_varcomp/{model}/renf90.tables",
@@ -77,8 +77,8 @@ rule airemlf90:
 		moved_geno = "data/derived_data/base_varcomp/{model}/genotypes.txt"
 	params:
 		dir = "data/derived_data/base_varcomp/{model}",
-		aireml_out_name = "aireml.base_varcomp.{model}.out",
-		aireml_log_name = "airemlf90.base_varcomp.{model}.log",
+		aireml_out_name = "aireml.{model}.out",
+		aireml_log_name = "airemlf90.{model}.log",
 		aireml_path = config['aireml_path'],
 		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/log/psrecord/base_varcomp/airemlf90/airemlf90.{model}.psrecord"
 	output:
@@ -87,5 +87,5 @@ rule airemlf90:
 		"""
 		cd {params.dir}
 		psrecord "{params.aireml_path} renf90.par &> {params.aireml_out_name}" --log {params.psrecord} --include-children --interval 2
-		cp airemlf90.log {params.aireml_log_name}
+		mv airemlf90.log {params.aireml_log_name}
 		"""

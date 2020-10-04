@@ -38,17 +38,80 @@ full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
 
 ```{r, warning=FALSE, message=FALSE}
-fixed1_key <-
+fixed1 <-
   c(1:7) %>% 
   purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/base_varcomp/fixed1/renf90.tables"),
                                      effect_num = .x,
-                                     effect_key = TRUE))
+                                     effect_key = TRUE)) %>% 
+  mutate(effect = case_when(effect == 1 ~ "farm_id",
+                            effect == 2 ~ "year",
+                            effect == 3 ~ "calving_season",
+                            effect == 4 ~ "toxic_fescue",
+                            effect == 5 ~ "age",
+                            effect == 6 ~ "from_may1",
+                            effect == 7 ~ "latitude")) %>% 
+  right_join(read_table2(here::here("data/derived_data/base_varcomp/fixed1/solutions"),
+                         skip = 1,
+                         col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+               select(-trait) %>% 
+               filter(!effect %in% c(8, 9)) %>% 
+               mutate_at(vars("effect", "id_renamed"), ~ as.character(.)) %>% 
+               mutate(effect = case_when(effect == 1 ~ "farm_id",
+                                         effect == 2 ~ "year",
+                                         effect == 3 ~ "calving_season",
+                                         effect == 4 ~ "toxic_fescue",
+                                         effect == 5 ~ "age",
+                                         effect == 6 ~ "from_may1",
+                                         effect == 7 ~ "lat")))
+  
   
 ```
 
+# Age
+
 ```{r}
-fixed1_sol <-
-  read_ta
+fixed1 %>% 
+  filter(effect == "age") %>% 
+  mutate(id_original = as.numeric(id_original)) %>%
+  arrange(id_original) %>% 
+  mutate(id_original = forcats::fct_inorder(as.factor(id_original))) %>% 
+  ggplot(aes(x = id_original,
+             y = solution)) +
+  geom_bar(stat = "identity",
+             position = "identity") +
+  geom_errorbar(aes(ymin = solution - se,
+                    ymax = solution + se)) +
+  theme_classic() +
+  theme(plot.title = element_text(size = 22,
+                                  face = "italic",
+                                  margin = margin(t = 0,
+                                                  r = 0,
+                                                  b = 13,
+                                                  l = 0)),
+        axis.title = element_text(size = 16),
+        axis.title.y = element_text(margin = margin(t = 0,
+                                                    r = 10,
+                                                    b = 0,
+                                                    l = 0)),
+        axis.title.x = element_text(margin = margin(t = 10,
+                                                    r = 0,
+                                                    b = 0,
+                                                    l = 0)),
+        axis.text = element_text(size = 14),
+        legend.position = "none") +
+  labs(x = "Age",
+       y = "BLUE")
 ```
 
+# Latitude
+
+```{r}
+fixed1 %>% 
+  filter(effect == "from_may1") %>% 
+  mutate(id_original = as.numeric(id_original)) %>% 
+  filter(id_original != -999) %>% 
+  ggplot(aes(x = id_original,
+             y = solution)) +
+  geom_line()
+```
 
