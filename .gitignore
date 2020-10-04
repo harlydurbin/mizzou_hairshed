@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+.Renviron
 api_keys
 management/*.xlsx
 source_functions/api_keys

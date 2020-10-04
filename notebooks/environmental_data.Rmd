@@ -85,28 +85,36 @@ cleaned %>%
 
 
 ```{r, eval = FALSE}
-
 weather <-  
-  joined_files %>% 
-  #Append zipcodes by matching location key
-  left_join(location_key %>% 
-              select(location, zip), 
-            by = c("location")) %>% 
-  rename(zipcode = zip) %>%
-  #append coordinates by zipcode
-  left_join(read_csv(here::here("data/raw_data/zips_to_coordinates.csv")) %>% 
-              janitor::clean_names() %>% 
-              rename("zipcode" = "zip"),
-            by = c("zipcode")) %>% 
-  filter(!is.na(zipcode) & !is.na(date_score_recorded)) %>%
-  distinct(zipcode, lat, lng, date_score_recorded) %>%
+  cleaned %>% 
+  filter(!is.na(date_score_recorded)) %>% 
+  left_join(read_csv(here::here("data/derived_data/environmental_data/coord_key.csv")) %>% 
+              select(farm_id, lat, long)) %>% 
+  distinct(date_score_recorded, lat, long) %>% 
   mutate(sixty_prior = map(date_score_recorded,
                            ~ seq(.x - 59, .x, by = "days")),
          sixty_prior = map(sixty_prior, as_tibble)) %>% 
-  unnest() %>% 
-  select(zipcode, lat, lng, value) %>% 
-  distinct()
+  unnest() 
 ```
+
+
+```{r, eval = FALSE}
+weather2 <-
+  weather %>% 
+  select(-date_score_recorded) %>% 
+  distinct() %>% 
+  mutate(x = row_number())
+
+```
+
+```{r}
+weather %>% 
+  left_join(weather2) %>% 
+  group_by(x) %>% 
+  filter(n() > 1) %>% 
+  arrange(x)
+```
+
 
 
 # Dark Sky API
