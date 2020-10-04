@@ -13,6 +13,7 @@ library(dplyr)
 library(glue)
 library(readxl)
 library(magrittr)
+library(purrr)
 library(tidygeocoder)
 library(tidylog)
 
@@ -72,73 +73,22 @@ coord_key %>%
 
 # Weather data
 
-## List of dates to pull data for
-
 ```{r}
-cleaned %>% 
-  filter(!is.na(date_score_recorded)) %>% 
-  left_join(read_csv(here::here("data/derived_data/environmental_data/coord_key.csv")) %>% 
-              select(farm_id, lat, long)) %>% 
-  distinct(date_score_recorded, lat, long)
-```
-
-
-
-```{r, eval = FALSE}
-weather <-  
-  cleaned %>% 
-  filter(!is.na(date_score_recorded)) %>% 
-  left_join(read_csv(here::here("data/derived_data/environmental_data/coord_key.csv")) %>% 
-              select(farm_id, lat, long)) %>% 
-  distinct(date_score_recorded, lat, long) %>% 
-  mutate(sixty_prior = map(date_score_recorded,
-                           ~ seq(.x - 59, .x, by = "days")),
-         sixty_prior = map(sixty_prior, as_tibble)) %>% 
-  unnest() 
-```
-
-
-```{r, eval = FALSE}
-weather2 <-
-  weather %>% 
-  select(-date_score_recorded) %>% 
-  distinct() %>% 
-  mutate(x = row_number())
-
-```
-
-```{r}
-weather %>% 
-  left_join(weather2) %>% 
-  group_by(x) %>% 
-  filter(n() > 1) %>% 
-  arrange(x)
-```
-
-
-
-# Dark Sky API
-
-```{r}
-
-weather_done <- 
-  read_rds(here::here("data/derived_data/weather_done.rds")) %>% 
-  # Pull hourly data from the `data` column and save it to its own column 
-  mutate(hourly = map(data, "hourly", .default = NA),
-         # Pull daily average data from the `data` column and save 
-         # it to its own column 
-         daily = map(data, "daily", .default = NA)) %>% 
+weather <- 
+  read_rds(here::here("data/derived_data/environmental_data/weather.rds")) %>%  
+  # Pull daily data from the `data` column and save it to its own column 
+  mutate(daily = purrr::map(data, "daily", .default = NA),
+         # Extract daily high from daily column
+         daily_high = purrr::map_dbl(daily,
+                              ~ .x %>% 
+                                dplyr::pull(temperatureHigh))) %>% 
   # Remove the data column
-  select(-data) %>% 
-  rename(date_score_recorded = value) 
-
-weather_done %>% 
-  unnest(daily)
-
-
+  select(-data) 
 
 
 ```
 
+```{r}
 
+```
 

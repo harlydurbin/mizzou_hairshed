@@ -7,7 +7,6 @@ library(magrittr)
 library(tidyr)
 
 setwd(here::here())
-getwd()
 
 # Need to get a darksky API key and set it in the global environment
 # https://darksky.net/dev/login?next=/account
