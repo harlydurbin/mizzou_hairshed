@@ -1,14 +1,19 @@
+# Paths relative to the current working directory
 DATAFILE
 data.txt
+# I have 1 trait and it's in the 9th column
 TRAITS
 9
+# Pass my first column (registration number/ID) to output
 FIELDS_PASSED TO OUTPUT
 1
 WEIGHT(S)
 
 RESIDUAL_VARIANCE
 0.5
-# farm_id effect
+# farm_id effect in 2nd column
+# cross means it's a categorical fixed effect
+# alpha means there are characters other than numbers in the 2nd column
 EFFECT
 2 cross alpha
 # year effect
@@ -26,41 +31,60 @@ EFFECT
 # from_may1 effect
 EFFECT
 7 cov
-# latitude effect
+# latitude effect in 8th column
+# cov means it's a covariate
 EFFECT
 8 cov
-# animal effect
+# animal effect based on individual IDs in the 1st column
 EFFECT
 1 cross alpha
+# The effect above is a random animal effect
 RANDOM
 animal
+# Optional permanent environment effect based on column 1
 OPTIONAL
 pe
+# Pedigree file
 FILE
 ped.txt
+# Column order of pedigree
+# 1 (individual) in the first column
+# 2 (sire) in the second column
+# 3 (dam) in the third column
 FILE_POS
 1 2 3 0 0
+# SNP_FILE HAS to be placed right after FILE_POS or it won't work
 SNP_FILE
 genotypes.txt
+# I'm using a 3 generation pedigree
 PED_DEPTH
 3
-OPTION minfreq 0.0001
+# Calculate inbreeding based on pedigree
 INBREEDING
 pedigree
+# Starting covariances
 (CO)VARIANCES
 0.3
 (CO)VARIANCES_PE
 0.07
-# Nof filtering on allele frequency
+# Not filtering on allele frequency
 OPTION minfreq 0.0001
 # Turn off filtering on call rate in order to use same SNPs across all analyses
 OPTION callrate 0
+# Location of map file - some tools want it in "chrinfo" format, some just want it in "chr:pos" format
 OPTION chrinfo ../../../raw_data/geno_dump/200924_HairShed.850K.chrinfo.txt
+# save the residuals
 OPTION residual
+# save solutions and standard errors
 OPTION sol se
 OPTION conv_crit 1e-12
+# YAMS is faster solving method
 OPTION use_yams
+# Any chromosome after 29 is a sex chromosome
 OPTION sex_chr 30
+# Exclude sex chromosomes
 OPTION excludeCHR
+# Have to set this if you're using more than 400,000 markers
 OPTION maxsnp 1000000
+# In my data, NAs are specified as -999 (0 is the default)
 OPTION missing -999
