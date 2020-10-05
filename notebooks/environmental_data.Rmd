@@ -1,5 +1,5 @@
 ---
-title: "Gatherig environmental and location data"
+title: "Environmental variables"
 author: "Harly Durbin"
 output: html_document
 ---
@@ -27,7 +27,7 @@ library(tidylog)
 cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 weather <- 
   read_rds(here::here("data/derived_data/environmental_data/weather.rds")) %>%  
   # Pull daily data from the `data` column and save it to its own column 
@@ -35,11 +35,18 @@ weather <-
          # Extract daily high from daily column
          daily_high = purrr::map_dbl(daily,
                               ~ .x %>% 
-                                dplyr::pull(temperatureHigh))) %>% 
+                                dplyr::pull(temperatureHigh)),
+         apparent_high = purrr::map_dbl(daily,
+                              ~ .x %>% 
+                                dplyr::pull(apparentTemperatureHigh))) %>% 
   # Remove the data column
   select(-data) 
 
 
+```
+
+```{r, message=FALSE, warning=FALSE}
+coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key.csv"))
 ```
 
 # Data summary
@@ -71,5 +78,25 @@ weather %>%
   ungroup() %>% 
   ggplot(aes(x = mean_high)) +
   geom_density()
+```
+
+# Correlation
+
+```{r}
+weather %>% 
+  group_by(date_score_recorded, lat, long) %>% 
+  # Take rows for max 30 days
+  slice_max(order_by = value, n = 30) %>% 
+  summarise(mean_real_high = mean(daily_high),
+            mean_apparent_high = mean(apparent_high)) %>% 
+  ungroup() %>% 
+  right_join(cleaned %>% 
+               filter(!is.na(date_score_recorded)) %>% 
+               left_join(coord_key %>% 
+                           select(farm_id, lat, long))) %>% 
+  mutate(from_may1 = as.numeric(date_score_recorded - lubridate::ymd(glue("{year}/05/01")))) %>% 
+  select(from_may1, lat, mean_apparent_high) %>% 
+  corrr::correlate()
+
 ```
 

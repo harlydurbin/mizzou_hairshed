@@ -25,7 +25,12 @@ source(here::here("source_functions/parse_renf90table.R"))
 ## Model key
 
 * `fixed1`
-    + `{farm_id} + {year} + {calving_season} + {age} + {days_from_May1} + {toxic_fescue} + {latitude}`. Everything would be fit as a categorical factor, except for days from May 1 and latitude
+    + `{farm_id} + {year} + {calving_season} + {age} + {from_may1} + {toxic_fescue} + {latitude}`. Everything would be fit as a categorical factor, except for days from May 1 and latitude
+* `fixed2`
+    + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {latitude} + {mean_apparent_high}`
+    + Take out `{farm_id}` because it's confounded with latitude
+    + Take out `{from_may1}` because it's highly correlated with `{mean_apparent_high}`
+    + Use AGI model age groups rather than categorical ages
 
 # Setup 
 

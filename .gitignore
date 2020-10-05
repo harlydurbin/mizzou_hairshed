@@ -16,6 +16,7 @@ data/derived_data/import_join_clean/*.csv
 data/derived_data/import_join_clean/*.rds
 data/derived_data/3gen/*.xlsx
 data/derived_data/3gen/*.csv
+data/derived_data/breed_comp/*.csv
 data/raw_data/*
 management/*.xlsx
 *.gdoc

@@ -16,6 +16,90 @@ library(magrittr)
 library(tidylog)
 ```
 
+# Notes & questions
+
+* ~~Send Jordan Bowman ped from April and ask for breed comp~~
+* Pull together ANR ped from April, add new animals, ask Ryan Bolt for breed comp
+
+# Setup
+
+```{r, warning=FALSE, message=FALSE}
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
+
+```{r}
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped."))
+```
 
 
+# RHF data
+
+```{r}
+rhf_breeds <-
+  read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_RHF_2019.xlsx",
+             sheet = "Original_heifers") %>% 
+  janitor::clean_names() %>% 
+  select(animal_id = tattoo, breeds) %>% 
+  mutate(animal_id = stringr::str_remove_all(animal_id,
+                                             "[[:punct:]]|[[:space:]]")) %>% 
+  left_join(cleaned %>% 
+              filter(year == 2019) %>% 
+              filter(farm_id == "RHF")) %>% 
+  bind_rows(read_excel("~/Box Sync/HairShedding/ReportedData/2018/DataRecording_RHF_2018.xlsx",
+                       sheet = "new") %>% 
+              janitor::clean_names() %>% 
+              select(animal_id, breeds = comment) %>% 
+              mutate(animal_id = stringr::str_remove_all(animal_id,
+                                                         "[[:punct:]]|[[:space:]]")) %>% 
+              left_join(cleaned %>% 
+                          filter(year == 2018) %>% 
+                          filter(farm_id == "RHF"))) %>% 
+  filter(!is.na(breeds)) %>% 
+  select(farm_id, breed_code, registration_number, animal_id, Lab_ID, temp_id, breeds) 
+```
+
+# Red Angus
+
+```{r, message=FALSE, warning=FALSE}
+ran_var <-
+  tribble(
+  ~ reg_var, ~sire_var, ~ dam_var,
+  "reg#", "sire_reg#", "dam_reg#", # animal
+  "sire_reg#", "ss_reg", "sd_reg", # sire
+  "dam_reg#", "ds_reg", "dd_reg", # dam
+  "ss_reg", "sss_reg", "ssd_reg", # pgs
+  "sd_reg", "sds_reg", "sdd_reg", # pgd
+  "ds_reg", "dss_reg", "dsd_reg", # mgs
+  "dd_reg", "dds_reg", "ddd_reg" #mgd
+)
+```
+
+```{r}
+ran_reg <-
+  # Import raw pedigree
+  purrr::pmap(list(x = ran_var$reg_var,
+                   y = ran_var$sire_var,
+                   z =  ran_var$dam_var),
+              .f = function(x, y, z) {
+                read_excel(here::here("data/raw_data/200413.RAN.Hair Shedding Pedigree 4.13.20.xlsx"),
+                           col_types = "text") %>%
+                  select(registration_number = x,
+                         sire_reg = y,
+                         dam_reg = z)
+    }) %>%
+  reduce(bind_rows) %>% 
+  filter(!is.na(registration_number)) %>%
+  group_by(registration_number) %>% 
+  bind_rows(cleaned %>% 
+              filter(year == 2020) %>% 
+              filter(breed_code == "ANR") %>% 
+              select(registration_number)) %>% 
+  distinct(registration_number)
+```
+
+```{r}
+ran_reg %>% 
+  write_csv(here::here("data/derived_data/breed_comp/201005.RAN_reg.csv"),
+            col_names = FALSE)
+```
 
