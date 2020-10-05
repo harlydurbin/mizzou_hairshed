@@ -20,6 +20,8 @@ rule setup_data:
 		script = "source_functions/setup.base_varcomp.{model}.R",
 		cleaned = "data/derived_data/import_join_clean/cleaned.rds",
 		full_ped = "data/derived_data/3gen/full_ped.rds",
+		weather_data = "data/derived_data/environmental_data/weather.rds",
+		coord_key = "data/derived_data/environmental_data/coord_key.csv"
 	params:
 		r_module = config['r_module']
 	output:
