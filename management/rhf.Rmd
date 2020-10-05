@@ -354,3 +354,38 @@ sim_found %>%
   writexl::write_xlsx("~/Desktop/RHF.xlsx")
 ```
 
+# Breed comp 10/5/20
+
+```{r}
+rhf_breed <-
+  read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_RHF_2019.xlsx",
+             sheet = "Original_heifers") %>% 
+  janitor::clean_names() %>% 
+  select(animal_id = tattoo, breeds) %>% 
+  mutate(animal_id = stringr::str_remove_all(animal_id,
+                                             "[[:punct:]]|[[:space:]]")) %>% 
+  left_join(cleaned %>% 
+              filter(year == 2019) %>% 
+              filter(farm_id == "RHF")) %>% 
+  bind_rows(read_excel("~/Box Sync/HairShedding/ReportedData/2018/DataRecording_RHF_2018.xlsx",
+                       sheet = "new") %>% 
+              janitor::clean_names() %>% 
+              select(animal_id, breeds = comment) %>% 
+              mutate(animal_id = stringr::str_remove_all(animal_id,
+                                                         "[[:punct:]]|[[:space:]]")) %>% 
+              left_join(cleaned %>% 
+                          filter(year == 2018) %>% 
+                          filter(farm_id == "RHF"))) %>% 
+  filter(!is.na(breeds)) %>% 
+  mutate(cross = case_when(breeds %in% c("100% AR", "PB AR") ~ "RAN",
+                           breeds %in% c("PB AN") ~ "AN",
+                           breeds %in% c("PB SM") ~ "SIM",
+                           TRUE ~ "cross")) %>% 
+  select(farm_id, breed_code, registration_number, animal_id, Lab_ID, temp_id, cross)
+
+```
+
+```{r}
+write_rds(rhf_breed, here::here("data/raw_data/201005.rhf_breed.rds"))
+```
+
