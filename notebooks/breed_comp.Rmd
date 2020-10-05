@@ -73,7 +73,15 @@ rhf_breeds <-
   select(farm_id, breed_code, registration_number, animal_id, Lab_ID, temp_id, breeds) 
 ```
 
-# S
+# Simmental
+
+```{r}
+read_csv(here::here("data/raw_data/201005.SIM.breeds.csv")) %>% 
+  select(registration_number = asa_nbr, breed_code, )
+  group_by(asa_nbr) %>% 
+  filter(n() > 1)
+```
+
 
 # Red Angus
 

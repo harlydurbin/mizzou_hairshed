@@ -3,7 +3,7 @@ DATAFILE
 data.txt
 # I have 1 trait and it's in the 9th column
 TRAITS
-9
+8
 # Pass my first column (registration number/ID) to output
 FIELDS_PASSED TO OUTPUT
 1

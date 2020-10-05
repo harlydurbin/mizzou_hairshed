@@ -126,10 +126,10 @@ dat %<>%
 ## -----------------------------------------------------------------------------
 
 dat %<>% 
-  mutate(age_group = case_when(age == 1 ~ "yearling",
-                               age %in% c(2, 3) ~ "growing",
-                               between(age, 4, 9) ~ "mature",
-                               age >= 10 ~ "old")) %>%
+  mutate(age_group = case_when(age == 1 ~ "a",
+                               age %in% c(2, 3) ~ "b",
+                               between(age, 4, 7) ~ "c",
+                               age >= 8 ~ "old")) %>%
   filter(!is.na(age_group)) %>%
   assertr::verify(!is.na(age_group))
 
