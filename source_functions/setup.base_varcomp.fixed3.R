@@ -38,19 +38,19 @@ weather <-
   read_rds(here::here("data/derived_data/environmental_data/weather.rds")) %>%
   mutate(daily = purrr::map(data, "daily", .default = NA),
          apparent_high = purrr::map_dbl(daily,
-                                        ~ .x %>% 
+                                        ~ .x %>%
                                           dplyr::pull(apparentTemperatureHigh)),
          sunrise = purrr::map_chr(daily,
-                                  ~.x %>% 
-                                    dplyr::pull(sunriseTime) %>% 
+                                  ~.x %>%
+                                    dplyr::pull(sunriseTime) %>%
                                     as.character(.)),
          sunset = purrr::map_chr(daily,
-                                 ~.x %>% 
-                                   dplyr::pull(sunsetTime) %>% 
+                                 ~.x %>%
+                                   dplyr::pull(sunsetTime) %>%
                                    as.character(.)),
          sunrise = lubridate::as_datetime(sunrise),
          sunset = lubridate::as_datetime(sunset),
-         day_length = as.numeric(sunset - sunrise)) %>% 
+         day_length = as.numeric(sunset - sunrise)) %>%
   # Remove the data column
   select(-data)  %>%
   group_by(date_score_recorded, lat, long) %>%
@@ -73,7 +73,7 @@ dat <-
 dat %<>%
   left_join(coord_key %>%
               select(farm_id, lat, long)) %>%
-  assertr::verify(!is.na(lat)) %>% 
+  assertr::verify(!is.na(lat)) %>%
   assertr::verify(!is.na(long))
 
 #'
@@ -83,7 +83,7 @@ dat %<>%
 dat %<>%
   filter(!is.na(date_score_recorded)) %>%
   left_join(weather) %>%
-  assertr::verify(!is.na(mean_apparent_high)) %>% 
+  assertr::verify(!is.na(mean_apparent_high)) %>%
   assertr::verify(!is.na(mean_day_length))
 
 #'
@@ -130,7 +130,7 @@ dat %<>%
 #'
 ## -----------------------------------------------------------------------------
 
-dat %<>% 
+dat %<>%
   mutate(age_group = case_when(age == 1 ~ "yearling",
                                age %in% c(2, 3) ~ "twothree",
                                between(age, 4, 7) ~ "mature",
