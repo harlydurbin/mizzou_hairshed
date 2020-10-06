@@ -30,26 +30,34 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
 ## ---- warning=FALSE, message=FALSE--------------------------------------------
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
-#'
-## ---- warning=FALSE, message=FALSE--------------------------------------------
 coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key.csv"))
 
 #'
 ## -----------------------------------------------------------------------------
-mean_apparent_high <-
+weather <-
   read_rds(here::here("data/derived_data/environmental_data/weather.rds")) %>%
-  # Pull daily data from the `data` column and save it to its own column
   mutate(daily = purrr::map(data, "daily", .default = NA),
-         # Extract daily apparent high from daily column
          apparent_high = purrr::map_dbl(daily,
-                              ~ .x %>%
-                                dplyr::pull(apparentTemperatureHigh))) %>%
+                                        ~ .x %>% 
+                                          dplyr::pull(apparentTemperatureHigh)),
+         sunrise = purrr::map_chr(daily,
+                                  ~.x %>% 
+                                    dplyr::pull(sunriseTime) %>% 
+                                    as.character(.)),
+         sunset = purrr::map_chr(daily,
+                                 ~.x %>% 
+                                   dplyr::pull(sunsetTime) %>% 
+                                   as.character(.)),
+         sunrise = lubridate::as_datetime(sunrise),
+         sunset = lubridate::as_datetime(sunset),
+         day_length = as.numeric(sunset - sunrise)) %>% 
   # Remove the data column
-  select(-data) %>%
+  select(-data)  %>%
   group_by(date_score_recorded, lat, long) %>%
   # Take rows for max 30 days
   slice_max(order_by = value, n = 30) %>%
-  summarise(mean_apparent_high = mean(apparent_high)) %>%
+  summarise(mean_apparent_high = mean(apparent_high),
+            mean_day_length = mean(day_length)) %>%
   ungroup()
 
 #'
@@ -61,23 +69,22 @@ dat <-
   # Females only
   filter(sex == "F")
 
-#'
-#' # Add latitude
-#'
-## -----------------------------------------------------------------------------
+# Add latitude
 dat %<>%
   left_join(coord_key %>%
               select(farm_id, lat, long)) %>%
-  assertr::verify(!is.na(lat))
+  assertr::verify(!is.na(lat)) %>% 
+  assertr::verify(!is.na(long))
 
 #'
-#' # Mean apparent high temperature
+#' # Mean apparent high temperature, mean day length
 #'
 ## -----------------------------------------------------------------------------
 dat %<>%
   filter(!is.na(date_score_recorded)) %>%
-  left_join(mean_apparent_high) %>%
-  assertr::verify(!is.na(mean_apparent_high))
+  left_join(weather) %>%
+  assertr::verify(!is.na(mean_apparent_high)) %>% 
+  assertr::verify(!is.na(mean_day_length))
 
 #'
 #' # Calving season
@@ -103,8 +110,6 @@ dat %<>%
                                     TRUE ~ calving_season)) %>%
   filter(!is.na(calving_season)) %>%
   assertr::verify(!is.na(calving_season))
-
-
 
 #'
 #' # Toxic fescue
@@ -178,12 +183,12 @@ matched %>%
 ## -----------------------------------------------------------------------------
 matched %>%
   distinct(Lab_ID,farm_id, animal_id, temp_id, registration_number, full_reg) %>%
-  write_csv(here::here("data/derived_data/base_varcomp/fixed2/sanity_key.csv"),
+  write_csv(here::here("data/derived_data/base_varcomp/fixed3/sanity_key.csv"),
             na = "")
 
 #'
 ## -----------------------------------------------------------------------------
 matched %>%
-  select(full_reg, year, calving_season, toxic_fescue, age_group, mean_apparent_high, lat, hair_score) %>%
-  write_delim(here::here("data/derived_data/base_varcomp/fixed2/data.txt"),
+  select(full_reg, year, calving_season, toxic_fescue, age_group, mean_apparent_high, mean_day_length, hair_score) %>%
+  write_delim(here::here("data/derived_data/base_varcomp/fixed3/data.txt"),
               col_names = FALSE)

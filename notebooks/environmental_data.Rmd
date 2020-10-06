@@ -38,7 +38,18 @@ weather <-
                                 dplyr::pull(temperatureHigh)),
          apparent_high = purrr::map_dbl(daily,
                               ~ .x %>% 
-                                dplyr::pull(apparentTemperatureHigh))) %>% 
+                                dplyr::pull(apparentTemperatureHigh)),
+         sunrise = purrr::map_chr(daily,
+                                  ~.x %>% 
+                                    dplyr::pull(sunriseTime) %>% 
+                                    as.character(.)),
+         sunset = purrr::map_chr(daily,
+                                  ~.x %>% 
+                                    dplyr::pull(sunsetTime) %>% 
+                                    as.character(.)),
+         sunrise = lubridate::as_datetime(sunrise),
+         sunset = lubridate::as_datetime(sunset),
+         day_length = as.numeric(sunset - sunrise)) %>% 
   # Remove the data column
   select(-data) 
 
@@ -48,6 +59,7 @@ weather <-
 ```{r, message=FALSE, warning=FALSE}
 coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key.csv"))
 ```
+
 
 # Data summary
 
@@ -87,16 +99,19 @@ weather %>%
   group_by(date_score_recorded, lat, long) %>% 
   # Take rows for max 30 days
   slice_max(order_by = value, n = 30) %>% 
-  summarise(mean_real_high = mean(daily_high),
-            mean_apparent_high = mean(apparent_high)) %>% 
+  summarise(mean_apparent_high = mean(apparent_high),
+            mean_day_length = mean(day_length)) %>% 
   ungroup() %>% 
   right_join(cleaned %>% 
                filter(!is.na(date_score_recorded)) %>% 
                left_join(coord_key %>% 
                            select(farm_id, lat, long))) %>% 
   mutate(from_may1 = as.numeric(date_score_recorded - lubridate::ymd(glue("{year}/05/01")))) %>% 
-  select(from_may1, lat, mean_apparent_high) %>% 
+  select(from_may1, lat, mean_apparent_high, mean_day_length) %>% 
   corrr::correlate()
 
 ```
 
+# Commentary
+
+The mean apparent high temperature was found to be highly correlated with the date a score was recorded (Pearson r = 0.82) but only moderately correlated with latitude (Pearson r = -0.21). For this reason, we chose to use latitude as the only proxy for day length and exclude score date from analyses dissecting the effects of temperature vs. photoperiod.

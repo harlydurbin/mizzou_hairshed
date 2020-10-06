@@ -15,8 +15,7 @@ library(readxl)
 library(magrittr)
 library(tidylog)
 
-source(here::here("source_functions/iterative_id_search.R"))
-source(here::here("source_functions/coalesce_join.R"))
+
 ```
 
 # Notes & questions

@@ -30,7 +30,11 @@ source(here::here("source_functions/parse_renf90table.R"))
     + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {latitude} + {mean_apparent_high}`
     + Take out `{farm_id}` because it's confounded with latitude
     + Take out `{from_may1}` because it's highly correlated with `{mean_apparent_high}`
-    + Use AGI model age groups rather than categorical ages
+    + Use age groups rather than categorical ages
+* `fixed3`
+    + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high}`
+    + Replace latitude with mean day length
+    
 
 # Setup 
 
@@ -43,29 +47,27 @@ full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
 
 ```{r, warning=FALSE, message=FALSE}
-fixed1 <-
-  c(1:5) %>% 
-  purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/base_varcomp/fixed1/renf90.tables"),
+fixed2 <-
+  c(1:4) %>% 
+  purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/base_varcomp/fixed2/renf90.tables"),
                                      effect_num = .x,
                                      effect_key = TRUE)) %>% 
-  mutate(effect = case_when(effect == 1 ~ "farm_id",
-                            effect == 2 ~ "year",
-                            effect == 3 ~ "calving_season",
-                            effect == 4 ~ "toxic_fescue",
-                            effect == 5 ~ "age")) %>% 
-  right_join(read_table2(here::here("data/derived_data/base_varcomp/fixed1/solutions"),
+  mutate(effect = case_when(effect == 1 ~ "year",
+                            effect == 2 ~ "calving_season",
+                            effect == 3 ~ "toxic_fescue",
+                            effect == 4 ~ "age_group")) %>% 
+  right_join(read_table2(here::here("data/derived_data/base_varcomp/fixed2/solutions"),
                          skip = 1,
                          col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
                select(-trait) %>% 
-               filter(!effect %in% c(8, 9)) %>% 
+               filter(!effect %in% c(7, 8)) %>% 
                mutate_at(vars("effect", "id_renamed"), ~ as.character(.)) %>% 
-               mutate(effect = case_when(effect == 1 ~ "farm_id",
-                                         effect == 2 ~ "year",
-                                         effect == 3 ~ "calving_season",
-                                         effect == 4 ~ "toxic_fescue",
-                                         effect == 5 ~ "age",
-                                         effect == 6 ~ "from_may1",
-                                         effect == 7 ~ "lat")))
+               mutate(effect = case_when(effect == 1 ~ "year",
+                                         effect == 2 ~ "calving_season",
+                                         effect == 3 ~ "toxic_fescue",
+                                         effect == 4 ~ "age_group",
+                                         effect == 5 ~ "mean_apparent_high",
+                                         effect == 6 ~ "lat")))
   
   
 ```
@@ -73,8 +75,8 @@ fixed1 <-
 # Age
 
 ```{r}
-fixed1 %>% 
-  filter(effect == "age") %>% 
+fixed2 %>% 
+  filter(effect == "age_group") %>% 
   mutate(id_original = as.numeric(id_original)) %>%
   arrange(id_original) %>% 
   mutate(id_original = forcats::fct_inorder(as.factor(id_original))) %>% 
