@@ -10,7 +10,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(readr)
 library(tidyr)
 library(stringr)
@@ -172,7 +172,7 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed2/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
   filter(effect %in% c(5, 6)) %>% 
-  mutate(effect = case_when(effect == 5 ~ "Mean apparent temperature",
+  mutate(effect = case_when(effect == 5 ~ "Mean apparent high temperature",
                             effect == 6 ~ "Latitude")) %>% 
   select(Effect = effect, Solution = solution, SE = se)
 ```
@@ -182,7 +182,7 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed3/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
   filter(effect %in% c(5, 6)) %>% 
-  mutate(effect = case_when(effect == 5 ~ "Mean apparent temperature",
+  mutate(effect = case_when(effect == 5 ~ "Mean apparent high temperature",
                             effect == 6 ~ "Mean day length")) %>% 
   select(Effect = effect, Solution = solution, SE = se)
 ```

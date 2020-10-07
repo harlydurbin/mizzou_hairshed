@@ -34,7 +34,15 @@ source(here::here("source_functions/parse_renf90table.R"))
 * `fixed3`
     + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high}`
     + Replace latitude with mean day length
-    
+* `fixed4`
+    + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {temp_length}`
+    + Add day length x temperature interaction term
+* `fixed5`
+    + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length}`
+    + Only day length, no temperature
+* `fixed6`
+    + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_apparent_high}`
+    + Only temperature, no day length
 
 # Setup 
 
