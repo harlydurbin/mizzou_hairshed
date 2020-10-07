@@ -187,6 +187,11 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed3/solutions"),
   select(Effect = effect, Solution = solution, SE = se)
 ```
 
+```{r}
+pracma::legendre(n = 2, x = 13)
+```
+
+
 # Commentary
 
 The mean apparent high temperature was found to be highly correlated with the date a score was recorded (Pearson r = 0.82) but only moderately correlated with latitude (Pearson r = -0.21). For this reason, we chose to use latitude as the only proxy for day length and exclude score date from analyses dissecting the effects of temperature vs. photoperiod.

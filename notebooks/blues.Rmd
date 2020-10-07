@@ -43,6 +43,13 @@ source(here::here("source_functions/parse_renf90table.R"))
 * `fixed6`
     + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_apparent_high}`
     + Only temperature, no day length
+* `fixed7`
+    + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {farm_id}`
+    + No temperature or day length, just farm
+* `fixed8`
+    + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high}`
+    + Temp and day length and farm
+* `fescue`
 
 # Setup 
 

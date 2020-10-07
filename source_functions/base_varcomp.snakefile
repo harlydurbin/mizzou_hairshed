@@ -21,7 +21,9 @@ rule setup_data:
 		cleaned = "data/derived_data/import_join_clean/cleaned.rds",
 		full_ped = "data/derived_data/3gen/full_ped.rds",
 		weather_data = "data/derived_data/environmental_data/weather.rds",
-		coord_key = "data/derived_data/environmental_data/coord_key.csv"
+		coord_key = "data/derived_data/environmental_data/coord_key.csv",
+		score_groups = "data/derived_data/score_groups.xlsx",
+		ua_score_groups = "data/derived_data/score_groups.xlsx"
 	params:
 		r_module = config['r_module']
 	output:
