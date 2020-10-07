@@ -1,7 +1,12 @@
 ---
 title: "Environmental variables"
 author: "Harly Durbin"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    df_print: paged
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -17,6 +22,8 @@ library(magrittr)
 library(purrr)
 library(tidylog)
 
+source(here::here("source_functions/melt_aireml.R"))
+source(here::here("source_functions/parse_renf90table.R"))
 ```
 
 # Notes & questions
@@ -60,39 +67,85 @@ weather <-
 coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key.csv"))
 ```
 
-
 # Data summary
 
 ## Days from May 1
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 cleaned %>% 
   filter(!is.na(date_score_recorded)) %>% 
   mutate(from_may1 = as.numeric(date_score_recorded - lubridate::ymd(glue("{year}/05/01")))) %>% 
-  summarise(mean = mean(from_may1),
-            median = median(from_may1))
+  summarise(`Mean date deviation` = mean(from_may1),
+            `Median date deviation` = median(from_may1),
+            `SD date deviation` = sd(from_may1))
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 cleaned %>% 
   filter(!is.na(date_score_recorded)) %>% 
   mutate(from_may1 = as.numeric(date_score_recorded - lubridate::ymd(glue("{year}/05/01")))) %>% 
   ggplot(aes(x = from_may1)) +
-  geom_density()
+  geom_histogram(bins = 15) +
+  theme_classic() +
+  labs(x = "Days from May 1 when score was recorded",
+       y = "Kernel density")
 ```
 
-## Daily high temperature
+## Mean apparent high temperature
+
+```{r, message=FALSE, warning=FALSE}
+weather %>% 
+  group_by(date_score_recorded, lat, long) %>% 
+  slice_max(order_by = value, n = 30) %>% 
+  summarise(mean_apparent_high = mean(apparent_high)) %>% 
+  ungroup() %>% 
+  summarise(`Mean of mean apparent high` = mean(mean_apparent_high),
+            `Median mean apparent high` = median(mean_apparent_high),
+            `SD mean apparent high` = sd(mean_apparent_high))
+```
+
+```{r, message=FALSE, warning=FALSE}
+weather %>% 
+  group_by(date_score_recorded, lat, long) %>% 
+  slice_max(order_by = value, n = 30) %>% 
+  summarise(mean_apparent_high = mean(apparent_high)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = mean_apparent_high)) +
+  geom_density() +
+  theme_classic() +
+  labs(x = "Mean of high apparent temperature in 30 days prior to scoring",
+       y = "Kernel density")
+```
+
+## Day length
 
 ```{r}
 weather %>% 
   group_by(date_score_recorded, lat, long) %>% 
-  summarise(mean_high = mean(daily_high)) %>% 
+  slice_max(order_by = value, n = 30) %>% 
+  summarise(mean_day_length = mean(day_length)) %>% 
   ungroup() %>% 
-  ggplot(aes(x = mean_high)) +
-  geom_density()
+  summarise(`Min. mean day length` = min(mean_day_length),
+            `Max. mean day length` = max(mean_day_length),
+            `Mean of mean day length` = mean(mean_day_length),
+            `Median mean day length` = median(mean_day_length),
+            `SD mean day length` = sd(mean_day_length))
 ```
 
-# Correlation
+```{r, message=FALSE, warning=FALSE}
+weather %>% 
+  group_by(date_score_recorded, lat, long) %>% 
+  slice_max(order_by = value, n = 30) %>% 
+  summarise(mean_day_length = mean(day_length)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = mean_day_length)) +
+  geom_density() +
+  theme_classic() +
+  labs(x = "Mean of day length in 30 days prior to scoring",
+       y = "Kernel density")
+```
+
+## Correlations
 
 ```{r}
 weather %>% 
@@ -110,6 +163,28 @@ weather %>%
   select(from_may1, lat, mean_apparent_high, mean_day_length) %>% 
   corrr::correlate()
 
+```
+
+# `fixed2` and `fixed3` model BLUEs
+
+```{r, warning=FALSE, message=FALSE}
+read_table2(here::here("data/derived_data/base_varcomp/fixed2/solutions"),
+            skip = 1,
+            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+  filter(effect %in% c(5, 6)) %>% 
+  mutate(effect = case_when(effect == 5 ~ "Mean apparent temperature",
+                            effect == 6 ~ "Latitude")) %>% 
+  select(Effect = effect, Solution = solution, SE = se)
+```
+
+```{r, warning=FALSE, message=FALSE}
+read_table2(here::here("data/derived_data/base_varcomp/fixed3/solutions"),
+            skip = 1,
+            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+  filter(effect %in% c(5, 6)) %>% 
+  mutate(effect = case_when(effect == 5 ~ "Mean apparent temperature",
+                            effect == 6 ~ "Mean day length")) %>% 
+  select(Effect = effect, Solution = solution, SE = se)
 ```
 
 # Commentary

@@ -47,7 +47,7 @@ full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
 
 ```{r, warning=FALSE, message=FALSE}
-fixed2 <-
+fixed3 <-
   c(1:4) %>% 
   purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/base_varcomp/fixed2/renf90.tables"),
                                      effect_num = .x,
@@ -77,7 +77,6 @@ fixed2 <-
 ```{r}
 fixed2 %>% 
   filter(effect == "age_group") %>% 
-  mutate(id_original = as.numeric(id_original)) %>%
   arrange(id_original) %>% 
   mutate(id_original = forcats::fct_inorder(as.factor(id_original))) %>% 
   ggplot(aes(x = id_original,
@@ -87,6 +86,7 @@ fixed2 %>%
   geom_errorbar(aes(ymin = solution - se,
                     ymax = solution + se)) +
   theme_classic() +
+  scale_x_discrete(labels = c("1", "2-3", "4-7", "8+")) +
   theme(plot.title = element_text(size = 22,
                                   face = "italic",
                                   margin = margin(t = 0,
@@ -104,7 +104,7 @@ fixed2 %>%
                                                     l = 0)),
         axis.text = element_text(size = 14),
         legend.position = "none") +
-  labs(x = "Age",
+  labs(x = NULL,
        y = "BLUE")
 ```
 

@@ -150,6 +150,108 @@ cleaned %>%
   geom_histogram(bins = 5)
 ```
 
+# Sample map
+
+```{r}
+usa <- 
+  borders("state", regions = ".", fill = "white", colour = "black")
+```
+
+```{r, warning=FALSE, message=FALSE}
+coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key.csv"))
+```
+
+```{r, warning=FALSE, message=FALSE}
+fescue_belt <- 
+  readxl::read_excel(here::here("data/raw_data/fescue_coordinates.xlsx")) %>% 
+  rename(long = lng)
+```
+
+```{r, warning=FALSE, message=FALSE}
+map_dat <-
+  cleaned %>%
+  left_join(coord_key %>% 
+              select(farm_id, lat, long)) %>% 
+  filter(sex == "F") %>% 
+  filter(!is.na(breed_code)) %>% 
+  mutate(breed_code = case_when(breed_code %in% c("BRN") ~ "GEL",
+                                breed_code %in% c("CHIA") ~ "SIM",
+                                TRUE ~ breed_code),
+         breed_code = case_when(breed_code == "AN" ~ "Angus: 12,911",
+                                breed_code == "ANR" ~ "Red Angus: 2,146",
+                                breed_code == "BG" ~ "Brangus: 1,906",
+                                breed_code == "CHA" ~ "Charolais: 1,743",
+                                breed_code == "CROS" ~ "Crossbred: 3,025",
+                                breed_code == "GEL" ~ "Gelbvieh: 880",
+                                breed_code == "HFD" ~ "Hereford: 5,102", 
+                                breed_code == "MAAN" ~ "Maine-Anjou: 254",
+                                breed_code == "SH" ~ "Shorthorn: 487",
+                                breed_code == "SIM" ~ "Simmental: 7,766",
+                                breed_code == "SIMB" ~ "Simbrah: 175"),
+         breed_code = forcats::fct_infreq(breed_code)) %>% 
+  group_by(breed_code, lat, long) %>% 
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  filter(n >= 5)
+```
+
+```{r, fig.width=5, fig.height=4}
+ggplot(fescue_belt,
+       aes(x = long, y = lat)) +
+  usa +
+  # Fescue belt shape
+  ggforce::geom_shape(expand = unit(0.1, 'mm'),
+                      radius = unit(0.4, 'mm'),
+                      alpha = 0.3) +
+  geom_point(data = map_dat,
+             aes(x = long,
+                 y = lat,
+                 color = breed_code,
+                 size = n),
+             alpha = 0.7,
+             position = position_jitter(width = 0.4,
+                                        height = 0.2)) +
+  bakeoff::scale_color_bakeoff() +
+  guides(color = guide_legend(title = NULL),
+         # Turn off size guide
+         size = FALSE) + 
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_map("albers",
+            lat0 = 39,
+            lat1 = 45) +
+  cowplot::theme_map() +
+  guides(color = guide_legend(override.aes = list(size = 1.5,
+                                                  alpha = 1))) +
+  labs(x = NULL,
+       y = NULL,
+       title = NULL) +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.position = "bottom",
+        legend.direction = "horizontal",
+        legend.box = "vertical",
+        legend.spacing.y = unit(.1, 'cm'),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        # top, right, bottom, left
+        legend.box.margin = margin(b = 0.1,
+                                   l = 0.1,
+                                   r = 0.1,
+                                   unit = "in"),
+        plot.margin = margin(t = 0.175,
+                             r = 0,
+                             b = 0,
+                             l = 0,
+                             unit = "mm"))
+
+ggsave(here::here("figures/data_summary/breed_map.png"),
+       width = 7,
+       height = 4)
+
+```
+
+
 
 # Commentary
 
