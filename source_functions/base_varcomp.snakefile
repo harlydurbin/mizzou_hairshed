@@ -84,11 +84,13 @@ rule airemlf90:
 		aireml_out_name = "aireml.{model}.out",
 		aireml_log_name = "airemlf90.{model}.log",
 		aireml_path = config['aireml_path'],
-		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/log/psrecord/base_varcomp/airemlf90/airemlf90.{model}.psrecord"
+		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/log/psrecord/base_varcomp/airemlf90/airemlf90.{model}.psrecord",
+		mpi_module = config['mpi_module']
 	output:
 		aireml_log = "data/derived_data/base_varcomp/{model}/airemlf90.{model}.log"
 	shell:
 		"""
+		module load {params.mpi_module}
 		cd {params.dir}
 		psrecord "{params.aireml_path} renf90.par &> {params.aireml_out_name}" --log {params.psrecord} --include-children --interval 2
 		mv airemlf90.log {params.aireml_log_name}

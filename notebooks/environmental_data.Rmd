@@ -20,10 +20,12 @@ library(readxl)
 library(ggplot2)
 library(magrittr)
 library(purrr)
-library(tidylog)
+#library(tidylog)
 
 source(here::here("source_functions/melt_aireml.R"))
 source(here::here("source_functions/parse_renf90table.R"))
+source(here::here("source_functions/lrt_calc.R"))
+source(here::here("source_functions/parse_loglik.R"))
 ```
 
 # Notes & questions
@@ -145,7 +147,7 @@ weather %>%
        y = "Kernel density")
 ```
 
-## Correlations
+## Pearson correlations
 
 ```{r}
 weather %>% 
@@ -165,7 +167,7 @@ weather %>%
 
 ```
 
-# BLUEs
+# Temperature vs. latitude BLUEs
 
 ## Temperature + latitude (`fixed2`)
 
@@ -176,6 +178,19 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed2/solutions"),
   filter(effect %in% c(5, 6)) %>% 
   mutate(effect = case_when(effect == 5 ~ "Mean apparent high temperature",
                             effect == 6 ~ "Latitude")) %>% 
+  select(Effect = effect, Solution = solution, SE = se)
+```
+
+# Temperature vs. day length BLUEs and LRT comparisons
+
+## Temperature only (`fixed6`)
+
+```{r, warning=FALSE, message=FALSE}
+read_table2(here::here("data/derived_data/base_varcomp/fixed6/solutions"),
+            skip = 1,
+            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+  filter(effect %in% c(5)) %>% 
+  mutate(effect = case_when(effect == 5 ~ "Mean apparent high temperature")) %>% 
   select(Effect = effect, Solution = solution, SE = se)
 ```
 
@@ -190,18 +205,9 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed5/solutions"),
   select(Effect = effect, Solution = solution, SE = se)
 ```
 
-## Temperature only (`fixed6`)
-
-```{r, warning=FALSE, message=FALSE}
-read_table2(here::here("data/derived_data/base_varcomp/fixed6/solutions"),
-            skip = 1,
-            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
-  filter(effect %in% c(5)) %>% 
-  mutate(effect = case_when(effect == 5 ~ "Mean apparent high temperature")) %>% 
-  select(Effect = effect, Solution = solution, SE = se)
-```
-
 ## Temperature + day length (`fixed3`)
+
+When temperature and day length are fit together, their BLUEs are much smaller than when they're fit in their own models independently. The solution for day length is less than half its original estimate Collinearity? 
 
 ```{r, warning=FALSE, message=FALSE}
 read_table2(here::here("data/derived_data/base_varcomp/fixed3/solutions"),
@@ -213,8 +219,102 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed3/solutions"),
   select(Effect = effect, Solution = solution, SE = se)
 ```
 
+> Does this model provide a better fit than either of the more simple independent models? First, compared against `fixed6` temperature only model. $-log_{10}(p-value)$ from the a likelihood ratio test comparing the two models:
 
+```{r}
+
+lrt_calc(ll_null = 94375.966, ll_test = 93532.558)
+
+```
+
+> Next, compared against `fixed5` day length only model. $-log_{10}(p-value)$ from the a likelihood ratio test comparing the two models:
+
+```{r}
+
+lrt_calc(ll_null = 94966.416, ll_test = 93532.558)
+
+```
+
+> The model with both variables also has a lower AIC value than either of the models with a single environmental variable:
+
+```{r}
+tibble(Model = c("fixed3", "fixed6", "fixed5")) %>%
+  mutate(AIC = purrr::map_dbl(.x = Model,
+                              ~ parse_loglik(path = here::here(glue("data/derived_data/base_varcomp/{.x}/airemlf90.{.x}.log")),
+                                             option = "AIC")),
+         Model = case_when(Model == "fixed3" ~ "Temperature + day length",
+                           Model == "fixed6" ~ "Temperature only",
+                           Model == "fixed5" ~ "Day length only")) 
+```
+
+## Most complicated model: temperature + day length + temperature*day length (`fixed4`)
+
+```{r, warning=FALSE, message=FALSE}
+read_table2(here::here("data/derived_data/base_varcomp/fixed4/solutions"),
+            skip = 1,
+            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+  filter(effect %in% c(5, 6, 7)) %>% 
+  mutate(effect = case_when(effect == 5 ~ "Mean apparent high temperature",
+                            effect == 6 ~ "Mean day length",
+                            effect == 7 ~ "Interaction effect")) %>% 
+  select(Effect = effect, Solution = solution, SE = se)
+```
+
+> Does including an interaction effect provide a better fit than the `fixed3` model with both temperature and day length? $-log_{10}(p-value)$ from the a likelihood ratio test comparing the two models:
+
+```{r}
+
+lrt_calc(ll_null = 93532.558, ll_test = 93506.058)
+
+```
+
+> AIC values from both models:
+
+```{r}
+tibble(Model = c("fixed4", "fixed3")) %>%
+  mutate(AIC = purrr::map_dbl(.x = Model,
+                              ~ parse_loglik(path = here::here(glue("data/derived_data/base_varcomp/{.x}/airemlf90.{.x}.log")),
+                                             option = "AIC")),
+         Model = case_when(Model == "fixed3" ~ "Temperature + day length",
+                           Model == "fixed4" ~ "Temperature + day length + temperature*day length")) 
+```
+
+# Is farm/herd ID an appropriate proxy for environmental measurements?
+
+## Temperature + day length + farm ID (`fixed8`)
+
+> Does fitting temperature, day length, and farm ID provide a better fit over fitting farm ID alone (`fixed7`)? $-log_{10}(p-value)$ from the a likelihood ratio test comparing the two models:
+
+```{r}
+
+lrt_calc(ll_null = 104405.96, ll_test = 92222.897)
+
+```
+
+> Does fitting farm ID in addition to temperature and day length provide a better fit over fitting temperature and day length alone (`fixed3`)? $-log_{10}(p-value)$ from the a likelihood ratio test comparing the two models:
+
+```{r}
+
+lrt_calc(ll_null = 93532.558, ll_test = 92222.897)
+
+```
+
+> AIC values for all 3 models compared: 
+
+```{r}
+tibble(Model = c("fixed7", "fixed3", "fixed8")) %>%
+  mutate(AIC = purrr::map_dbl(.x = Model,
+                              ~ parse_loglik(path = here::here(glue("data/derived_data/base_varcomp/{.x}/airemlf90.{.x}.log")),
+                                             option = "AIC")),
+         Model = case_when(Model == "fixed3" ~ "Temperature + day length",
+                           Model == "fixed7" ~ "Farm ID only",
+                           Model == "fixed8" ~ "Temperature + day length + farm ID")) 
+```
+
+I think one issue with this comparison is the lack of a `score_group` effect, which accounts for both day length and temperature by grouping animals on the same farm based on when they were scored. I think it also isn't an appropriate comparison to how this model would be fit in a genetic evaluation, since the number of parameters estimated affects the AIC and in a genetic evaluation everything tested here would essentially be combined into one fixed contemporary group effect. 
 
 # Commentary
+
+## Manuscript graveyard
 
 The mean apparent high temperature was found to be highly correlated with the date a score was recorded (Pearson r = 0.82) but only moderately correlated with latitude (Pearson r = -0.21). For this reason, we chose to use latitude as the only proxy for day length and exclude score date from analyses dissecting the effects of temperature vs. photoperiod.
