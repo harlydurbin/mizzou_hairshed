@@ -165,7 +165,9 @@ weather %>%
 
 ```
 
-# `fixed2` and `fixed3` model BLUEs
+# BLUEs
+
+## Temperature + latitude (`fixed2`)
 
 ```{r, warning=FALSE, message=FALSE}
 read_table2(here::here("data/derived_data/base_varcomp/fixed2/solutions"),
@@ -177,6 +179,30 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed2/solutions"),
   select(Effect = effect, Solution = solution, SE = se)
 ```
 
+## Day length only (`fixed5`)
+
+```{r, warning=FALSE, message=FALSE}
+read_table2(here::here("data/derived_data/base_varcomp/fixed5/solutions"),
+            skip = 1,
+            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+  filter(effect %in% c(5)) %>% 
+  mutate(effect = case_when(effect == 5 ~ "Mean day length")) %>% 
+  select(Effect = effect, Solution = solution, SE = se)
+```
+
+## Temperature only (`fixed6`)
+
+```{r, warning=FALSE, message=FALSE}
+read_table2(here::here("data/derived_data/base_varcomp/fixed6/solutions"),
+            skip = 1,
+            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+  filter(effect %in% c(5)) %>% 
+  mutate(effect = case_when(effect == 5 ~ "Mean apparent high temperature")) %>% 
+  select(Effect = effect, Solution = solution, SE = se)
+```
+
+## Temperature + day length (`fixed3`)
+
 ```{r, warning=FALSE, message=FALSE}
 read_table2(here::here("data/derived_data/base_varcomp/fixed3/solutions"),
             skip = 1,
@@ -187,9 +213,6 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed3/solutions"),
   select(Effect = effect, Solution = solution, SE = se)
 ```
 
-```{r}
-pracma::legendre(n = 2, x = 13)
-```
 
 
 # Commentary

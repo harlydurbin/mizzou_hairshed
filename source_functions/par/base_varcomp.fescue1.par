@@ -1,0 +1,52 @@
+DATAFILE
+data.txt
+# YES fescue, NO fescue
+TRAITS
+3 4
+FIELDS_PASSED TO OUTPUT
+
+WEIGHT(S)
+
+RESIDUAL_VARIANCE
+0.5 0.01
+0.01 0.5
+# Effect 1: CG
+EFFECT
+2 2 cross alpha
+# Effect 2: Animal
+EFFECT
+1 1 cross alpha
+RANDOM
+animal
+# Effect 3: PE
+OPTIONAL
+pe
+FILE
+ped.txt
+FILE_POS
+1 2 3 0 0
+SNP_FILE
+genotypes.txt
+PED_DEPTH
+3
+INBREEDING
+pedigree
+(CO)VARIANCES
+0.3 0.01
+0.01 0.3
+(CO)VARIANCES_PE
+0.07 0.01
+0.01 0.07
+# Nof filtering on allele frequency
+OPTION minfreq 0.0001
+# Turn off filtering on call rate in order to use same SNPs across all analyses
+OPTION callrate 0
+OPTION chrinfo ../../../raw_data/geno_dump/200924_HairShed.850K.chrinfo.txt
+OPTION residual
+OPTION sol se
+OPTION conv_crit 1e-12
+OPTION use_yams
+OPTION sex_chr 30
+OPTION excludeCHR
+OPTION maxsnp 1000000
+OPTION missing -999
