@@ -50,5 +50,3 @@ OPTION sex_chr 30
 OPTION excludeCHR
 OPTION maxsnp 1000000
 OPTION missing -999
-OPTION EM-REML 25
-OPTION tol 1d-06
