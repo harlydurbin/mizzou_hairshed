@@ -4,7 +4,7 @@
 #' output: html_document
 #' ---
 #'
-## ----setup, include=FALSE-----------------------------------------------------
+## ----setup, include=FALSE-----------------------------------------------------------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(tidyr)
@@ -18,23 +18,24 @@ library(readxl)
 
 source(here::here("source_functions/cg_tallies.R"))
 
-
 #'
 #' # Notes & questions
 #'
 #' # Setup
 #'
-## ---- warning=FALSE, message=FALSE--------------------------------------------
+## ---- warning=FALSE, message=FALSE--------------------------------------------------------------------------------------------------
 cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
 
 #'
-## ---- warning=FALSE, message=FALSE--------------------------------------------
+## ---- warning=FALSE, message=FALSE--------------------------------------------------------------------------------------------------
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
+#'
+## -----------------------------------------------------------------------------------------------------------------------------------
 coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key.csv"))
 
 #'
-## -----------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------------------------------------------------------
 weather <-
   read_rds(here::here("data/derived_data/environmental_data/weather.rds")) %>%
   mutate(daily = purrr::map(data, "daily", .default = NA),
@@ -61,15 +62,33 @@ weather <-
             mean_day_length = mean(day_length)) %>%
   ungroup()
 
-#'
-#' # First, remove males
-#'
-## -----------------------------------------------------------------------------
+# Score group
+
+## -----------------------------------------------------------------------------------------------------------------------------------
 dat <-
   cleaned %>%
-  # Females only
+  left_join(bind_rows(read_excel(here::here("data/derived_data/ua_score_groups.xlsx")),
+                      read_excel(here::here("data/derived_data/score_groups.xlsx"))) %>%
+              select(farm_id, date_score_recorded, score_group) %>%
+              mutate(date_score_recorded = lubridate::ymd(date_score_recorded))) %>%
+  mutate(score_group = tidyr::replace_na(score_group, 1))
+
+
+## -----------------------------------------------------------------------------------------------------------------------------------
+dat %>%
+  distinct(score_group)
+
+#'
+#' # Remove males
+#'
+## -----------------------------------------------------------------------------------------------------------------------------------
+dat %<>%
   filter(sex == "F")
 
+#'
+#' # Add latitude, mean apparent high
+#'
+## -----------------------------------------------------------------------------------------------------------------------------------
 # Add latitude
 dat %<>%
   left_join(coord_key %>%
@@ -78,20 +97,18 @@ dat %<>%
   assertr::verify(!is.na(long))
 
 #'
-#' # Mean apparent high temperature, mean day length, interaction centered
 #'
-## -----------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------------------------------------------------------
 dat %<>%
   filter(!is.na(date_score_recorded)) %>%
   left_join(weather) %>%
-  mutate(centered_temp_length = (mean_apparent_high-mean(mean_apparent_high))*(mean_day_length-mean(mean_day_length))) %>%
   assertr::verify(!is.na(mean_apparent_high)) %>%
   assertr::verify(!is.na(mean_day_length))
 
 #'
 #' # Calving season
 #'
-## -----------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------------------------------------------------------
 dat %<>%
   # If calving season missing, impute using most recent calving season
   group_by(farm_id, temp_id) %>%
@@ -113,40 +130,51 @@ dat %<>%
   filter(!is.na(calving_season)) %>%
   assertr::verify(!is.na(calving_season))
 
-#'
-#' # Toxic fescue
-#'
-## -----------------------------------------------------------------------------
-
-dat %<>%
-  mutate(toxic_fescue = if_else(farm_id %in% c("BAT", "CRC"),
-                                "YES",
-                                toxic_fescue)) %>%
-  filter(!is.na(toxic_fescue)) %>%
-  assertr::verify(!is.na(toxic_fescue))
 
 
-#'
 #'
 #' # Age group
 #'
-## -----------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------------------------------------------------------
 
 dat %<>%
   mutate(age_group = case_when(age == 1 ~ "yearling",
-                               age %in% c(2, 3) ~ "twothree",
-                               between(age, 4, 7) ~ "mature",
-                               age >= 8 ~ "old")) %>%
+                               age %in% c(2, 3) ~ "growing",
+                               between(age, 4, 9) ~ "mature",
+                               age >= 10 ~ "old")) %>%
   filter(!is.na(age_group)) %>%
   assertr::verify(!is.na(age_group))
 
 
 #'
-#' # Remove categorical fixed effects with fewer than 5 observations
+#' # Toxic fescue
 #'
-## -----------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------------------------------------------------------
+
 dat %<>%
-  group_by(age_group) %>%
+  mutate(toxic_fescue = if_else(farm_id %in% c("BAT", "CRC"),
+                                "YES",
+                                toxic_fescue))
+
+
+#'
+#' # Contemporary group
+#'
+## -----------------------------------------------------------------------------------------------------------------------------------
+dat %<>%
+  mutate(cg = glue("{farm_id}{year}{calving_season}{age_group}{score_group}{toxic_fescue}"),
+         cg_num = as.integer(factor(cg)))
+
+
+#'
+## -----------------------------------------------------------------------------------------------------------------------------------
+dat %>%
+  cg_tallies()
+
+#'
+## -----------------------------------------------------------------------------------------------------------------------------------
+dat %<>%
+  group_by(cg) %>%
   filter(n() >= 5) %>%
   ungroup()
 
@@ -155,7 +183,7 @@ dat %<>%
 #'
 #' ## Data
 #'
-## -----------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------------------------------------------------------
 matched <-
   dat %>%
   left_join(full_ped %>%
@@ -174,7 +202,7 @@ matched <-
   assertr::verify(!is.na(hair_score))
 
 #'
-## -----------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------------------------------------------------------
 print("Duplicate animals, different full_reg")
 matched %>%
   distinct(farm_id, temp_id, full_reg) %>%
@@ -182,15 +210,18 @@ matched %>%
   filter(n() > 1)
 
 #'
-## -----------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------------------------------------------------------
 matched %>%
   distinct(Lab_ID,farm_id, animal_id, temp_id, registration_number, full_reg) %>%
-  write_csv(here::here("data/derived_data/base_varcomp/fixed13/sanity_key.csv"),
+  write_csv(here::here("data/derived_data/base_varcomp/fixed11/sanity_key.csv"),
             na = "")
 
 #'
-## -----------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------------------------------------------------------
 matched %>%
-  select(full_reg, year, calving_season, toxic_fescue, age_group, mean_apparent_high, mean_day_length, centered_temp_length, hair_score) %>%
-  write_delim(here::here("data/derived_data/base_varcomp/fixed13/data.txt"),
+  group_by(full_reg, cg_num) %>%
+  filter(n() == 1) %>%
+  ungroup() %>%
+  select(full_reg, cg_num, mean_day_length, hair_score) %>%
+  write_delim(here::here("data/derived_data/base_varcomp/fixed11/data.txt"),
               col_names = FALSE)

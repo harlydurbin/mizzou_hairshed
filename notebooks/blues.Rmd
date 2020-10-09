@@ -50,19 +50,19 @@ source(here::here("source_functions/parse_renf90table.R"))
     + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {farm_id}`
     + Temp and day length and farm
 * `fixed9`
-    + `{farm_id + year + calving_season + age_group + toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {farm_id}`
+    + `{farm_id + year + calving_season + age_group + score_group + toxic_fescue}`
     + Contemporary group only
 * `fixed10`
-    + `{farm_id + year + calving_season + age_group + toxic_fescue} + {mean_apparent_high}`
+    + `{farm_id + year + calving_season + age_group + score_group + toxic_fescue} + {mean_apparent_high}`
     + Contemporary group + temp
 * `fixed11`
-    + `{farm_id + year + calving_season + age_group + toxic_fescue} + {mean_day_length}`
+    + `{farm_id + year + calving_season + age_group + score_group + toxic_fescue} + {mean_day_length}`
     + Contemporary group + day length
 * `fixed12`
-    + `{farm_id + year + calving_season + age_group + toxic_fescue} + {mean_day_length} + {mean_apparent_high}`
+    + `{farm_id + year + calving_season + age_group + score_group + toxic_fescue} + {mean_day_length} + {mean_apparent_high}`
     + Contemporary group + temp + day length
 * `fixed13`
-    + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {temp_length}`
+    + `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {centered_temp_length}`
     + `fixed4`, but center the interaction term
 * `fescue1`
 

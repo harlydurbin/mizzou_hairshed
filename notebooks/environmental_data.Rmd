@@ -313,6 +313,88 @@ tibble(Model = c("fixed7", "fixed3", "fixed8")) %>%
 
 I think one issue with this comparison is the lack of a `score_group` effect, which accounts for both day length and temperature by grouping animals on the same farm based on when they were scored. I think it also isn't an appropriate comparison to how this model would be fit in a genetic evaluation, since the number of parameters estimated affects the AIC and in a genetic evaluation everything tested here would essentially be combined into one fixed contemporary group effect. 
 
+# Do additional environmental variables need to be fit outside of contemporary group (`{farm_id + year + calving_season + age_group + score_group + toxic_fescue}`)?
+
+## Contemporary group + temperature (`fixed10`)
+
+```{r, warning=FALSE, message=FALSE}
+read_table2(here::here("data/derived_data/base_varcomp/fixed10/solutions"),
+            skip = 1,
+            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+  filter(effect %in% c(2)) %>% 
+  mutate(effect = case_when(effect == 2 ~ "Mean apparent high temperature")) %>% 
+  select(Effect = effect, Solution = solution, SE = se)
+```
+
+> Does including temperature provide a better fit over contemporary group alone (`fixed9`)? $-log_{10}(p-value)$ from the a likelihood ratio test comparing the two models:
+
+```{r}
+
+lrt_calc(ll_null = 82482.404, ll_test = 81482.508)
+
+```
+
+## Contemporary group + day length (`fixed11`)
+
+```{r, warning=FALSE, message=FALSE}
+read_table2(here::here("data/derived_data/base_varcomp/fixed11/solutions"),
+            skip = 1,
+            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+  filter(effect %in% c(2)) %>% 
+  mutate(effect = case_when(effect == 2 ~ "Mean day length")) %>% 
+  select(Effect = effect, Solution = solution, SE = se)
+```
+
+> Does including temperature provide a better fit over contemporary group alone (`fixed9`)? $-log_{10}(p-value)$ from the a likelihood ratio test comparing the two models:
+
+```{r}
+
+lrt_calc(ll_null = 82482.404, ll_test = 81474.369)
+
+```
+
+## Contemporary group + temperature + day length (`fixed12`)
+
+Temperature sign change
+
+```{r, warning=FALSE, message=FALSE}
+read_table2(here::here("data/derived_data/base_varcomp/fixed12/solutions"),
+            skip = 1,
+            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+  filter(effect %in% c(2, 3)) %>% 
+  mutate(effect = case_when(effect == 3 ~ "Mean day length",
+                            effect == 2 ~ "Mean apparent high temperature")) %>% 
+  select(Effect = effect, Solution = solution, SE = se)
+```
+> Is the model with contemporary gproup, temperature, and day length a better fit than the model with just contemporary group and temperature (`fixed10`)? $-log_{10}(p-value)$ from the a likelihood ratio test comparing the two models:
+
+```{r}
+
+lrt_calc(ll_null = 81482.508, ll_test = 81476.451)
+
+```
+
+> ...over the model with just contemporary group and day length (`fixed11`)? 
+
+```{r}
+
+lrt_calc(ll_null = 81474.369, ll_test = 81476.451)
+
+```
+
+## AIC values for all contemporary group vs. temperature vs. day length models
+
+```{r}
+tibble(Model = c("fixed9", "fixed10", "fixed11", "fixed12")) %>%
+  mutate(AIC = purrr::map_dbl(.x = Model,
+                              ~ parse_loglik(path = here::here(glue("data/derived_data/base_varcomp/{.x}/airemlf90.{.x}.log")),
+                                             option = "AIC")),
+         Model = case_when(Model == "fixed10" ~ "Contemporary group + temperature",
+                           Model == "fixed9" ~ "Contemporary group only",
+                           Model == "fixed11" ~ "Contemporary group + day length",
+                           Model == "fixed12" ~ "Contemporary group + temperature + day length")) 
+```
+
 # Commentary
 
 ## Manuscript graveyard
