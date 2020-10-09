@@ -223,7 +223,10 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed3/solutions"),
 
 ```{r}
 
-lrt_calc(ll_null = 94375.966, ll_test = 93532.558)
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed6/airemlf90.fixed6.log"),
+                                option = "logL"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed3/airemlf90.fixed3.log"),
+                                option = "logL"))
 
 ```
 
@@ -231,7 +234,10 @@ lrt_calc(ll_null = 94375.966, ll_test = 93532.558)
 
 ```{r}
 
-lrt_calc(ll_null = 94966.416, ll_test = 93532.558)
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed5/airemlf90.fixed5.log"),
+                                option = "logL"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed3/airemlf90.fixed3.log"),
+                                option = "logL"))
 
 ```
 
@@ -247,10 +253,10 @@ tibble(Model = c("fixed3", "fixed6", "fixed5")) %>%
                            Model == "fixed5" ~ "Day length only")) 
 ```
 
-## Most complicated model: temperature + day length + temperature*day length (`fixed4`)
+## Most complicated model: temperature + day length + centered temperature*day length (`fixed13`)
 
 ```{r, warning=FALSE, message=FALSE}
-read_table2(here::here("data/derived_data/base_varcomp/fixed4/solutions"),
+read_table2(here::here("data/derived_data/base_varcomp/fixed13/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
   filter(effect %in% c(5, 6, 7)) %>% 
@@ -264,19 +270,22 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed4/solutions"),
 
 ```{r}
 
-lrt_calc(ll_null = 93532.558, ll_test = 93506.058)
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed3/airemlf90.fixed3.log"),
+                                option = "logL"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed13/airemlf90.fixed13.log"),
+                                option = "logL"))
 
 ```
 
 > AIC values from both models:
 
 ```{r}
-tibble(Model = c("fixed4", "fixed3")) %>%
+tibble(Model = c("fixed13", "fixed3")) %>%
   mutate(AIC = purrr::map_dbl(.x = Model,
                               ~ parse_loglik(path = here::here(glue("data/derived_data/base_varcomp/{.x}/airemlf90.{.x}.log")),
                                              option = "AIC")),
          Model = case_when(Model == "fixed3" ~ "Temperature + day length",
-                           Model == "fixed4" ~ "Temperature + day length + temperature*day length")) 
+                           Model == "fixed13" ~ "Temperature + day length + temperature*day length")) 
 ```
 
 # Is farm/herd ID an appropriate proxy for environmental measurements?
@@ -287,7 +296,10 @@ tibble(Model = c("fixed4", "fixed3")) %>%
 
 ```{r}
 
-lrt_calc(ll_null = 104405.96, ll_test = 92222.897)
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed7/airemlf90.fixed7.log"),
+                                option = "logL"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed8/airemlf90.fixed8.log"),
+                                option = "logL"))
 
 ```
 
@@ -295,7 +307,10 @@ lrt_calc(ll_null = 104405.96, ll_test = 92222.897)
 
 ```{r}
 
-lrt_calc(ll_null = 93532.558, ll_test = 92222.897)
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed3/airemlf90.fixed3.log"),
+                                option = "logL"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed8/airemlf90.fixed8.log"),
+                                option = "logL"))
 
 ```
 
@@ -330,7 +345,10 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed10/solutions"),
 
 ```{r}
 
-lrt_calc(ll_null = 82482.404, ll_test = 81482.508)
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed9/airemlf90.fixed9.log"),
+                                option = "logL"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed10/airemlf90.fixed10.log"),
+                                option = "logL"))
 
 ```
 
@@ -345,11 +363,14 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed11/solutions"),
   select(Effect = effect, Solution = solution, SE = se)
 ```
 
-> Does including temperature provide a better fit over contemporary group alone (`fixed9`)? $-log_{10}(p-value)$ from the a likelihood ratio test comparing the two models:
+> Does including day length provide a better fit over contemporary group alone (`fixed9`)? $-log_{10}(p-value)$ from the a likelihood ratio test comparing the two models:
 
 ```{r}
 
-lrt_calc(ll_null = 82482.404, ll_test = 81474.369)
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed9/airemlf90.fixed9.log"),
+                                option = "logL"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed11/airemlf90.fixed11.log"),
+                                option = "logL"))
 
 ```
 
@@ -370,7 +391,10 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed12/solutions"),
 
 ```{r}
 
-lrt_calc(ll_null = 81482.508, ll_test = 81476.451)
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed10/airemlf90.fixed10.log"),
+                                option = "logL"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed12/airemlf90.fixed12.log"),
+                                option = "logL"))
 
 ```
 
@@ -378,7 +402,10 @@ lrt_calc(ll_null = 81482.508, ll_test = 81476.451)
 
 ```{r}
 
-lrt_calc(ll_null = 81474.369, ll_test = 81476.451)
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed11/airemlf90.fixed11.log"),
+                                option = "logL"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed12/airemlf90.fixed12.log"),
+                                option = "logL"))
 
 ```
 
