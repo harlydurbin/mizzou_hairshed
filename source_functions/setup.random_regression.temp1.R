@@ -3,7 +3,7 @@
 #' author: "Harly Durbin"
 #' output: html_document
 #' ---
-#' 
+#'
 ## ----setup, include=FALSE----------------------------------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
 library(readr)
@@ -14,26 +14,27 @@ library(glue)
 library(magrittr)
 library(lubridate)
 library(tidylog)
+library(readxl)
 
 source(here::here("source_functions/cg_tallies.R"))
 
-#' 
+#'
 #' # Notes & questions
-#' 
-#' # Setup 
-#' 
+#'
+#' # Setup
+#'
 ## ---- warning=FALSE, message=FALSE-------------------------------------------------------------------------
 cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
 
-#' 
+#'
 ## ---- warning=FALSE, message=FALSE-------------------------------------------------------------------------
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
 coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key.csv"))
 
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
 weather <-
   read_rds(here::here("data/derived_data/environmental_data/weather.rds")) %>%
@@ -63,35 +64,35 @@ weather <-
             mean_day_length = mean(day_length)) %>%
   ungroup()
 
-#' 
-#' 
+#'
+#'
 #' # Score group
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
 dat <-
-  cleaned %>% 
+  cleaned %>%
   left_join(bind_rows(read_excel(here::here("data/derived_data/ua_score_groups.xlsx")),
                       read_excel(here::here("data/derived_data/score_groups.xlsx"))) %>%
               select(farm_id, date_score_recorded, score_group) %>%
               mutate(date_score_recorded = lubridate::ymd(date_score_recorded))) %>%
   mutate(score_group = tidyr::replace_na(score_group, 1))
 
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
 dat %>%
   distinct(score_group)
 
-#' 
+#'
 #' # Remove males
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
 dat %<>%
   filter(sex == "F")
 
-#' 
-#' 
+#'
+#'
 #' # Add latitude, mean apparent high
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
 # Add latitude
 dat %<>%
@@ -100,29 +101,29 @@ dat %<>%
   assertr::verify(!is.na(lat)) %>%
   assertr::verify(!is.na(long))
 
-#' 
-#' 
+#'
+#'
 ## ----------------------------------------------------------------------------------------------------------
 dat %<>%
   filter(!is.na(date_score_recorded)) %>%
   left_join(weather) %>%
   # Center temp, day length
   mutate(mean_day_length = mean_day_length-mean(mean_day_length),
-         mean_apparent_high = mean_apparent_high-mean(mean_apparent_high)) %>% 
+         mean_apparent_high = mean_apparent_high-mean(mean_apparent_high)) %>%
   assertr::verify(!is.na(mean_apparent_high)) %>%
   assertr::verify(!is.na(mean_day_length))
 
 
-#' 
+#'
 #' # Calving season
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
-dat %<>% 
+dat %<>%
   # If calving season missing, impute using most recent calving season
-  group_by(farm_id, temp_id) %>% 
-  arrange(date_score_recorded) %>% 
-  fill(calving_season, .direction = "downup") %>% 
-  ungroup() %>% 
+  group_by(farm_id, temp_id) %>%
+  arrange(date_score_recorded) %>%
+  fill(calving_season, .direction = "downup") %>%
+  ungroup() %>%
   # If calving season still missing, impute using DOB
   mutate(calving_season = case_when(farm_id == "UMCT" ~ "SPRING",
                                     farm_id == "UMF" ~ "FALL",
@@ -134,48 +135,48 @@ dat %<>%
                                       between(lubridate::month(dob),
                                               left = 7,
                                               right = 12) ~ "FALL",
-                                    TRUE ~ calving_season)) %>% 
-  filter(!is.na(calving_season)) %>% 
+                                    TRUE ~ calving_season)) %>%
+  filter(!is.na(calving_season)) %>%
   assertr::verify(!is.na(calving_season))
-  
-  
 
-#' 
+
+
+#'
 #' # Age group
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
 
-dat %<>% 
+dat %<>%
   mutate(age_group = case_when(age == 1 ~ "yearling",
                                age %in% c(2, 3) ~ "growing",
                                between(age, 4, 9) ~ "mature",
-                               age >= 10 ~ "old")) %>% 
-  filter(!is.na(age_group)) %>% 
+                               age >= 10 ~ "old")) %>%
+  filter(!is.na(age_group)) %>%
   assertr::verify(!is.na(age_group))
 
 
-#' 
+#'
 #' # Toxic fescue
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
 
-dat %<>% 
-  mutate(toxic_fescue = if_else(farm_id %in% c("BAT", "CRC"), 
+dat %<>%
+  mutate(toxic_fescue = if_else(farm_id %in% c("BAT", "CRC"),
                                 "YES",
-                                toxic_fescue)) %>% 
+                                toxic_fescue)) %>%
   filter(!is.na(toxic_fescue))
 
 
-#' 
+#'
 #' # Export
-#' 
+#'
 #' ## Data
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
 matched <-
-  dat %>% 
-  left_join(full_ped %>% 
-              distinct(farm_id, temp_id, full_reg)) %>% 
+  dat %>%
+  left_join(full_ped %>%
+              distinct(farm_id, temp_id, full_reg)) %>%
   mutate(breed_code = case_when(breed_code == "AN" ~ "AAN",
                                 breed_code == "ANR" ~ "RAN",
                                 breed_code == "BG" ~ "BGR",
@@ -185,33 +186,32 @@ matched <-
                                 !is.na(registration_number) ~ glue("{breed_code}{registration_number}"),
                               is.na(full_reg) &
                                 is.na(registration_number) ~ glue("{farm_id}{animal_id}{temp_id}"),
-                              TRUE ~ full_reg)) %>% 
-  assertr::verify(!is.na(full_reg)) %>% 
+                              TRUE ~ full_reg)) %>%
+  assertr::verify(!is.na(full_reg)) %>%
   assertr::verify(!is.na(hair_score))
 
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
 print("Duplicate animals, different full_reg")
-matched %>% 
-  distinct(farm_id, temp_id, full_reg) %>% 
-  group_by(farm_id, temp_id) %>% 
+matched %>%
+  distinct(farm_id, temp_id, full_reg) %>%
+  group_by(farm_id, temp_id) %>%
   filter(n() > 1)
 
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
-matched %>% 
-  distinct(Lab_ID,farm_id, animal_id, temp_id, registration_number, full_reg) %>% 
+matched %>%
+  distinct(Lab_ID,farm_id, animal_id, temp_id, registration_number, full_reg) %>%
   write_csv(here::here("data/derived_data/random_regression/temp1/sanity_key.csv"),
             na = "")
 
-#' 
+#'
 ## ----------------------------------------------------------------------------------------------------------
-matched %>% 
-  group_by(full_reg, date_score_recorded) %>% 
-  filter(n() == 1) %>% 
-  ungroup() %>% 
-  mutate(intercept == 1) %>% 
-  select(full_reg, year, calving_season, toxic_fescue, age_group, mean_apparent_high, intercept, hair_score)
+matched %>%
+  group_by(full_reg, date_score_recorded) %>%
+  filter(n() == 1) %>%
+  ungroup() %>%
+  mutate(intercept = 1) %>%
+  select(full_reg, year, calving_season, toxic_fescue, age_group, mean_apparent_high, intercept, hair_score) %>%
   write_delim(here::here("data/derived_data/random_regression/temp1/data.txt"),
               col_names = FALSE)
-
