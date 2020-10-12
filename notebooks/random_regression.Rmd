@@ -1,0 +1,60 @@
+---
+title: "Environmental variable reaction norm & GWAS"
+author: "Harly Durbin"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    df_print: paged
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(readr)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(glue)
+library(readxl)
+library(ggplot2)
+library(magrittr)
+library(purrr)
+#library(tidylog)
+
+source(here::here("source_functions/melt_aireml.R"))
+source(here::here("source_functions/parse_renf90table.R"))
+source(here::here("source_functions/lrt_calc.R"))
+source(here::here("source_functions/parse_loglik.R"))
+```
+
+# Notes & questions
+
+## Model key
+
+* `length1` and `temp1`
+    + Homogenous residuals
+
+# Setup 
+
+```{r}
+read_table2(here::here("data/derived_data/random_regression/length1/solutions"),
+            skip = 1,
+            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>% 
+  select(-trait) %>% 
+  mutate(effect = case_when(effect == 1 ~ "year",
+                            effect == 2 ~ "calving_season",
+                            effect == 3 ~ "toxic_fescue",
+                            effect == 4 ~ "age_group",
+                            effect == 5 ~ "day_length",
+                            effect == 6 ~ "intercept",
+                            effect == 7 ~ "slope_add",
+                            effect == 8 ~ "intercept_add",
+                            effect == 9 ~ "slope_pe",
+                            effect == 10 ~ "intercept_pe")) %>% 
+  group_by(effect) %>% 
+  summarise(min(solution), max(solution), n())
+```
+
+
+# Commentary

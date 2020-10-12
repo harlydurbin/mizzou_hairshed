@@ -1,0 +1,43 @@
+title
+       "hair shedding";
+
+gfile
+       "data/derived_data/snp1101_gwas/genotypes.txt";
+
+mapfile
+       "data/derived_data/snp1101_gwas/snp1101_gwas.map";
+
+//pedfile
+  //     "data/derived_data/snp1101_gwas/ped.txt";
+
+traitfile
+       name "hair shedding bvs"
+       file "data/derived_data/snp1101_gwas/trait.txt"
+       est 1
+       h2 0.4
+       //va 0.38
+       //ve 0.53
+       skip 1;
+
+qc
+       maf_range 0.0 0.5;
+
+kinship
+       matrix
+       name "hair_grm"
+       method vanraden
+       save_text gmtx;
+
+gwas ssr
+       kinship name "hair_grm"
+       wt rel
+       maf_range 0.0 0.5
+       mca gwise fdr
+       plot
+       plot qq;
+
+nthread
+       2;
+
+output_folder
+       "data/derived_data/snp1101_gwas/out";
