@@ -26,6 +26,7 @@ source(here::here("source_functions/melt_aireml.R"))
 source(here::here("source_functions/parse_renf90table.R"))
 source(here::here("source_functions/lrt_calc.R"))
 source(here::here("source_functions/parse_loglik.R"))
+source(here::here("source_functions/calculate_acc.R"))
 ```
 
 # Notes & questions
@@ -38,7 +39,8 @@ source(here::here("source_functions/parse_loglik.R"))
 # Setup 
 
 ```{r}
-read_table2(here::here("data/derived_data/random_regression/length1/solutions"),
+length1 <-
+  read_table2(here::here("data/derived_data/random_regression/length1/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>% 
   select(-trait) %>% 
@@ -51,9 +53,24 @@ read_table2(here::here("data/derived_data/random_regression/length1/solutions"),
                             effect == 7 ~ "slope_add",
                             effect == 8 ~ "intercept_add",
                             effect == 9 ~ "slope_pe",
-                            effect == 10 ~ "intercept_pe")) %>% 
-  group_by(effect) %>% 
-  summarise(min(solution), max(solution), n())
+                            effect == 10 ~ "intercept_pe"))
+```
+
+# Accuracy
+
+```{r}
+length1 %>% 
+  filter(effect == "slope_add") %>% 
+  mutate(acc = purrr::map_dbl(.x = se,
+                              ~ calculate_acc(e = 0.70788,
+                                              u = 0.14733,
+                                              se = .x,
+                                              option = "reliability")))
+
+```
+
+```{r}
+
 ```
 
 

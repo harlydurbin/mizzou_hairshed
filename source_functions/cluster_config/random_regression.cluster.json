@@ -33,5 +33,19 @@
         "mem" : 100G,
         "c": 56,
         "mail-type" : "END"
+    },
+    "setup_snp1101":
+    {
+        "t": "01:00:00",
+        "mem" : 6G,
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    },
+    "snp1101":
+    {
+        "t": "2:00:00",
+        "p" : "General,Lewis,BioCompute,htc4,hpc5",
+        "mem" : 32G,
+        "c": 12,
+        "mail-type" : "END"
     }
 }
