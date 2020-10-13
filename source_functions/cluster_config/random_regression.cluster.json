@@ -42,10 +42,10 @@
     },
     "snp1101":
     {
-        "t": "2:00:00",
-        "p" : "General,Lewis,BioCompute,htc4,hpc5",
-        "mem" : 32G,
-        "c": 12,
+        "t": "3:30:00",
+        "p" : "BioCompute,htc4,hpc5",
+        "mem" : 100G,
+        "c": 32,
         "mail-type" : "END"
     }
 }

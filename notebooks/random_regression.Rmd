@@ -70,7 +70,16 @@ length1 %>%
 ```
 
 ```{r}
-
+length1 %>% 
+  filter(effect %in% c("slope_add", "intercept_add")) %>% 
+  select(-se) %>% 
+  tidyr::pivot_wider(id_cols = id_renamed,
+                     names_from = effect,
+                     values_from = solution) %>% 
+  arrange(slope_add)
+  ggplot() +
+  geom_abline(slope = -1.3941195,
+              intercept = 0.49166989)
 ```
 
 

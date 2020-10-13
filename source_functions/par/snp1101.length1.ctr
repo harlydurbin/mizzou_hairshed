@@ -21,14 +21,14 @@ traitfile
 qc
        maf_range 0.0 0.5;
 
-kinship
-       matrix
-       name "hair_grm"
-       method vanraden;
+//kinship
+       //matrix
+       //name "hair_grm"
+       //method vanraden;
       // save_text gmtx;
 
 gwas ssr
-       kinship name "hair_grm"
+       kinship file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/length1/gmtx_hair_grm.bin"
        wt rel
        maf_range 0.0 0.5
        mca gwise fdr
