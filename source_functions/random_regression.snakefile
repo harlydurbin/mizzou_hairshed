@@ -1,4 +1,4 @@
-# snakemake -s source_functions/random_regression.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/random_regression.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/random_regression/201012.random_regression.log
+# snakemake -s source_functions/random_regression.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/random_regression.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" --until airemlf90 -p &> log/snakemake_log/random_regression/201014.random_regression.log
 
 import os
 
@@ -94,42 +94,4 @@ rule airemlf90:
 		cd {params.dir}
 		psrecord "{params.aireml_path} renf90.par &> {params.aireml_out_name}" --log {params.psrecord} --include-children --interval 2
 		mv airemlf90.log {params.aireml_log_name}
-		"""
-
-rule setup_snp1101:
-	input:
-		aireml_log = "data/derived_data/random_regression/{model}/airemlf90.{model}.log",
-		script = "source_functions/setup.snp1101.{model}.R"
-	params:
-		r_module = config['r_module']
-	output:
-		traitfile = "data/derived_data/snp1101/{model}/trait.txt",
-		ped = "data/derived_data/snp1101/{model}/ped.txt"
-	shell:
-		"""
-		module load {params.r_module}
-		Rscript --vanilla {input.script}
-		"""
-
-rule snp1101:
-	input:
-		traitfile = "data/derived_data/snp1101/{model}/trait.txt",
-		ped = "data/derived_data/snp1101/{model}/ped.txt",
-		ctr = "source_functions/par/snp1101.{model}.ctr",
-		fwf = config['geno_prefix'] + '.fwf.txt',
-		map = config['geno_prefix'] + '.chrinfo.txt'
-	params:
-		snp1101_path = config['snp1101_path'],
-		mpi_module = config['mpi_module']
-	output:
-		report = "data/derived_data/snp1101/{model}/out/report.txt",
-		bvs_p = "data/derived_data/snp1101/{model}/out/gwas_ssr_p_fdr_gw_{model}_bvs.txt",
-		excluded_indv = "data/derived_data/snp1101/{model}/out/excluded_indv.txt",
-		excluded_snp = "data/derived_data/snp1101/{model}/out/excluded_snp.txt",
-		ctr = "data/derived_data/snp1101/{model}/out/snp1101.{model}.ctr",
-		ped_single_id = "data/derived_data/snp1101/{model}/out/ped_single_id.txt"
-	shell:
-		"""
-		module load {params.mpi_module}
-		{params.snp1101_path} {input.ctr}
 		"""

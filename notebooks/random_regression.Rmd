@@ -56,6 +56,18 @@ length1 <-
                             effect == 10 ~ "intercept_pe"))
 ```
 
+```{r, warning = FALSE, message=FALSE}
+snp_sol <-
+  read_table2(here::here("data/derived_data/snp1101/length1/out/gwas_ssr_length1_bvs_p.txt"))  %>%
+  janitor::clean_names() %>%
+  mutate(neglog10p = -log10(p_value),
+         abs_snp = abs(b_value)) %>%
+  left_join(read_table2(here::here("data/derived_data/snp1101/length1/out/gwas_ssr_length1_bvs.txt"),
+                        skip = 12) %>%
+              select(chr = Chr, pos = Pos, fdr = FDR_GW, a))
+  
+```
+
 # Accuracy
 
 ```{r}
@@ -69,17 +81,10 @@ length1 %>%
 
 ```
 
+# GWAS using `length1` reaction norm slopes
+
 ```{r}
-length1 %>% 
-  filter(effect %in% c("slope_add", "intercept_add")) %>% 
-  select(-se) %>% 
-  tidyr::pivot_wider(id_cols = id_renamed,
-                     names_from = effect,
-                     values_from = solution) %>% 
-  arrange(slope_add)
-  ggplot() +
-  geom_abline(slope = -1.3941195,
-              intercept = 0.49166989)
+
 ```
 
 

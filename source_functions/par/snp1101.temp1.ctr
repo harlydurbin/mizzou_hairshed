@@ -1,5 +1,5 @@
 title
-       "length1";
+       "temp1";
 
 gfile
        "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/raw_data/geno_dump/200924_HairShed.850K.fwf.txt";
@@ -11,8 +11,8 @@ mapfile
       // "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/length1/ped.txt";
 
 traitfile
-       name "length1_bvs"
-       file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/length1/trait.txt"
+       name "temp1_bvs"
+       file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/temp1/trait.txt"
        est 1
        va 0.15
        ve 0.71
@@ -39,4 +39,4 @@ nthread
        32;
 
 output_folder
-       "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/length1/out";
+       "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/temp1/out";

@@ -10,28 +10,18 @@
         "mail-user" : "hjdurbin@mail.missouri.edu",
         "mail-type" : "NONE"
     },
-    "setup_data":
+    "setup_snp1101":
     {
         "t": "01:00:00",
         "mem" : 6G,
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     },
-    "copy_par":
+    "snp1101":
     {
-        "t": "01:00:00",
-        "p" : "General,Lewis,BioCompute,htc4,hpc5"
-    },
-    "renumf90":
-    {
-        "t": "01:00:00",
-        "p" : "General,Lewis,BioCompute,htc4,hpc5"
-    },
-    "airemlf90":
-    {
-        "t": "24:00:00",
-        "p" : "BioCompute",
+        "t": "3:30:00",
+        "p" : "BioCompute,htc4,hpc5",
         "mem" : 100G,
-        "c": 56,
+        "c": 32,
         "mail-type" : "END"
     }
 }

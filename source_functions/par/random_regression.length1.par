@@ -20,12 +20,6 @@ EFFECT
 # age_group
 EFFECT
 5 cross alpha
-# day length effect
-EFFECT
-6 cov
-# intercept
-EFFECT
-7 cross alpha
 EFFECT
 1 cross alpha
 RANDOM

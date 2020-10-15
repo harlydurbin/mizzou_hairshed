@@ -1,4 +1,4 @@
-rules: ['setup_data', 'copy_par', 'renumf90', 'airemlf90']
+rules: ['setup_snp1101', 'snp1101']
 
 r_module: "r/r-3.6.2-python-2.7.14-tk"
 
@@ -8,6 +8,10 @@ renumf90_path: "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_fu
 
 aireml_path: "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_functions/airemlf90"
 
+snp1101_path: "/storage/hpc/group/UMAG/SCRIPTS/snp1101/snp1101"
+
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
 model: ['length1', 'temp1']
+
+path: {'length1':['data/derived_data/random_regression/length1/airemlf90.length1.log']}
