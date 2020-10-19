@@ -1,0 +1,78 @@
+---
+title: "General model GWAS using SNP1101"
+author: "Harly Durbin"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    df_print: paged
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(patchwork)
+library(magrittr)
+library(stringr)
+library(tidylog)
+
+source(here::here("source_functions/calculate_acc.R"))
+source(here::here("source_functions/hair_manhattan.R"))
+source(here::here("source_functions/ggqq.R"))
+```
+
+# Notes & questions
+
+# Setup
+
+## Raw results
+
+```{r, warning = FALSE, message=FALSE}
+snp_sol <-
+  read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs_p.txt"))  %>%
+  janitor::clean_names() %>%
+  mutate(neglog10p = -log10(p_value),
+         abs_snp = abs(b_value)) %>%
+  left_join(read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs.txt"),
+                        skip = 12) %>%
+              select(chr = Chr, pos = Pos, fdr = FDR_GW, a))
+  
+```
+
+# Summary of raw results
+
+## How many variants passed FDR 0.05?
+
+```{r}
+snp_sol %>% 
+  filter(fdr != -1)
+```
+
+# Manhattan plot of $$-log_{10}(p-value)$$
+
+```{r, fig.width = 11, fig.height = 6.16}
+manall <- 
+  hair_manhattan(df = snp_sol,
+                 y_var = neglog10p, 
+                 y_lab = "neglog10p",
+                 sigline = 4.011207,
+                 color1 = "#ef8759",
+                 color2 = "#5da19a")
+
+
+manall
+
+#ggsave(filename = here::here("figures/snp1101_p.png"), height = 6.16, width = 11)
+```
+
+## QQ plot
+
+```{r}
+ggqq(pvector = snp_sol$p_value)
+```
+
+
