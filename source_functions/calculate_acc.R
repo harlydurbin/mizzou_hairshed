@@ -4,8 +4,8 @@
 #     + Assuming $\sigma^2_u$ is $\sigma^2_a$?
 
 
-calculate_acc <- function(e, u, se, option = "reliability") {
-  PEV <- (se ^ 2) * e
+calculate_acc <- function(u, se, option = "reliability") {
+  PEV <- (se ^ 2)
   
   acc <- if (option == "reliability") {
     1 - (PEV / u)
