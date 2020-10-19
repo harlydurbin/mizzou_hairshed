@@ -6,7 +6,7 @@
         "mem" : 1G,
         "c": 1,
         "t": "01:00:00",
-        "o": "log/slurm_out/random_regression/{rule}/{wildcards}.%j.out",
+        "o": "log/slurm_out/snp1101/{rule}/{wildcards}.%j.out",
         "mail-user" : "hjdurbin@mail.missouri.edu",
         "mail-type" : "NONE"
     },

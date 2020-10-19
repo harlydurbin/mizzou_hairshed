@@ -11,8 +11,8 @@ mapfile
       // "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/length1/ped.txt";
 
 traitfile
-       name "length1_bvs"
-       file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/length1/trait.txt"
+       name "fixed9_bvs"
+       file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/fixed9/trait.txt"
        est 1
        skip 1;
 
@@ -37,4 +37,4 @@ nthread
        32;
 
 output_folder
-       "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/length1/out";
+       "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/fixed9/out";

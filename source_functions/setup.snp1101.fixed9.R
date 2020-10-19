@@ -19,7 +19,7 @@ trait <-
               col_names = c("trait", "effect", "id_new", "solution", "se"),
               skip = 1) %>%
   # limit to animal effect
-  filter(effect == 5) %>%
+  filter(effect == 2) %>%
   select(id_new, solution, se)
 
 
@@ -29,8 +29,8 @@ trait %<>%
                         col_names = FALSE) %>%
     select(id_new = X1, full_reg = X10)) %>%
   mutate(acc = purrr::map_dbl(.x = se,
-                              ~ calculate_acc(e = 0.70503,
-                                              u = 0.29067,
+                              ~ calculate_acc(e = 0.49800,
+                                              u = 0.32799,
                                               se = .x,
                                               option = "reliability")),
   Group = 1,
@@ -40,4 +40,4 @@ trait %<>%
   filter(!is.na(Obs))
 
 
-write_tsv(trait, here::here("data/derived_data/snp1101/length1/trait.txt"))
+write_tsv(trait, here::here("data/derived_data/snp1101/fixed9/trait.txt"))

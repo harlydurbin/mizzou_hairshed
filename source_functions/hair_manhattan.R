@@ -25,7 +25,9 @@ hair_manhattan <-
            plot_title = NULL,
            facet = FALSE,
            nfacets = 2,
-           sigline = NULL) {
+           sigline = NULL,
+           color1 = NULL,
+           color2 = NULL) {
     y_var <- rlang::enquo(y_var)
     
     axisdf <-
@@ -35,6 +37,8 @@ hair_manhattan <-
       group_by(chr) %>%
       summarize(center = (max(BPcum) + min(BPcum)) / 2)
     
+    
+    if(!is.null(color1)) {
     df <-
       df %>%
       chr_len() %>%
@@ -42,10 +46,22 @@ hair_manhattan <-
       mutate(chrcolor =
                case_when(chr %in% c(seq(
                  from = 1, to = 29, by = 2
-               )) ~ "#C2D9CD",
+               )) ~ color1,
                chr %in% c(seq(
                  from = 2, to = 29, by = 2
-               )) ~ "#538797"))
+               )) ~ color2))
+    } else if(is.null(color1)){
+      df %>%
+        chr_len() %>%
+        # Alternating chromosome color
+        mutate(chrcolor =
+                 case_when(chr %in% c(seq(
+                   from = 1, to = 29, by = 2
+                 )) ~ "#C2D9CD",
+                 chr %in% c(seq(
+                   from = 2, to = 29, by = 2
+                 )) ~ "#538797"))
+    }
     
     
     gg <- 

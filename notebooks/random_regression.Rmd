@@ -39,8 +39,16 @@ source(here::here("source_functions/calculate_acc.R"))
 # Setup 
 
 ```{r}
-length1 <-
-  read_table2(here::here("data/derived_data/random_regression/length1/solutions"),
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
+
+```{r}
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+```
+
+```{r}
+length2 <-
+  read_table2(here::here("data/derived_data/random_regression/length2/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>% 
   select(-trait) %>% 
@@ -56,34 +64,80 @@ length1 <-
                             effect == 10 ~ "intercept_pe"))
 ```
 
-```{r, warning = FALSE, message=FALSE}
-snp_sol <-
-  read_table2(here::here("data/derived_data/snp1101/length1/out/gwas_ssr_length1_bvs_p.txt"))  %>%
-  janitor::clean_names() %>%
-  mutate(neglog10p = -log10(p_value),
-         abs_snp = abs(b_value)) %>%
-  left_join(read_table2(here::here("data/derived_data/snp1101/length1/out/gwas_ssr_length1_bvs.txt"),
-                        skip = 12) %>%
-              select(chr = Chr, pos = Pos, fdr = FDR_GW, a))
-  
+```{r}
+length1 <-
+  read_table2(here::here("data/derived_data/random_regression/length1/solutions"),
+            skip = 1,
+            col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>% 
+  select(-trait) %>% 
+  mutate(effect = case_when(effect == 1 ~ "year",
+                            effect == 2 ~ "calving_season",
+                            effect == 3 ~ "toxic_fescue",
+                            effect == 4 ~ "age_group",
+                            effect == 5 ~ "slope_add",
+                            effect == 6 ~ "intercept_add",
+                            effect == 7 ~ "slope_pe",
+                            effect == 8 ~ "intercept_pe")) %>% 
+  left_join(read_table2(here::here("data/derived_data/random_regression/length1/renadd05.ped"),
+                        col_names = FALSE) %>% 
+              select(id_renamed = X1,
+                     full_reg= X10))
 ```
 
-# Accuracy
+# Data summary
 
 ```{r}
-length1 %>% 
-  filter(effect == "slope_add") %>% 
+length2 %>% 
+  filter(effect %in% c("slope_add")) %>% 
   mutate(acc = purrr::map_dbl(.x = se,
                               ~ calculate_acc(e = 0.70788,
                                               u = 0.14733,
                                               se = .x,
-                                              option = "reliability")))
-
+                                              option = "reliability"))) %>% 
+  bind_rows(length2 %>% 
+              filter(effect %in% c("intercept_add")) %>% 
+              mutate(acc = purrr::map_dbl(.x = se,
+                                          ~ calculate_acc(e = 0.70788,
+                                                          u = 0.48791,
+                                                          se = .x,
+                                                          option = "reliability")))) %>% 
+  arrange(desc(acc))
 ```
 
-# GWAS using `length1` reaction norm slopes
+```{r}
+full_ped %>% 
+  filter(sire_reg != "0") %>% 
+  group_by(sire_reg) %>% 
+  tally(sort = TRUE) %>% 
+  ungroup() %>% 
+  top_n(15, n) %>% 
+  select(full_reg = sire_reg) %>% 
+  left_join(length1) %>% 
+  filter(str_detect(effect, "add")) %>% 
+  select(full_reg, effect, solution) %>% 
+  pivot_wider(id_cols = full_reg,
+              values_from = "solution",
+              names_from = effect) %>% 
+  mutate(Breed = case_when(str_detect(full_reg, "AAA") ~ "Angus",
+                           str_detect(full_reg, "HER") ~ "Hereford",
+                           str_detect(full_reg, "SIM") ~ "Simmental")) %>% 
+  ggplot() +
+  geom_abline(aes(intercept = intercept_add,
+                  slope = slope_add,
+                  color = Breed)) +
+  ylim(-3, 3) +
+  xlim(-3, 3) +
+  labs(x = "Centered day length",
+       y = "Centered day length")
+```
 
 ```{r}
+read_table2(here::here("data/derived_data/random_regression/length1/data.txt"),
+            col_names = FALSE) %>% 
+  select(day_length = X6) %>% 
+  distinct() %>% 
+  ggplot(aes(x = day_length,
+             y = day_length)) +
 
 ```
 
