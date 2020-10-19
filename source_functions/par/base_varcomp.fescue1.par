@@ -21,16 +21,8 @@ animal
 # Effect 3: PE
 OPTIONAL
 pe
-FILE
-ped.txt
-FILE_POS
-1 2 3 0 0
 SNP_FILE
 genotypes.txt
-PED_DEPTH
-3
-INBREEDING
-pedigree
 (CO)VARIANCES
 0.3 0.01
 0.01 0.3
@@ -52,3 +44,4 @@ OPTION maxsnp 1000000
 OPTION missing -999
 OPTION EM-REML 25
 OPTION tol 1d-06
+OPTION solv_method FSPAK

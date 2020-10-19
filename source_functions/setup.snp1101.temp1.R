@@ -25,8 +25,7 @@ trait %<>%
                         col_names = FALSE) %>%
     select(id_new = X1, full_reg = X10)) %>%
   mutate(acc = purrr::map_dbl(.x = se,
-                              ~ calculate_acc(e = 0.53274,
-                                              u = 0.37679,
+                              ~ calculate_acc(u = 0.37679,
                                               se = .x,
                                               option = "reliability")),
   Group = 1,
@@ -39,5 +38,5 @@ trait %<>%
 write_tsv(trait, here::here("data/derived_data/snp1101/temp1/trait.txt"))
 
 read_table2(here::here("data/derived_data/3gen/blupf90_ped.txt"),
-            col_names = c("full_reg", "sire_reg", "dam_reg")) %>% 
+            col_names = c("full_reg", "sire_reg", "dam_reg")) %>%
   write_tsv(here::here("data/derived_data/snp1101/temp1/ped.txt"))

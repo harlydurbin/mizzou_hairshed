@@ -29,6 +29,8 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
 ## ---- warning=FALSE, message=FALSE--------------------------------------------------------------------------------------------------
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
+genotyped_id <- read_table2(here::here("data/raw_data/geno_dump/genotyped_id.txt"),
+                            col_names = "full_reg")
 #'
 #' # Score group
 #'
@@ -150,8 +152,11 @@ matched <-
                               is.na(full_reg) &
                                 is.na(registration_number) ~ glue("{farm_id}{animal_id}{temp_id}"),
                               TRUE ~ full_reg)) %>%
+  left_join(genotyped_id %>% 
+              mutate(genotyped = TRUE)) %>% 
+  filter(genotyped == TRUE) %>% 
   assertr::verify(!is.na(full_reg)) %>%
-  assertr::verify(!is.na(hair_score))
+  assertr::verify(!is.na(hair_score)) 
 
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------

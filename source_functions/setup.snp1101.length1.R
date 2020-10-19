@@ -29,8 +29,7 @@ trait %<>%
                         col_names = FALSE) %>%
     select(id_new = X1, full_reg = X10)) %>%
   mutate(acc = purrr::map_dbl(.x = se,
-                              ~ calculate_acc(e = 0.70503,
-                                              u = 0.29067,
+                              ~ calculate_acc(u = 0.29067,
                                               se = .x,
                                               option = "reliability")),
   Group = 1,

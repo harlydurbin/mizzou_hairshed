@@ -11,7 +11,7 @@ mapfile
       // "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/length1/ped.txt";
 
 traitfile
-       name "length1_bvs"
+       name "length1"
        file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/length1/trait.txt"
        est 1
        skip 1;

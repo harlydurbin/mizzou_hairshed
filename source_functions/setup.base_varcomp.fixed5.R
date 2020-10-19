@@ -40,6 +40,8 @@ weather <-
          apparent_high = purrr::map_dbl(daily,
                                         ~ .x %>%
                                           dplyr::pull(apparentTemperatureHigh)),
+         # 10/9/20 forgot to convert from F to C
+         apparent_high = measurements::conv_unit(apparent_high, from = "F", to = "C"),
          sunrise = purrr::map_chr(daily,
                                   ~.x %>%
                                     dplyr::pull(sunriseTime) %>%

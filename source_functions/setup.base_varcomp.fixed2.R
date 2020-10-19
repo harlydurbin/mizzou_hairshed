@@ -43,7 +43,8 @@ mean_apparent_high <-
          # Extract daily apparent high from daily column
          apparent_high = purrr::map_dbl(daily,
                               ~ .x %>%
-                                dplyr::pull(apparentTemperatureHigh))) %>%
+                                dplyr::pull(apparentTemperatureHigh)),
+        apparent_high = measurements::conv_unit(apparent_high, from = "F", to = "C")) %>%
   # Remove the data column
   select(-data) %>%
   group_by(date_score_recorded, lat, long) %>%
@@ -125,7 +126,7 @@ dat %<>%
 #'
 ## -----------------------------------------------------------------------------
 
-dat %<>% 
+dat %<>%
   mutate(age_group = case_when(age == 1 ~ "yearling",
                                age %in% c(2, 3) ~ "twothree",
                                between(age, 4, 7) ~ "mature",
