@@ -1,0 +1,22 @@
+---
+title: "MTG2"
+author: "Harly Durbin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Notes & questions
+
+* Multiple random effects p.34
+    + Text format GRMs Syntax: `-mgz {file name}` instead of `-g {file name}` E.g., `./mtg2 -p test.fam -d test.dat -mg grm_list.txt -cc test.cov -qc test.pc -out test.out -mod 5`
+        - Here `{file name}` is a text file grms_list.txt should be a text file, containing the file name of each grm file
+        - GRM in GCTA gz format
+* GWAS p.69 e.g., `./mtg2 -p toy.fam -d toy.phen -g toy.grm -mod 1 -plink toy -gwas 1 -out resw.gwas -wtr toy.resw -thread 30`
+    + `-gwas 2` gives pre-calculated variance components in `-sv {file name}` 
+    + `-d` phenotype file with columns FID, IID, phenotypes ...
+        - Missing values as NA
+    + `-cc` class covariate file and `-qc` continuous covariate file with columns FID, IID, covariates ...
+    + `-p` fam file
