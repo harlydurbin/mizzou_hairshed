@@ -45,9 +45,11 @@ weather <-
          daily_high = purrr::map_dbl(daily,
                               ~ .x %>% 
                                 dplyr::pull(temperatureHigh)),
+         daily_high = measurements::conv_unit(daily_high, from = "F", to = "C"),
          apparent_high = purrr::map_dbl(daily,
                               ~ .x %>% 
                                 dplyr::pull(apparentTemperatureHigh)),
+         apparent_high = measurements::conv_unit(apparent_high, from = "F", to = "C"),
          sunrise = purrr::map_chr(daily,
                                   ~.x %>% 
                                     dplyr::pull(sunriseTime) %>% 
