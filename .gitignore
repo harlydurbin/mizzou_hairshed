@@ -6,6 +6,7 @@
 api_keys
 management/*.xlsx
 source_functions/api_keys
+source_functions/gcta_1.93.2beta/*
 data/derived_data/update_email2020/*
 data/derived_data/angus_hairshed/*
 data/derived_data/geno_dump/*
@@ -16,6 +17,7 @@ data/derived_data/import_join_clean/*.csv
 data/derived_data/import_join_clean/*.rds
 data/derived_data/3gen/*.xlsx
 data/derived_data/3gen/*.csv
+data/derived_data/grm_inbreeding/*
 data/derived_data/breed_comp/*.csv
 data/raw_data/*
 management/*.xlsx

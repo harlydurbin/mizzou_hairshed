@@ -1,0 +1,28 @@
+{
+    "__default__":
+    {
+        "p" : "BioCompute,htc4,hpc5",
+        "account" : "animalsci",
+        "mem" : 1G,
+        "c": 1,
+        "t": "01:00:00",
+        "o": "log/slurm_out/grm_inbreeding/{rule}/{wildcards}.%j.out",
+        "mail-user" : "hjdurbin@mail.missouri.edu",
+        "mail-type" : "NONE"
+    },
+    "gcta_grm":
+    {
+        "mem" : 48G,
+        "c": 24,
+        "t": "01:00:00",
+        "p" : "General,Lewis,BioCompute,htc4,hpc5",
+        "mail-type" : "END"
+    },
+    "pull_diagonal":
+    {
+        "mem" : 8G,
+        "t": "01:00:00",
+        "p" : "General,Lewis,BioCompute,htc4,hpc5",
+        "mail-type" : "END"
+    },
+}

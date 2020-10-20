@@ -8,12 +8,10 @@ WEIGHT(S)
 
 RESIDUAL_VARIANCE
 0.5
-# CG effect
 EFFECT
-2 cross alpha
-# animal effect
+2 cross alpha # CG effect
 EFFECT
-1 cross alpha
+1 cross alpha # animal effect
 RANDOM
 animal
 OPTIONAL
@@ -26,24 +24,19 @@ SNP_FILE
 genotypes.txt
 PED_DEPTH
 3
-OPTION minfreq 0.0001
 INBREEDING
 pedigree
 (CO)VARIANCES
 0.3
 (CO)VARIANCES_PE
 0.07
-# Nof filtering on allele frequency
-OPTION minfreq 0.0001
-# Turn off filtering on call rate in order to use same SNPs across all analyses
-OPTION callrate 0
+OPTION minfreq 0.0001 # Already filtered for MAF, turn off to use same SNPs across all analyses
+OPTION callrate 0 # Turn off filtering on call rate in order to use same SNPs across all analyses
 OPTION chrinfo ../../../raw_data/geno_dump/200924_HairShed.850K.chrinfo.txt
-OPTION residual
-OPTION sol se
-OPTION conv_crit 1e-12
-OPTION use_yams
 OPTION sex_chr 30
 OPTION excludeCHR
 OPTION maxsnp 1000000
+OPTION residual
+OPTION sol se
 OPTION missing -999
 OPTION solv_method FSPAK
