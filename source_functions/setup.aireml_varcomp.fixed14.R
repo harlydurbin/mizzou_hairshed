@@ -14,6 +14,7 @@ library(glue)
 library(magrittr)
 library(lubridate)
 library(tidylog)
+library(readxl)
 
 source(here::here("source_functions/cg_tallies.R"))
 
@@ -29,18 +30,17 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
 ## ---- warning=FALSE, message=FALSE--------------------------------------------------------------------------------------------------
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
-genotyped_id <- read_table2(here::here("data/raw_data/geno_dump/genotyped_id.txt"),
-                            col_names = "full_reg")
+genotyped <- read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"))
+
 #'
 #' # Score group
-#'
-## -----------------------------------------------------------------------------------------------------------------------------------
+
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------
 dat <-
   cleaned %>%
-  left_join(bind_rows(readxl::read_excel(here::here("data/derived_data/ua_score_groups.xlsx")),
-                      readxl::read_excel(here::here("data/derived_data/score_groups.xlsx"))) %>%
+  left_join(bind_rows(read_excel(here::here("data/derived_data/ua_score_groups.xlsx")),
+                      read_excel(here::here("data/derived_data/score_groups.xlsx"))) %>%
               select(farm_id, date_score_recorded, score_group) %>%
               mutate(date_score_recorded = lubridate::ymd(date_score_recorded))) %>%
   mutate(score_group = tidyr::replace_na(score_group, 1))
@@ -99,11 +99,22 @@ dat %<>%
 
 
 #'
+#' # Toxic fescue
+#'
+## -----------------------------------------------------------------------------------------------------------------------------------
+
+dat %<>%
+  mutate(toxic_fescue = if_else(farm_id %in% c("BAT", "CRC"),
+                                "YES",
+                                toxic_fescue))
+
+
+#'
 #' # Contemporary group
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------
 dat %<>%
-  mutate(cg = glue("{farm_id}{year}{calving_season}{age_group}{score_group}"),
+  mutate(cg = glue("{farm_id}{year}{calving_season}{age_group}{score_group}{toxic_fescue}"),
          cg_num = as.integer(factor(cg)))
 
 
@@ -118,19 +129,6 @@ dat %<>%
   group_by(cg) %>%
   filter(n() >= 5) %>%
   ungroup()
-
-#'
-#' # Toxic fescue
-#'
-## -----------------------------------------------------------------------------------------------------------------------------------
-
-dat %<>%
-  mutate(toxic_fescue = if_else(farm_id %in% c("BAT", "CRC"),
-                                "YES",
-                                toxic_fescue)) %>%
-  filter(!is.na(toxic_fescue)) %>%
-  assertr::verify(!is.na(toxic_fescue))
-
 
 #'
 #' # Export
@@ -152,11 +150,11 @@ matched <-
                               is.na(full_reg) &
                                 is.na(registration_number) ~ glue("{farm_id}{animal_id}{temp_id}"),
                               TRUE ~ full_reg)) %>%
-  left_join(genotyped_id %>%
-              mutate(genotyped = TRUE)) %>%
-  filter(genotyped == TRUE) %>%
   assertr::verify(!is.na(full_reg)) %>%
   assertr::verify(!is.na(hair_score))
+
+matched %<>%
+  filter(full_reg %in% genotyped$full_reg)
 
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------
@@ -170,7 +168,7 @@ matched %>%
 ## -----------------------------------------------------------------------------------------------------------------------------------
 matched %>%
   distinct(Lab_ID,farm_id, animal_id, temp_id, registration_number, full_reg) %>%
-  write_csv(here::here("data/derived_data/aireml_varcomp/fescue1/sanity_key.csv"),
+  write_csv(here::here("data/derived_data/aireml_varcomp/fixed14/sanity_key.csv"),
             na = "")
 
 #'
@@ -179,11 +177,6 @@ matched %>%
   group_by(full_reg, cg_num) %>%
   filter(n() == 1) %>%
   ungroup() %>%
-  select(full_reg, hair_score, toxic_fescue, cg_num) %>%
-  tidyr::pivot_wider(id_cols = c("full_reg", "cg_num"),
-                     names_from = toxic_fescue,
-                     values_from = hair_score) %>%
-  mutate_at(vars("YES", "NO"), ~ replace_na(., -999)) %>%
-  select(full_reg, cg_num, YES, NO) %>%
-  write_delim(here::here("data/derived_data/aireml_varcomp/fescue1/data.txt"),
+  select(full_reg, cg_num, hair_score) %>%
+  write_delim(here::here("data/derived_data/aireml_varcomp/fixed14/data.txt"),
               col_names = FALSE)

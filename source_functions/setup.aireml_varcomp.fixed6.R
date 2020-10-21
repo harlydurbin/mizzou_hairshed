@@ -184,12 +184,12 @@ matched %>%
 ## -----------------------------------------------------------------------------
 matched %>%
   distinct(Lab_ID,farm_id, animal_id, temp_id, registration_number, full_reg) %>%
-  write_csv(here::here("data/derived_data/base_varcomp/fixed6/sanity_key.csv"),
+  write_csv(here::here("data/derived_data/aireml_varcomp/fixed6/sanity_key.csv"),
             na = "")
 
 #'
 ## -----------------------------------------------------------------------------
 matched %>%
   select(full_reg, year, calving_season, toxic_fescue, age_group, mean_apparent_high, hair_score) %>%
-  write_delim(here::here("data/derived_data/base_varcomp/fixed6/data.txt"),
+  write_delim(here::here("data/derived_data/aireml_varcomp/fixed6/data.txt"),
               col_names = FALSE)

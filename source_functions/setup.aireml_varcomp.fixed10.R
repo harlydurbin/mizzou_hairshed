@@ -217,7 +217,7 @@ matched %>%
 ## -----------------------------------------------------------------------------------------------------------------------------------
 matched %>%
   distinct(Lab_ID,farm_id, animal_id, temp_id, registration_number, full_reg) %>%
-  write_csv(here::here("data/derived_data/base_varcomp/fixed10/sanity_key.csv"),
+  write_csv(here::here("data/derived_data/aireml_varcomp/fixed10/sanity_key.csv"),
             na = "")
 
 #'
@@ -227,5 +227,5 @@ matched %>%
   filter(n() == 1) %>%
   ungroup() %>%
   select(full_reg, cg_num, mean_apparent_high, hair_score) %>%
-  write_delim(here::here("data/derived_data/base_varcomp/fixed10/data.txt"),
+  write_delim(here::here("data/derived_data/aireml_varcomp/fixed10/data.txt"),
               col_names = FALSE)

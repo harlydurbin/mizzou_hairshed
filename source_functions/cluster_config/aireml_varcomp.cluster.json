@@ -33,5 +33,10 @@
         "mem" : 100G,
         "c": 56,
         "mail-type" : "END"
-    }
+    },
+    "cleanup":
+    {
+        "t": "01:00:00",
+        "p" : "General,Lewis,BioCompute,htc4,hpc5"
+    },
 }

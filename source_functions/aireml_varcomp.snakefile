@@ -1,4 +1,4 @@
-# snakemake -s source_functions/aireml_varcomp.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/aireml_varcomp.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/aireml_varcomp/201019.aireml_varcomp.log
+# snakemake -s source_functions/aireml_varcomp.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/aireml_varcomp.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/aireml_varcomp/201020.aireml_varcomp.log
 
 import os
 
@@ -12,8 +12,8 @@ for x in expand("log/slurm_out/aireml_varcomp/{rules}", rules = config['rules'])
 os.makedirs("log/psrecord/aireml_varcomp", exist_ok = True)
 os.makedirs("log/psrecord/aireml_varcomp/airemlf90", exist_ok = True)
 
-rule base_all:
-	input: expand("data/derived_data/aireml_varcomp/{model}/airemlf90.{model}.log", model = config['model'])
+rule all:
+	input: expand("data/derived_data/aireml_varcomp/{model}/airemlf90.{model}.log", model = config['model']), expand("data/derived_data/aireml_varcomp/{model}/cleaned.txt", model = config['model'])
 
 rule setup_data:
 	input:
@@ -23,7 +23,8 @@ rule setup_data:
 		weather_data = "data/derived_data/environmental_data/weather.rds",
 		coord_key = "data/derived_data/environmental_data/coord_key.csv",
 		score_groups = "data/derived_data/score_groups.xlsx",
-		ua_score_groups = "data/derived_data/score_groups.xlsx"
+		ua_score_groups = "data/derived_data/score_groups.xlsx",
+		genotyped = "data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"
 	params:
 		r_module = config['r_module']
 	output:
@@ -87,11 +88,27 @@ rule airemlf90:
 		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/log/psrecord/aireml_varcomp/airemlf90/airemlf90.{model}.psrecord",
 		mpi_module = config['mpi_module']
 	output:
-		aireml_log = "data/derived_data/aireml_varcomp/{model}/airemlf90.{model}.log"
+		aireml_log = "data/derived_data/aireml_varcomp/{model}/airemlf90.{model}.log",
+		solutions = "data/derived_data/aireml_varcomp/{model}/solutions"
 	shell:
 		"""
 		module load {params.mpi_module}
 		cd {params.dir}
 		psrecord "{params.aireml_path} renf90.par &> {params.aireml_out_name}" --log {params.psrecord} --include-children --interval 2
 		mv airemlf90.log {params.aireml_log_name}
+		"""
+
+# Remove genotype files to save space
+rule cleanup:
+	input:
+		aireml_log = "data/derived_data/aireml_varcomp/{model}/airemlf90.{model}.log",
+		solutions = "data/derived_data/aireml_varcomp/{model}/solutions"
+	params:
+		dir = "data/derived_data/aireml_varcomp/{model}"
+	output:
+		cleaned = "data/derived_data/aireml_varcomp/{model}/cleaned.txt"
+	shell:
+		"""
+		rm {params.dir}/genotypes*
+		cat {output.cleaned}
 		"""

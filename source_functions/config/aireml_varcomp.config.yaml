@@ -1,4 +1,4 @@
-rules: ['setup_data', 'copy_par', 'renumf90', 'airemlf90']
+rules: ['setup_data', 'copy_par', 'renumf90', 'airemlf90', 'cleanup']
 
 r_module: "r/r-3.6.2-python-2.7.14-tk"
 
@@ -10,4 +10,6 @@ aireml_path: "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_func
 
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
-model: ['fixed2', 'fixed3', 'fixed4', 'fixed5', 'fixed6', 'fixed7', 'fixed8', 'fixed9', 'fixed10', 'fixed11', 'fixed12', 'fixed13', 'fescue1']
+#model: ['fixed2', 'fixed3', 'fixed4', 'fixed5', 'fixed6', 'fixed7', 'fixed8', 'fixed9', 'fixed10', 'fixed11', 'fixed12', 'fixed13', 'fixed14']
+
+model: ['fixed14']
