@@ -1,0 +1,88 @@
+---
+title: "Model key"
+author: "Harly Durbin"
+output: html_document
+---
+
+# Latitude, temperature, day length
+
+## `fixed1`
+
+* `{farm_id} + {year} + {calving_season} + {age} + {from_may1} + {toxic_fescue} + {latitude}`. Everything would be fit as a categorical factor, except for days from May 1 and latitude
+
+## `fixed2`
+
+* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {latitude} + {mean_apparent_high}`
+* Take out `{farm_id}` because it's confounded with latitude
+* Take out `{from_may1}` because it's highly correlated with `{mean_apparent_high}`
+* Use age groups rather than categorical ages
+
+## `fixed3`
+
+* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high}`
+* Replace latitude with mean day length
+
+## `fixed4`
+
+* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {temp_length}`
+* Add day length x temperature interaction term
+
+# #`fixed13`
+
+* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {centered_temp_length}`
+* `fixed4`, but center the interaction term
+
+## `fixed5`
+
+* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length}`
+* Only day length, no temperature
+
+## `fixed6`
+
+* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_apparent_high}`
+* Only temperature, no day length
+
+# Farm ID vs. environmental variables
+
+## `fixed7`
+
+* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {farm_id}`
+* No temperature or day length, just farm
+
+## `fixed8`
+
+* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {farm_id}`
+* Temp and day length and farm
+    
+# Contemporary group vs. environmental variables
+
+## `fixed9`
+
+* `{farm_id + year + calving_season + age_group + score_group + toxic_fescue}`
+* Contemporary group only
+* Model used for basic GWAS
+
+## `fixed14`
+
+* Exact same as `fixed9` model, but use only genotyped animals
+* Running GBLUP instead of ssGBLUP to attempt to get around inbreeding/reliability issue
+
+## `fixed10`
+
+* `{farm_id + year + calving_season + age_group + score_group + toxic_fescue} + {mean_apparent_high}`
+* Contemporary group + temp
+
+## `fixed11`
+
+* `{farm_id + year + calving_season + age_group + score_group + toxic_fescue} + {mean_day_length}`
+* Contemporary group + day length
+
+## `fixed12`
+
+* `{farm_id + year + calving_season + age_group + score_group + toxic_fescue} + {mean_day_length} + {mean_apparent_high}`
+* Contemporary group + temp + day length
+
+# Fescue
+
+## `fescue1`
+
