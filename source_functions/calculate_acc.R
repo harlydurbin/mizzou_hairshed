@@ -6,10 +6,10 @@ calculate_acc <- function(u, se, f, option = "reliability") {
   PEV <- (se ^ 2)
   
   acc <- if (option == "reliability") {
-    1 - (PEV / ((1+f)/u))
+    1 - (PEV / (1+f))
   } else if(option == "bif"){
     
-    1 - sqrt(PEV / ((1+f)/u))
+    1 - sqrt((PEV / (1+f)))
     
   }
   

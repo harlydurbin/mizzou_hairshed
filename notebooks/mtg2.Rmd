@@ -14,9 +14,50 @@ knitr::opts_chunk$set(echo = TRUE)
     + Text format GRMs Syntax: `-mgz {file name}` instead of `-g {file name}` E.g., `./mtg2 -p test.fam -d test.dat -mg grm_list.txt -cc test.cov -qc test.pc -out test.out -mod 5`
         - Here `{file name}` is a text file grms_list.txt should be a text file, containing the file name of each grm file
         - GRM in GCTA gz format
+        - For PE effect, should 2nd GRM be identity matrix or GRM? "if one gives test.idm as n x n identity matrix residual covariances (i.e. permanent environmental effects) can be modeled."
 * GWAS p.69 e.g., `./mtg2 -p toy.fam -d toy.phen -g toy.grm -mod 1 -plink toy -gwas 1 -out resw.gwas -wtr toy.resw -thread 30`
     + `-gwas 2` gives pre-calculated variance components in `-sv {file name}` 
+            - Format in Appendix A
     + `-d` phenotype file with columns FID, IID, phenotypes ...
         - Missing values as NA
     + `-cc` class covariate file and `-qc` continuous covariate file with columns FID, IID, covariates ...
     + `-p` fam file
+    
+source_functions/mtg2 -gwas 2 -sv data/derived_data/mtg2_gwas/fixed9/sv.txt -p data/derived_data/mtg2_gwas/fixed9/fixed9.fam -d data/derived_data/mtg2_gwas/fixed9/fixed9.phen -cc data/derived_data/mtg2_gwas/fixed9/fixed9.cov -mgz data/derived_data/mtg2_gwas/fixed9/grm_list.txt
+
+gzip -cd data/derived_data/grm_inbreeding/mizzou_hairshed.grm.gz | awk '{if($1 == $2) {print $1, $2, '1'} else {print $1, $2, '0'}}' | gzip > data/derived_data/mtg2_gwas/fixed9/pe.idm.gz
+
+srun -n4 -t 4:00:00 -p BioCompute --mem=20G --pty bash
+    
+```{r}
+read_table2(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.grm.id"),
+            col_names = c("full_reg", "iid")) %>%
+    left_join(read_table2(here::here("data/derived_data/base_varcomp/fixed9/data.txt"),
+                          col_names = c("full_reg", "cg_num", "hair_score"))) %>% 
+    mutate(full_reg = row_number()) %>% 
+    select(-cg_num) %>% 
+    write_tsv(here::here("data/derived_data/mtg2_gwas/fixed9/fixed9.phen"),
+              col_names = FALSE)
+
+```
+    
+```{r}
+read_table2(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.grm.id"), col_names = c("full_reg", "iid")) %>% 
+    left_join(read_table2(here::here("data/derived_data/base_varcomp/fixed9/data.txt"),
+                          col_names = c("full_reg", "cg_num", "hair_score"))) %>% 
+    mutate(full_reg = row_number()) %>% 
+    select(-hair_score) %>% 
+    write_tsv(here::here("data/derived_data/mtg2_gwas/fixed9/fixed9.cov"),
+              col_names = FALSE)
+
+```
+
+```{r}
+read_table2(here::here("data/raw_data/geno_dump/200924_HairShed.850K.qc.fam"),
+            col_names = FALSE) %>% 
+    mutate(X1 = row_number()) %>% 
+    write_delim(here::here("data/derived_data/mtg2_gwas/fixed9/fixed9.fam"),
+              col_names = FALSE,
+              delim = " ")
+```
+

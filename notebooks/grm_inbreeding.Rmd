@@ -1,0 +1,103 @@
+---
+title: "GRM & inbreeding"
+author: "Harly Durbin"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    df_print: paged
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(readr)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(glue)
+library(ggplot2)
+library(magrittr)
+library(purrr)
+library(tidylog)
+
+source(here::here("source_functions/calculate_acc.R"))
+```
+
+# Notes & qurestions
+
+* Aguilar et al. 2020
+    + "It can be seen that ignoring inbreeding in Henderson's rules results in higher self-relationships, thus implicitly assuming animals to be inbred"
+    + "For SSGBLUP, ignoring inbreeding in the set-up of A−1 not only generates wrong diagonal elements for A*, but also modifies diagonal elements for genotyped individuals in H∗"
+    + "It can be seen that ignoring inbreeding systematically underestimates reliability in BLUP while in SSGBLUP there is over and underestimation of reliability"
+
+# Setup
+
+```{r}
+inb <- 
+  # Genomic inbreeding coefficients (diagonal of GRM) calculated in GCTA with VanRaden method
+  read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv")) %>% 
+  # Solutions from basic `fixed9` model
+  left_join(read_table2(here::here("data/derived_data/base_varcomp/fixed9/solutions"),
+                        col_names = c("trait", "effect", "id_new", "solution", "se"),
+                        skip = 1) %>%
+              # limit to animal effect
+              filter(effect == 2) %>%
+              select(id_new, solution, se) %>% 
+              # Re-join pedigree to match id_new to full_reg
+              left_join(read_table2(here::here("data/derived_data/base_varcomp/fixed9/renadd02.ped"),
+                                    col_names = FALSE) %>%
+                          select(id_new = X1, full_reg = X10))) %>% 
+  mutate(acc = purrr::map2_dbl(.x = se,
+                               .y = diagonal,
+                              ~ calculate_acc(u = 0.32799,
+                                              se = .x,
+                                              f = .y,
+                                              option = "reliability")))
+```
+
+# Distribution of inbreeding values
+
+```{r}
+inb %>% 
+  summarise(`Min. F` = min(diagonal),
+            `Mean F` = mean(diagonal),
+            `Max. F` = max(diagonal))
+```
+
+```{r}
+inb %>% 
+  ggplot(aes(x = diagonal)) +
+  geom_density() +
+  theme_classic() +
+  labs(x = "Inbreeding coefficient",
+       y = "Kernel density")
+```
+
+```{r}
+inb %>% 
+  ggplot(aes(x = diagonal)) +
+  geom_histogram(bins = 20) +
+  theme_classic() +
+  labs(x = "Inbreeding coefficient",
+       y = "Count")
+```
+
+# Reliabilities from `fixed9` model using calculation that accounts for inbreeding
+
+```{r}
+inb %>% 
+  summarise(`Min. reliability` = min(acc),
+            `Mean reliability` = mean(acc),
+            `Max. reliability` = max(acc))
+  
+```
+
+```{r}
+inb %>% 
+  ggplot(aes(x = acc)) +
+  geom_histogram(bins = 20) +
+  theme_classic() +
+  labs(x = "Reliability",
+       y = "Count")
+```
