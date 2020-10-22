@@ -34,27 +34,46 @@ source(here::here("source_functions/calculate_acc.R"))
 # Setup
 
 ```{r}
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+```
+
+```{r}
+breed_key <- read_rds(here::here("data/derived_data/breed_comp/breed_key.rds"))
+```
+
+```{r}
 inb <- 
   # Genomic inbreeding coefficients (diagonal of GRM) calculated in GCTA with VanRaden method
   read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv")) %>% 
   # Solutions from basic `fixed9` model
-  left_join(read_table2(here::here("data/derived_data/base_varcomp/fixed9/solutions"),
+  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/fixed9/solutions"),
                         col_names = c("trait", "effect", "id_new", "solution", "se"),
                         skip = 1) %>%
               # limit to animal effect
               filter(effect == 2) %>%
               select(id_new, solution, se) %>% 
               # Re-join pedigree to match id_new to full_reg
-              left_join(read_table2(here::here("data/derived_data/base_varcomp/fixed9/renadd02.ped"),
+              left_join(read_table2(here::here("data/derived_data/aireml_varcomp/fixed9/renadd02.ped"),
                                     col_names = FALSE) %>%
                           select(id_new = X1, full_reg = X10))) %>% 
   mutate(acc = purrr::map2_dbl(.x = se,
                                .y = diagonal,
                               ~ calculate_acc(u = 0.32799,
                                               se = .x,
-                                              f = .y,
+                                              diagonal = .y,
                                               option = "reliability")))
 ```
+
+```{r}
+inb %>% 
+  left_join(breed_key %>% 
+              select(full_reg, imp_breed)) %>% 
+   mutate(imp_breed = case_when(str_detect(full_reg, "AAA|BIR") ~
+                                  "AN",))
+
+  filter(is.na(imp_breed))
+```
+
 
 # Distribution of inbreeding values
 

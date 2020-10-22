@@ -354,14 +354,23 @@ sim_found %>%
   writexl::write_xlsx("~/Desktop/RHF.xlsx")
 ```
 
-# Breed comp 10/5/20
+# Breed comp 10/5/20 - 10/22/20
+
+```{r}
+library(readxl)
+library(magrittr)
+```
+
+```{r}
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
 
 ```{r}
 rhf_breed <-
   read_excel("~/Box Sync/HairShedding/ReportedData/2019/DataRecording_RHF_2019.xlsx",
              sheet = "Original_heifers") %>% 
   janitor::clean_names() %>% 
-  select(animal_id = tattoo, breeds) %>% 
+  select(animal_id = tattoo, breeds) %>%
   mutate(animal_id = stringr::str_remove_all(animal_id,
                                              "[[:punct:]]|[[:space:]]")) %>% 
   left_join(cleaned %>% 
@@ -375,17 +384,43 @@ rhf_breed <-
                                                          "[[:punct:]]|[[:space:]]")) %>% 
               left_join(cleaned %>% 
                           filter(year == 2018) %>% 
-                          filter(farm_id == "RHF"))) %>% 
-  filter(!is.na(breeds)) %>% 
-  mutate(cross = case_when(breeds %in% c("100% AR", "PB AR") ~ "RAN",
-                           breeds %in% c("PB AN") ~ "AN",
-                           breeds %in% c("PB SM") ~ "SIM",
-                           TRUE ~ "cross")) %>% 
-  select(farm_id, breed_code, registration_number, animal_id, Lab_ID, temp_id, cross)
-
+                          filter(farm_id == "RHF")))
 ```
 
 ```{r}
-write_rds(rhf_breed, here::here("data/raw_data/201005.rhf_breed.rds"))
+rhf_breed %<>%
+  # Extract breed fractions
+  mutate(ar = case_when(breeds %in% c("PB AR", "100% AR") ~
+                          "1/1",
+                        stringr::str_detect(breeds, "(?<=[[:digit:]]/[[:digit:]] )AR") ~
+                          stringr::str_extract(breeds, "[[:digit:]]/[[:digit:]](?= AR)")),
+         an = case_when(breeds %in% c("PB AN", "100% AN") ~
+                          "1/1",
+                        stringr::str_detect(breeds, "(?<=[[:digit:]]/[[:digit:]] )AN") ~
+                          stringr::str_extract(breeds, "[[:digit:]]/[[:digit:]](?= AN)")),
+         sim = case_when(breeds %in% c("PB SM", "100% SM") ~
+                           "1/1",
+                         stringr::str_detect(breeds, "(?<=[[:digit:]]/[[:digit:]] )SM") ~
+                          stringr::str_extract(breeds, "[[:digit:]]/[[:digit:]](?= SM)"))) %>% 
+  # Convert character breed fractions to numeric percentages
+  mutate_at(vars("ar", "an", "sim"),
+            ~ purrr::map_dbl(.x = .,
+                             ~ eval(parse(text = .x)))) %>% 
+  # Replace NAs with zeroes
+  mutate_at(vars("ar", "an", "sim"),
+            ~ tidyr::replace_na(., 0)) %>% 
+  mutate(cross = case_when(ar == 1 ~ "AR",
+                           sim == 1 ~ "SIM",
+                           an == 1 ~ "AN",
+                           TRUE ~ "cross"))
+  
+```
+
+
+```{r}
+rhf_breed %>% 
+  mutate(source = "RHF") %>% 
+  select(farm_id, animal_id, registration_number, Lab_ID, temp_id, cross, an, ar, sim, source) %>% 
+  write_rds(here::here("data/raw_data/201005.rhf_breed.rds"))
 ```
 
