@@ -412,15 +412,15 @@ rhf_breed %<>%
   mutate(cross = case_when(ar == 1 ~ "AR",
                            sim == 1 ~ "SIM",
                            an == 1 ~ "AN",
-                           TRUE ~ "cross"))
+                           TRUE ~ "CROS"))
   
 ```
 
 
 ```{r}
 rhf_breed %>% 
-  mutate(source = "RHF") %>% 
-  select(farm_id, animal_id, registration_number, Lab_ID, temp_id, cross, an, ar, sim, source) %>% 
+  mutate(brd_source = "RHF") %>% 
+  select(farm_id, animal_id, registration_number, Lab_ID, temp_id, cross, an, ar, sim, brd_source) %>% 
   write_rds(here::here("data/raw_data/201005.rhf_breed.rds"))
 ```
 
