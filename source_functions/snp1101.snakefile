@@ -1,4 +1,4 @@
-# snakemake -s source_functions/snp1101.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/snp1101.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/snp1101/201019.snp1101.log
+# snakemake -s source_functions/snp1101.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/snp1101.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/snp1101/201023.snp1101.log
 
 import os
 
@@ -14,18 +14,21 @@ rule all:
 
 rule setup_snp1101:
 	input:
-		solutions = lambda wildcards: expand("{solutions}", solutions = config['solutions'][wildcards.model]),
-		ped = lambda wildcards: expand("{ped}", ped = config['ped'][wildcards.model]),
-		script = "source_functions/setup.snp1101.{model}.R",
+		solutions = lambda wildcards: expand("{dir}/solutions", dir = config['dir'][wildcards.model]),
+		ped = lambda wildcards: expand("{dir}/renadd0{animal_effect}.ped", dir = config['dir'][wildcards.model], animal_effect = config['animal_effect'][wildcards.model]),
+		script = "source_functions/setup.snp1101.R",
 		accuracy_script = "source_functions/calculate_acc.R"
 	params:
-		r_module = config['r_module']
+		r_module = config['r_module'],
+		dir = lambda wildcards: expand("{dir}", dir = config['dir'][wildcards.model]),
+		animal_effect = lambda wildcards: expand("{animal_effect}", animal_effect = config['animal_effect'][wildcards.model]),
+		gen_var = lambda wildcards: expand("{gen_var}", gen_var = config['gen_var'][wildcards.model])
 	output:
 		traitfile = "data/derived_data/snp1101/{model}/trait.txt"
 	shell:
 		"""
 		module load {params.r_module}
-		Rscript --vanilla {input.script} {input.solutions} {input.ped}
+		Rscript --vanilla {input.script} {params.dir} {params.animal_effect} {params.gen_var}
 		"""
 
 rule snp1101:

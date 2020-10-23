@@ -14,6 +14,8 @@ geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
 model: ['length1', 'fixed9']
 
-solutions: {'length1':['data/derived_data/random_regression/length1/solutions'], 'fixed9':['data/derived_data/base_varcomp/fixed9/solutions']}
+dir: {'length1':['data/derived_data/random_regression/length1'], 'fixed9':['data/derived_data/aireml_varcomp/fixed9']}
 
-ped: {'length1':['data/derived_data/random_regression/length1/renadd05.ped'], 'fixed9':['data/derived_data/base_varcomp/fixed9/renadd02.ped']}
+animal_effect: {'length1':['5'], 'fixed9':['2']}
+
+gen_var: {'length1':['0.29067'], 'fixed9':['0.32799']}

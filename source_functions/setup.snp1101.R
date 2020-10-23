@@ -24,30 +24,31 @@ trait <-
               skip = 1) %>%
   # limit to animal effect
   filter(effect == animal_effect) %>%
-  select(id_new, solution, se) 
+  select(id_new, solution, se)
 
-trait %>%
+trait %<>%
   # Re-attach original IDs
   left_join(read_table2(here::here(glue("{dir}/renadd0{animal_effect}.ped")),
-                        col_names = FALSE) %>% 
+                        col_names = FALSE) %>%
               select(id_new = X1, full_reg = X10)) %>%
-  left_join(read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"))) %>% 
-  filter(!is.na(diagonal)) %>% 
+  left_join(read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"))) %>%
+  filter(!is.na(diagonal)) %>%
   mutate(acc = purrr::map2_dbl(.x = se,
                                .y = diagonal,
                               ~ calculate_acc(u = gen_var,
                                               se = .x,
                                               diagonal = .y,
-                                              option = "reliability"))) 
+                                              option = "reliability"))) %>% 
+  assertr::verify(between(acc, 0, 1))
 
-trait %>% 
+trait %>%
   summarise(min(acc), max(acc))
-           
-trait %<>% 
+
+trait %<>%
   mutate(Group = 1,
          acc = round(acc*100, digits = 0),
          solution = round(solution, digits = 3)) %>%
   select(ID = full_reg, Group, Obs = solution, Rel = acc) %>%
   filter(!is.na(Obs))
 
-write_tsv(trait, here::here("data/derived_data/snp1101/{model}/trait.txt"))
+write_tsv(trait, here::here(glue("data/derived_data/snp1101/{model}/trait.txt")))
