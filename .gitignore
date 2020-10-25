@@ -38,3 +38,5 @@ html/*
 *sanity_key.csv
 scratch.Rmd
 *dat
+data/derived_data/snp1101/fixed9/out/gwas_ssr_p_fdr_gw_fixed9_bvs.png
+data/derived_data/snp1101/fixed9/out/gwas_ssr2_p_qq_fixed9_bvs.png
