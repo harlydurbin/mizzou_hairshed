@@ -276,12 +276,11 @@ breed_key %<>%
                            cross %in% c("RAN", "AR") ~ "RAN",
                            TRUE ~ cross)) %>% 
   select(Lab_ID, farm_id, animal_id, temp_id, full_reg, cross, an, ar, br, chi, gv, hfd, sim) %>% 
-  mutate_at(vars(an:sim), ~ replace_na(., 0)) %>% 
-  filter(chi > 0)
+  mutate_at(vars(an:sim), ~ replace_na(., 0))
 
 #' 
 ## ---------------------------------------------------------------------------------------------------------------------------------
 breed_key %>% 
-  write_rds(here::here("data/derived_data/breed_comp/breed_key.rds"))
+  write_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
 
 #' 
