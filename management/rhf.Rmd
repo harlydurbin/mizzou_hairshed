@@ -409,13 +409,16 @@ rhf_breed %<>%
   # Replace NAs with zeroes
   mutate_at(vars("ar", "an", "sim"),
             ~ tidyr::replace_na(., 0)) %>% 
-  mutate(cross = case_when(ar == 1 ~ "AR",
+  # Don't differentiate between Red Angus and Angus since RAAA doesn't
+  mutate(ar = case_when(ar > 0 & an > 0 ~ an + ar,
+                        TRUE ~ ar),
+         ar = if_else(ar > 1, 1, ar),
+         cross = case_when(ar == 1 ~ "AR",
                            sim == 1 ~ "SIM",
                            an == 1 ~ "AN",
                            TRUE ~ "CROS"))
   
 ```
-
 
 ```{r}
 rhf_breed %>% 

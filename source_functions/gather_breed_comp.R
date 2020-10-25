@@ -144,17 +144,18 @@ sim_breed <-
   # Don't differentiate between horned and polled Hereford
   mutate(hfd = hh + hp,
          # Don't differentiate between purebred and commercial 
-         sim = sm + cs,
-         # Don't differentiate between Red Angus and Angus since RAAA doesn't
-         ar = case_when(ar > 0 && an > 0 ~ an + ar,
+         sim = sm + cs) %>% 
+  select(registration_number, cross, an, ar, br, chi = ca, gv, hfd, sim) %>% 
+  # Don't differentiate between Red Angus and Angus since RAAA doesn't
+  mutate(ar = case_when(ar != 0 & an != 0 & br == 0 & chi == 0 & gv == 0 & hfd == 0 & sim == 0 ~ ar + an,
                         TRUE ~ ar),
+         ar = if_else(ar > 1, 1, ar),
          cross = case_when(ar == 1 ~ "AR",
+                           (ar + an) == 1 ~ "AR",
                            sim == 1 ~ "SIM",
-                           cs == 1 ~ "SIM",
+                           an == 1 ~ "AN",
                            TRUE ~ cross),
-         brd_source = glue("ASA{row_number()}")) %>% 
-  select(registration_number, brd_source, cross, an, ar, br, chi = ca, gv, hfd, sim)
-
+         brd_source = glue("ASA{row_number()}")) 
 #' 
 #' # Breed key
 #' 
@@ -243,11 +244,12 @@ breed_key %<>%
                 join = dplyr::left_join)
 
 #' 
-#' ## `cross`
+#'
 #' 
 ## ---------------------------------------------------------------------------------------------------------------------------------
 breed_key %<>%
   mutate(cross = case_when(!is.na(cross) ~ cross,
+                           farm_id %in% c("BAT", "SAV") ~ "CROS",
                            breed_code %in% c("SH",
                                              "RDP",
                                              "HFD",
@@ -263,7 +265,6 @@ breed_key %<>%
                            an == 1 ~ "AN",
                            hfd == 1 ~ "HFD",
                            ar == 1 ~ "RAN",
-                           farm_id %in% c("BAT", "SAV") ~ "CROS",
                            TRUE ~ cross)) 
 
 
@@ -271,11 +272,17 @@ breed_key %<>%
 ## ---------------------------------------------------------------------------------------------------------------------------------
 breed_key %<>% 
   mutate(cross = case_when(cross %in% c("CROS", "cross", "MX") ~ "CROS",
-                           is.na(cross) ~ "cross",
                            cross %in% c("SIM", "SM") ~ "SIM",
                            cross %in% c("RAN", "AR") ~ "RAN",
-                           TRUE ~ cross)) %>% 
-  select(Lab_ID, farm_id, animal_id, temp_id, full_reg, cross, an, ar, br, chi, gv, hfd, sim) %>% 
+                           is.na(cross) ~ "CROS",
+                           TRUE ~ cross),
+         brd_source = as.character(brd_source),
+         brd_source = case_when(str_detect(brd_source, "^ASA") ~ "American Simmental Association",
+                                str_detect(brd_source, "simmisc") ~ "American Simmental Association",
+                                str_detect(brd_source, "^RAAA") ~ "Red Angus Association of America",
+                                str_detect(brd_source, "ranmisc") ~ "Red Angus Association of America",
+                                TRUE ~ brd_source)) %>% 
+  select(Lab_ID, farm_id, animal_id, temp_id, full_reg, breed_code, cross, source, brd_source, an, ar, br, chi, gv, hfd, sim) %>% 
   mutate_at(vars(an:sim), ~ replace_na(., 0))
 
 #' 

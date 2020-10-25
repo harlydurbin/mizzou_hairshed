@@ -12,4 +12,4 @@ geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
 #model: ['fixed2', 'fixed3', 'fixed4', 'fixed5', 'fixed6', 'fixed7', 'fixed8', 'fixed9', 'fixed10', 'fixed11', 'fixed12', 'fixed13', 'fixed14']
 
-model: ['fixed14']
+model: ['an1', 'bg1', 'hfd1', 'igs1']

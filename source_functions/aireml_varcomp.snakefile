@@ -1,4 +1,4 @@
-# snakemake -s source_functions/aireml_varcomp.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/aireml_varcomp.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/aireml_varcomp/201020.aireml_varcomp.log
+# snakemake -s source_functions/aireml_varcomp.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/aireml_varcomp.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/aireml_varcomp/201025.aireml_varcomp.log
 
 import os
 
@@ -24,6 +24,7 @@ rule setup_data:
 		coord_key = "data/derived_data/environmental_data/coord_key.csv",
 		score_groups = "data/derived_data/score_groups.xlsx",
 		ua_score_groups = "data/derived_data/score_groups.xlsx",
+		breed_key = "data/derived_data/breed_key/breed_key.rds",
 		genotyped = "data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"
 	params:
 		r_module = config['r_module']
@@ -92,6 +93,7 @@ rule airemlf90:
 		solutions = "data/derived_data/aireml_varcomp/{model}/solutions"
 	shell:
 		"""
+		export OMPI_MCA_btl_openib_if_include='mlx5_3:1'
 		module load {params.mpi_module}
 		cd {params.dir}
 		psrecord "{params.aireml_path} renf90.par &> {params.aireml_out_name}" --log {params.psrecord} --include-children --interval 2
