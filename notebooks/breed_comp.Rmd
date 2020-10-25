@@ -1,11 +1,11 @@
 ---
-title: "Breed composition"
+title: "Breed-specific GWAS and meta-analysis"
 author: "Harly Durbin"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(readr)
 library(tidyr)
 library(stringr)
@@ -15,16 +15,11 @@ library(readxl)
 library(magrittr)
 library(tidylog)
 
-source(here::here("source_functions/coalesce_join.R"))
-#source(here::here("source_functions/gather_breed_comp.R"))
-source(here::here("source_functions/iterative_id_search.R"))
 ```
 
 # Notes & questions
 
-* ~~Send Jordan Bowman ped from April and ask for breed comp~~
-* Pull together ANR ped from April, add new animals, ask Ryan Bolt for breed comp
-* Run for breeds with > 1,500 records? AN, SIM, HFD, ANR, BG, CHA
+
 
 # Setup
 
@@ -37,212 +32,6 @@ full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
 
 ```{r}
-rhf_breed <- read_rds(here::here("data/raw_data/201005.rhf_breed.rds")) %>% 
-  rename(brd_source = source) %>% 
-  select(-cross)
+breed_key <- read
 ```
-
-```{r}
-ran_breed <-
-  read_csv(here::here("data/raw_data/201022.ranusa.brd.code.101520.csv"),
-           na = ".",
-           skip = 1,
-           col_names = c("registration_number", "brd", "pct")) %>% 
-  # Rescale breed percentage
-  mutate(pct = pct / 1024) %>% 
-  tidyr::pivot_wider(id_cols = c("registration_number"),
-                     names_from = brd,
-                     values_from = pct) %>% 
-  janitor::clean_names() %>% 
-  mutate(rownum = row_number(),
-         brd_source = glue("RAAA{rownum}")) %>% 
-  rename(hfd = hp, sim = sm) %>% 
-  select(-ds, -xx, -rownum)
-  
-```
-
-```{r}
-sim_breed <-
-  read_csv(here::here("data/raw_data/201005.SIM.breeds.csv")) %>% 
-  select(registration_number = asa_nbr, brd = breed_code, frac = pct) %>% 
-  tidyr::pivot_wider(id_cols = c("registration_number"),
-                     names_from = brd,
-                     values_from = frac) %>% 
-  mutate_at(vars(SM:SH), ~ replace_na(., 0)) %>% 
-  janitor::clean_names() %>% 
-  # So that I con't confuse Scottish Highlander with Shorthorn
-  select(-sh) %>% 
-  # Don't differentiate between horned and polled Hereford
-  mutate(hfd = hh + hp,
-         # Don't differentiate between purebred and commercial 
-         sim = sm + cs,
-         rownum = row_number(),
-         brd_source = glue("ASA{rownum}")) %>% 
-  select(registration_number, brd_source, an, ar, br, chi = ca, gv, hfd, sim)
-```
-
-## Breed key
-
-### RHF data
-
-```{r}
-breed_key <-
-  cleaned %>% 
-  distinct(farm_id, temp_id, animal_id, registration_number, breed_code, Lab_ID) %>% 
-  coalesce_join(rhf_breed, 
-                by = c("farm_id", "animal_id", "Lab_ID", "temp_id"),
-                join = dplyr::left_join)
-```
-
-### Impute `full_reg` and join to `full_ped`
-
-```{r}
-breed_key %<>%
-  left_join(full_ped %>% 
-             distinct(farm_id, temp_id, full_reg, source) %>% 
-             filter(!is.na(farm_id))) %>% 
-  mutate(full_reg = case_when(is.na(full_reg) &
-                                !is.na(registration_number) ~ glue("{breed_code}{registration_number}"),
-                              is.na(full_reg) &
-                                is.na(registration_number) ~ glue("{farm_id}{animal_id}{temp_id}"),
-                              TRUE ~ full_reg),
-         hfd = case_when(source == "American Hereford Association" ~
-                           1,
-                         farm_id %in% c("RCR") ~
-                           1,
-                         TRUE ~
-                           rlang::na_dbl),
-         an = case_when(source == "American Angus Association" ~ 
-                          1, 
-                        farm_id %in% c("UMCT", "WAA", "HAF", "KAF", "DRR", "RAAF") ~
-                          1,
-                        TRUE ~
-                          rlang::na_dbl),
-         brd_source = case_when(an == 1 | hfd == 1 ~ "farmid",
-                                !source %in% c("American Simmental Association",
-                                               "Red Angus Association of America") ~ source,
-                                TRUE ~ brd_source))
-```
-
-```{r}
-breed_key %<>% 
-  id_search(source_col = full_reg,
-            search_df = sim_breed %>% 
-              mutate(dummy_reg = glue("SIM{registration_number}")),
-            search_col = dummy_reg,
-            key_col = brd_source) %>% 
-  id_search(source_col = full_reg,
-            search_df = ran_breed %>% 
-              mutate(dummy_reg = glue("RAN{registration_number}")),
-            search_col = dummy_reg,
-            key_col = brd_source) %>% 
-  id_search(source_col = registration_number,
-            search_df = sim_breed,
-            search_col = registration_number,
-            key_col = brd_source) %>% 
-  id_search(source_col = registration_number,
-            search_df = ran_breed %>% 
-              mutate(registration_number = as.character(registration_number)),
-            search_col = registration_number,
-            key_col = brd_source) %>% 
-  coalesce_join(ran_breed %>% 
-                  select(-registration_number),
-                by = c("brd_source"),
-                join = dplyr::left_join) %>% 
-  coalesce_join(sim_breed %>% 
-                  select(-registration_number),
-                by = c("brd_source"),
-                join = dplyr::left_join)
-```
-
-
-```{r}
-breed_key %<>% 
-  select(Lab_ID, full_reg, farm_id, animal_id, temp_id, breed_code, an, ar, br, chi, gv, hfd, sim) %>% 
-  tidyr::pivot_longer(cols = c("an", "ar", "br", "chi", "gv", "hfd", "sim"),
-                      names_to = "brd",
-                      values_to = "pct") %>% 
-  filter(!is.na(pct)) %>% 
-  mutate(pure_cros = if_else(pct == 1, brd, NA_character_)) %>% 
-  group_by(Lab_ID, full_reg, farm_id, animal_id, temp_id) %>% 
-  mutate(pure_cros = if_else(n() > 1, "CROS", pure_cros)) %>% 
-  tidyr::fill(pure_cros, .direction = "downup") %>% 
-  ungroup() %>% 
-  tidyr::pivot_wider(values_from = pct,
-                     names_from = brd)
-```
-
-```{r}
-```
-
-
-### Misc. missing breed codes
-
-```{r}
-breed_key %<>%
-  coalesce_join(read_excel(here::here("data/raw_data/201005.misc_breed.xlsx")),
-                by = c("farm_id", "registration_number", "animal_id"),
-                join = dplyr::left_join)
-```
-
-
-```{r}
-breed_key %<>%
-  mutate(breed_code = case_when(breed_code == "AN" ~ "AAA",
-                                breed_code == "ANR" ~ "RAN",
-                                breed_code == "BG" ~ "BGR",
-                                breed_code == "BRN" ~ "BSW",
-                                breed_code == "MAAN" ~ "RDP",
-                                TRUE ~ breed_code),
-         cross = case_when(!is.na(cross) ~ cross,
-                           breed_code %in% c("SH", "RDP", "HFD", "BSW", "SIMB", "BGR", "CHA", "GEL", "CROS", "CHIA") ~
-                             breed_code,
-                           str_detect(full_reg, "AAA|BIR") ~
-                             "AN",
-
-                           str_detect(registration_number, "^6") ~ 
-                             "AN")) %>% 
-
-```
-
-```{r}
-breed_key %<>% 
-  mutate(cross = case_when(cross %in% c("CROS", "CS", "cross", "MX") ~ "CROS",
-                           is.na(cross) ~ "cross",
-                           cross %in% c("SIM", "SM") ~ "SIM",
-                           cross %in% c("RAN", "AR") ~ "RAN",
-                           TRUE ~ cross)) %>% 
-  select(Lab_ID, farm_id, animal_id, registration_number, full_reg, imp_breed = cross)
-```
-
-```{r}
-breed_key %>% 
-  write_rds(here::here("data/derived_data/breed_comp/breed_key.rds"))
-```
-
-# Data summary
-
-```{r}
-cleaned %>% 
-  filter(!farm_id %in% c("SAV", "BAT")) %>% 
-  group_by(breed_code) %>% 
-  tally(sort = TRUE)
-```
-
-```{r}
-cleaned %>% 
-  group_by(breed_code) %>% 
-  tally(sort = TRUE)
-```
-
-
-```{r}
-breed_key %>% 
-  group_by(cross) %>% 
-  tally(sort = TRUE)
-```
-
-# Red Angus
-
-
 

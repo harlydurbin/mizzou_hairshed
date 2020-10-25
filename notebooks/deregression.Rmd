@@ -1,0 +1,96 @@
+---
+title: "Breeding value de-regression"
+author: "Harly Durbin"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    df_print: paged
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+library(readr)
+library(dplyr)
+library(glue)
+library(purrr)
+library(DRP)
+library(magrittr)
+library(stringr)
+library(tidylog)
+
+source(here::here("source_functions/calculate_acc.R"))
+
+```
+
+# Notes and questions
+
+# Setup
+
+```{r}
+dir <- "data/derived_data/aireml_varcomp/fixed9"
+animal_effect <- 2
+
+gen_var <- 0.32799
+
+model <- str_extract(dir, "(?<=/)[[:alnum:]]+$")
+```
+
+```{r}
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+```
+
+```{r}
+trait <-
+  read_table2(here::here(glue("{dir}/solutions")),
+              col_names = c("trait", "effect", "id_new", "solution", "se"),
+              skip = 1) %>%
+  # limit to animal effect
+  filter(effect == animal_effect) %>%
+  select(id_new, solution, se) %>% 
+  # Re-attach original IDs
+  left_join(read_table2(here::here(glue("{dir}/renadd0{animal_effect}.ped")),
+                        col_names = FALSE) %>%
+              select(id_new = X1, full_reg = X10)) %>%
+  left_join(read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"))) %>%
+  mutate(acc = purrr::map2_dbl(.x = se,
+                               .y = diagonal,
+                              ~ calculate_acc(u = gen_var,
+                                              se = .x,
+                                              diagonal = .y,
+                                              option = "reliability")))
+```
+
+```{r}
+test <-
+  trait %>% 
+  filter(!is.na(diagonal)) %>% 
+  left_join(full_ped %>% 
+              select(full_reg, sire_reg, dam_reg)) %>% 
+  left_join(trait %>% 
+              select(sire_reg = full_reg, sire_acc = acc, sire_sol = solution)) %>% 
+  left_join(trait %>% 
+              select(dam_reg = full_reg, dam_acc = acc, dam_sol = solution)) %>% 
+  filter(!is.na(dam_acc)) %>% 
+  filter(!is.na(sire_acc))
+
+test
+```
+
+# DRP package
+
+```{r}
+wideDRP(Data = test,
+        animalId = "full_reg",
+        sireId = "sire_reg",
+        damId = "dam_reg",
+        animalEBV = "solution",
+        sireEBV = "sire_sol",
+        damEBV = "dam_sol",
+        animalr2 = "acc",
+        sirer2 = "sire_acc",
+        damr2 = "dam_acc",
+        c = 0.1,
+        h2 = 0.4)
+```

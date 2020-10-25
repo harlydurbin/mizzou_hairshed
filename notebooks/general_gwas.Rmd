@@ -27,6 +27,8 @@ source(here::here("source_functions/ggqq.R"))
 
 # Notes & questions
 
+* Column names in *_bvs.txt file: SNPID, Chr, Pos, freq, g0, g1, g2, a, b, Var, F, p-value, FDR_GW
+
 # Setup
 
 ## Raw results
@@ -54,12 +56,18 @@ snp_sol %>%
 
 # Manhattan plot of $$-log_{10}(p-value)$$
 
+```{r}
+snp_sol %>% 
+  filter(fdr == 0.01) %>% 
+  arrange(neglog10p)
+```
+
 ```{r, fig.width = 11, fig.height = 6.16}
 manall <- 
   hair_manhattan(df = snp_sol,
                  y_var = neglog10p, 
                  y_lab = "neglog10p",
-                 sigline = 4.011207,
+                 sigline = 4.670765,
                  color1 = "#ef8759",
                  color2 = "#5da19a")
 
