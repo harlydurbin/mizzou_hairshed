@@ -180,11 +180,13 @@ fixed9_ped_inb %>%
   ggplot(aes(x = f)) +
   geom_histogram(bins = 20) +
   theme_classic() +
-  labs(x = "Inbreeding coefficient (diagonal - 1)",
+  labs(x = "Pedigree-based inbreeding coefficient",
        y = "Count")
 ```
 
 ## Reliabilities from `fixed9` model using pedigree-based inbreeding coefficient
+
+### All animals in the pedigree
 
 ```{r}
 fixed9_ped_inb %>% 
@@ -196,6 +198,27 @@ fixed9_ped_inb %>%
 
 ```{r}
 fixed9_ped_inb %>% 
+  ggplot(aes(x = acc)) +
+  geom_histogram(bins = 20) +
+  theme_classic() +
+  labs(x = "Reliability",
+       y = "Count")
+```
+
+### Genotyped animals only 
+
+```{r}
+fixed9_ped_inb %>% 
+  filter(full_reg %in% fixed9_genomic_inb$full_reg) %>% 
+  summarise(`Min. reliability` = min(acc),
+            `Mean reliability` = mean(acc),
+            `Max. reliability` = max(acc))
+  
+```
+
+```{r}
+fixed9_ped_inb %>% 
+  filter(full_reg %in% fixed9_genomic_inb$full_reg) %>% 
   ggplot(aes(x = acc)) +
   geom_histogram(bins = 20) +
   theme_classic() +

@@ -1,5 +1,5 @@
 ---
-title: "Breeding value de-regression"
+title: "Breeding value de-regression for SNP1101"
 author: "Harly Durbin"
 output:
   html_document:
@@ -10,7 +10,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(dplyr)
 library(glue)
@@ -29,10 +29,13 @@ source(here::here("source_functions/calculate_acc.R"))
 # Setup
 
 ```{r}
-dir <- "data/derived_data/aireml_varcomp/fixed9"
-animal_effect <- 2
+dir <- as.character(commandArgs(trailingOnly = TRUE)[1])
 
-gen_var <- 0.32799
+animal_effect <- as.numeric(commandArgs(trailingOnly = TRUE)[2])
+
+gen_var <- as.numeric(commandArgs(trailingOnly = TRUE)[3])
+
+h2 <- as.numeric(commandArgs(trailingOnly = TRUE)[4])
 
 model <- str_extract(dir, "(?<=/)[[:alnum:]]+$")
 ```
@@ -40,6 +43,13 @@ model <- str_extract(dir, "(?<=/)[[:alnum:]]+$")
 ```{r}
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
+
+```{r}
+ped_inb <- read_csv(here::here("data/derived_data/grm_inbreeding/ped_inb.csv"))
+```
+
+
+# Trait file
 
 ```{r}
 trait <-
@@ -53,18 +63,20 @@ trait <-
   left_join(read_table2(here::here(glue("{dir}/renadd0{animal_effect}.ped")),
                         col_names = FALSE) %>%
               select(id_new = X1, full_reg = X10)) %>%
-  left_join(read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"))) %>%
-  mutate(acc = purrr::map2_dbl(.x = se,
-                               .y = diagonal,
+  left_join(ped_inb) %>%
+  mutate(f = tidyr::replace_na(f, 0),
+         acc = purrr::map2_dbl(.x = se,
+                               .y = f,
                               ~ calculate_acc(u = gen_var,
                                               se = .x,
-                                              diagonal = .y,
-                                              option = "reliability")))
+                                              f = .y,
+                                              option = "reliability")),
+         acc = if_else(0 > acc, 0, acc))
 ```
 
 ```{r}
-test <-
-  trait %>% 
+trait %<>% 
+  left_join(read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"))) %>% 
   filter(!is.na(diagonal)) %>% 
   left_join(full_ped %>% 
               select(full_reg, sire_reg, dam_reg)) %>% 
@@ -72,16 +84,15 @@ test <-
               select(sire_reg = full_reg, sire_acc = acc, sire_sol = solution)) %>% 
   left_join(trait %>% 
               select(dam_reg = full_reg, dam_acc = acc, dam_sol = solution)) %>% 
-  filter(!is.na(dam_acc)) %>% 
-  filter(!is.na(sire_acc))
-
-test
+  select(contains("reg"), contains("sol"), contains("acc")) %>% 
+  mutate_at(vars(contains("reg")), 
+            ~ if_else(. == "0", NA_character_, .))
 ```
 
-# DRP package
+# De-regress EBVs
 
 ```{r}
-wideDRP(Data = test,
+wideDRP(Data = trait,
         animalId = "full_reg",
         sireId = "sire_reg",
         damId = "dam_reg",
@@ -92,5 +103,9 @@ wideDRP(Data = test,
         sirer2 = "sire_acc",
         damr2 = "dam_acc",
         c = 0.1,
-        h2 = 0.4)
+        h2 = h2) %>% 
+  mutate(Group = 1) %>% 
+  select(ID = full_reg, Group, Obs = Anim_DRP_Trait, Rel = Anim_DRP_Trait_r2, acc) %>% 
+  assertr::verify(between(Rel, 0, 1)) %>% 
+  write_tsv(here::here(glue("data/derived_data/snp1101/{model}/trait.txt")))
 ```
