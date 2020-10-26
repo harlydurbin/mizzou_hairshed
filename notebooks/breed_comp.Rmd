@@ -19,8 +19,14 @@ library(tidylog)
 
 # Notes & questions
 
+## Datasets
 
-
+* Hereford
+* Participating IGS breed associations
+    + RAN, SIM, GEL, SH, CHI
+* Brangus
+* Angus
+    
 # Setup
 
 ```{r, warning=FALSE, message=FALSE}
@@ -32,6 +38,58 @@ full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
 
 ```{r}
-breed_key <- read
+breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
+```
+
+# Exploratory 
+
+```{r}
+breed_key %>% 
+  group_by(cross) %>% 
+  tally(sort = TRUE)
+```
+
+```{r}
+breed_key %>% 
+  filter(cross == "HFD") %>% 
+  select(-(an:sim)) %>% 
+  group_by(farm_id) %>% 
+  tally(sort = TRUE)
+```
+
+```{r}
+breed_key %>% 
+  group_by(source) %>% 
+  tally(sort = TRUE)
+```
+
+```{r}
+igs1 <-
+  breed_key %>% 
+  mutate(keep = case_when(cross %in% c("SIM", "RAN", "SH", "GEL", "CHIA") ~ TRUE,
+                          source %in% c("American Simmental Association", "Red Angus Association of America", "American Shorthorn Association", "American Gelbvieh Association") ~ TRUE,
+                          brd_source %in% c("American Simmental Association", "Red Angus Association of America", "American Shorthorn Association", "American Gelbvieh Association", "SRA", "RHF") ~ TRUE,
+                          TRUE ~ FALSE)) %>% 
+  filter(keep == TRUE) 
+  
+```
+
+```{r}
+igs1 %>% 
+  select(Lab_ID:temp_id) %>% 
+  distinct(farm_id)
+  left_join(cleaned)
+```
+
+```{r}
+breed_key %>% 
+  mutate(keep = case_when(cross == "AN" ~ TRUE,
+                          source == "American Angus Association" ~ TRUE,
+                          brd_source == "American Angus Association" ~ TRUE,
+                          an == 1 ~ TRUE,
+                          TRUE ~ FALSE)) %>% 
+  filter(keep == TRUE) %>% 
+  distinct(brd_source)
+  
 ```
 
