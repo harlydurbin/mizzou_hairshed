@@ -12,10 +12,12 @@ snp1101_path: "/storage/hpc/group/UMAG/SCRIPTS/snp1101/snp1101"
 
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
-model: ['length1', 'fixed9']
+model: ['fixed9']
 
-dir: {'length1':['data/derived_data/random_regression/length1'], 'fixed9':['data/derived_data/aireml_varcomp/fixed9']}
+dir: {'fixed9':['data/derived_data/aireml_varcomp/fixed9']}
 
-animal_effect: {'length1':['5'], 'fixed9':['2']}
+animal_effect: {'fixed9':['2']}
 
-gen_var: {'length1':['0.29067'], 'fixed9':['0.32799']}
+gen_var: {'fixed9':['0.34243']}
+
+h2: {'fixed9':['0.3128792']}
