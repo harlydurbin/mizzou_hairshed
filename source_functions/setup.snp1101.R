@@ -84,8 +84,10 @@ wideDRP(Data = trait,
         damr2 = "dam_acc",
         c = 0.1,
         h2 = h2) %>% 
-  mutate(Group = 1) %>% 
-  select(ID = full_reg, Group, Obs = Anim_DRP_Trait, Rel = Anim_DRP_Trait_r2, acc) %>% 
+  mutate(Group = 1,
+         Rel = sqrt(Anim_DRP_Trait_r2),
+         Rel = (1/Rel)-1) %>%
+  select(ID = full_reg, Group, Obs = Anim_DRP_Trait, Rel, acc) %>% 
   assertr::verify(between(Rel, 0, 1)) %>% 
   write_tsv(here::here(glue("data/derived_data/snp1101/{model}/trait.txt")))
 

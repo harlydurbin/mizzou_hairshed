@@ -1,4 +1,4 @@
-# snakemake -s source_functions/snp1101.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/snp1101.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/snp1101/201026.snp1101.log
+# snakemake -s source_functions/snp1101.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/snp1101.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/snp1101/201027.snp1101.log
 
 import os
 
@@ -43,11 +43,9 @@ rule snp1101:
 		snp1101_path = config['snp1101_path'],
 		mpi_module = config['mpi_module']
 	output:
-		report = "data/derived_data/snp1101/{model}/out/report.txt",
 		bvs_p = "data/derived_data/snp1101/{model}/out/gwas_ssr_{model}_bvs_p.txt",
 		bvs = "data/derived_data/snp1101/{model}/out/gwas_ssr_{model}_bvs.txt",
-		ctr = "data/derived_data/snp1101/{model}/out/snp1101.{model}.ctr",
-		ped_single_id = "data/derived_data/snp1101/{model}/out/ped_single_id.txt"
+		ctr = "data/derived_data/snp1101/{model}/out/snp1101.{model}.ctr"
 	shell:
 		"""
 		export OMPI_MCA_btl_openib_if_include='mlx5_3:1'

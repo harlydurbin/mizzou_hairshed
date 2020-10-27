@@ -1,5 +1,5 @@
 title
-       "length1";
+       "fixed9";
 
 gfile
        "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/raw_data/geno_dump/200924_HairShed.850K.fwf.txt";
@@ -8,7 +8,7 @@ mapfile
        "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/raw_data/geno_dump/200924_HairShed.850K.chrinfo.txt";
 
 // pedfile
-      // "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/length1/ped.txt";
+      // "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/fixed9/ped.txt";
 
 traitfile
        name "fixed9_bvs"
