@@ -6,11 +6,11 @@ output:
     toc: true
     toc_depth: 2
     df_print: paged
-    code_folding: hide
+    code_folding: show
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(readr)
 library(dplyr)
 library(glue)
@@ -26,16 +26,31 @@ source(here::here("source_functions/calculate_acc.R"))
 
 # Notes and questions
 
+* Is SNP1101 expecting reliability or $\frac{1-reliability}{1}$?
+    + Am I using the right columns from `DRP` output? Using the `Anim_DRP_Trait` and `Anim_DRP_Trait_r2` columns, but should I be using the `DRP_Trait` and `DRP_Trait_r2` (which are `NA` in the case of one or more missing parent)? Or the `DRP_Trait_w` column (also `NA` in the case of one or more missing parent)? 
+    + Giving SNP1101 the actual value in the `Anim_DRP_Trait_r2` as the reliability appears to have been incorrect. Should I be using the square root of the `Anim_DRP_Trait_r2` column instead? 
+* Should I use a different value of $c$ for de-regression? Would that just be $h^2$ estimated with single-step minus $h^2_{SNP}$? Calculate $h^2_{SNP}$ by running AIREML on only genotyped animals (which I've already done for `fixed9` model)?
+* What is `DRP_Trait_ERC`?
+* Based on *A model using repeated records on the individual* section in Garrick et al. 2009: could I skip calculating EBVs entirely and run weighted GWAS on the average hair shedding values for each individual?
+
 # Setup
 
 ```{r}
-dir <- as.character(commandArgs(trailingOnly = TRUE)[1])
+#dir <- as.character(commandArgs(trailingOnly = TRUE)[1])
 
-animal_effect <- as.numeric(commandArgs(trailingOnly = TRUE)[2])
+dir <- "data/derived_data/aireml_varcomp/fixed9"
 
-gen_var <- as.numeric(commandArgs(trailingOnly = TRUE)[3])
+#animal_effect <- as.numeric(commandArgs(trailingOnly = TRUE)[2])
 
-h2 <- as.numeric(commandArgs(trailingOnly = TRUE)[4])
+animal_effect <- 2
+
+#gen_var <- as.numeric(commandArgs(trailingOnly = TRUE)[3])
+
+gen_var <- 0.34243
+
+#h2 <- as.numeric(commandArgs(trailingOnly = TRUE)[4])
+
+h2 <- 0.3128792
 
 model <- str_extract(dir, "(?<=/)[[:alnum:]]+$")
 ```
@@ -48,8 +63,7 @@ full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ped_inb <- read_csv(here::here("data/derived_data/grm_inbreeding/ped_inb.csv"))
 ```
 
-
-# Trait file
+# EBVs from AIREMLF90
 
 ```{r}
 trait <-
@@ -62,7 +76,17 @@ trait <-
   # Re-attach original IDs
   left_join(read_table2(here::here(glue("{dir}/renadd0{animal_effect}.ped")),
                         col_names = FALSE) %>%
-              select(id_new = X1, full_reg = X10)) %>%
+              select(id_new = X1, full_reg = X10))
+```
+
+```{r}
+trait
+```
+
+# Calculate reliability using pedigree-based inbreeding coefficient
+
+```{r}
+trait %<>%
   left_join(ped_inb) %>%
   mutate(f = tidyr::replace_na(f, 0),
          acc = purrr::map2_dbl(.x = se,
@@ -71,8 +95,15 @@ trait <-
                                               se = .x,
                                               f = .y,
                                               option = "reliability")),
+         # Change any accuracies below zero to 0
          acc = if_else(0 > acc, 0, acc))
 ```
+
+```{r}
+trait
+```
+
+# Limit to genotyped animals, append parent EBVs and associated reliabilites
 
 ```{r}
 trait %<>% 
@@ -80,8 +111,10 @@ trait %<>%
   filter(!is.na(diagonal)) %>% 
   left_join(full_ped %>% 
               select(full_reg, sire_reg, dam_reg)) %>% 
+  # Sires
   left_join(trait %>% 
               select(sire_reg = full_reg, sire_acc = acc, sire_sol = solution)) %>% 
+  # Dams
   left_join(trait %>% 
               select(dam_reg = full_reg, dam_acc = acc, dam_sol = solution)) %>% 
   select(contains("reg"), contains("sol"), contains("acc")) %>% 
@@ -89,10 +122,15 @@ trait %<>%
             ~ if_else(. == "0", NA_character_, .))
 ```
 
+```{r}
+trait
+```
+
 # De-regress EBVs
 
 ```{r}
-wideDRP(Data = trait,
+drp <-
+  wideDRP(Data = trait,
         animalId = "full_reg",
         sireId = "sire_reg",
         damId = "dam_reg",
@@ -103,7 +141,18 @@ wideDRP(Data = trait,
         sirer2 = "sire_acc",
         damr2 = "dam_acc",
         c = 0.1,
-        h2 = h2) %>% 
+        h2 = h2)
+```
+
+```{r}
+drp %>% 
+  select(full_reg, solution, acc, DRP_Trait:Anim_DRP_Trait_r2) %>% 
+  DT::datatable(rownames = FALSE,
+                options = list(scrollX = TRUE))
+```
+
+```{r, eval = FALSE}
+drp %>% 
   mutate(Group = 1) %>% 
   select(ID = full_reg, Group, Obs = Anim_DRP_Trait, Rel = Anim_DRP_Trait_r2, acc) %>% 
   assertr::verify(between(Rel, 0, 1)) %>% 
