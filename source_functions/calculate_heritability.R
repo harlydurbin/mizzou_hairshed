@@ -106,22 +106,16 @@ univ_heritability <-
     
     spread1 <-
       df %>%
-      mutate(
-        key = desc,
-        # Direct/maternal covariance
-        val1 =
-          case_when(
-            str_detect(val1, "dir") & str_detect(val2, "mat") ~ glue::glue("{abbrv}_dir_mat"),
-            TRUE ~ val1
-          ),
-        val2 = if_else(str_detect(val1, "dir_mat"), val1, val2)
-      ) %>%
+      mutate(key = desc,
+             # Direct/maternal covariance
+             val1 = case_when(str_detect(val1, "dir") & str_detect(val2, "mat") ~ glue::glue("{abbrv}_dir_mat"),
+                              TRUE ~ val1),
+             val2 = if_else(str_detect(val1, "dir_mat"), val1, val2)) %>%
       filter(val1 == val2) %>%
       select(-val2) %>% 
       mutate(val1 = str_remove(val1, glue::glue("{abbrv}_"))) %>%
-      tidyr::pivot_wider(
-        names_from = val1,
-        values_from = var_cov)
+      tidyr::pivot_wider(names_from = val1,
+                         values_from = var_cov)
     
     # Determine effects
     effects <- colnames(spread1)

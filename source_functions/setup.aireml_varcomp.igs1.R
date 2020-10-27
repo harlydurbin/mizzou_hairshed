@@ -33,6 +33,8 @@ full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
 breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
 
+genotyped <- read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"))
+
 ## IGS data only
 
 dat <-
@@ -198,10 +200,29 @@ matched %>%
 
 # Pedigree
 
-matched %>% 
+breedped <-
+  matched %>% 
   distinct(full_reg) %>% 
   left_join(full_ped %>% 
               select(full_reg, sire_reg, dam_reg)) %>% 
-  three_gen(full_ped = full_ped) %>% 
+  three_gen(full_ped = full_ped) 
+
+breedped %>% 
   write_delim(here::here("data/derived_data/aireml_varcomp/igs1/ped.igs1.txt"),
+              col_names = FALSE,
+              delim = " ")
+
+# Pull list
+breedped %>% 
+  select(full_reg) %>% 
+  bind_rows(breedped %>% 
+              select(full_reg = sire_reg)) %>% 
+  bind_rows(breedped %>% 
+              select(full_reg = dam_reg)) %>% 
+  distinct() %>% 
+  left_join(genotyped) %>% 
+  filter(!is.na(diagonal)) %>% 
+  select(full_reg) %>% 
+  write_delim(here::here("data/derived_data/aireml_varcomp/igs1/pull_list.txt"),
+              delim = " ",
               col_names = FALSE)

@@ -1,7 +1,13 @@
 ---
-title: "Breed-specific GWAS and meta-analysis"
+title: "Breed-specific ssGBLUP, GWAS, and meta-analysis"
 author: "Harly Durbin"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    df_print: paged
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -14,6 +20,9 @@ library(glue)
 library(readxl)
 library(magrittr)
 library(tidylog)
+
+source(here::here("source_functions/melt_aireml.R"))
+source(here::here("source_functions/calculate_heritability.R"))
 
 ```
 
@@ -41,55 +50,37 @@ full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
 ```
 
-# Exploratory 
+# Heritability and repeatability
 
 ```{r}
-breed_key %>% 
-  group_by(cross) %>% 
-  tally(sort = TRUE)
+purrr::map2_dfr(.x = c("hfd1", "an1", "bg1", "igs1"),
+                .y = c("Hereford", "Angus", "Brangus", "IGS breeds"),
+                ~ read_table2(here::here(glue("data/derived_data/aireml_varcomp/{.x}/data.txt")),
+                              col_names = FALSE) %>% 
+                  summarise(`n phenotypes` = n(),
+                            `n phenotyped animals` = n_distinct(X1),
+                            key = .y)) %>% 
+  left_join(purrr::map2_dfr(.x = c("hfd1", "an1", "bg1", "igs1"),
+                            .y = c("Hereford", "Angus", "Brangus", "IGS breeds"),
+                            ~ read_table2(here::here(glue("data/derived_data/aireml_varcomp/{.x}/pull_list.txt")),
+                                          col_names = FALSE) %>% 
+                              summarise(`n genotyped` = n(),
+                                        key = .y))) %>% 
+  mutate_if(is.numeric, ~ scales::comma(.)) %>% 
+  select(key, everything())
 ```
 
-```{r}
-breed_key %>% 
-  filter(cross == "HFD") %>% 
-  select(-(an:sim)) %>% 
-  group_by(farm_id) %>% 
-  tally(sort = TRUE)
-```
+```{r, warning = FALSE, message = FALSE}
+breed_h2 <-
+  purrr::map2_dfr(.x = c("hfd1", "an1", "bg1", "igs1", "fixed9"),
+                  .y = c("Hereford", "Angus", "Brangus", "IGS breeds", "Full dataset"),
+                  ~ melt_aireml(path = here::here(glue("data/derived_data/aireml_varcomp/{.x}/airemlf90.{.x}.log")),
+                                effect2 = c("hair_dir"),
+                                effect3 = c("hair_pe"),
+                                resids = c("hair_res")) %>% 
+                    univ_heritability(abbrv = "hair",
+                                      desc = glue("{.y}"),
+                                      pe = TRUE))
 
-```{r}
-breed_key %>% 
-  group_by(source) %>% 
-  tally(sort = TRUE)
-```
-
-```{r}
-igs1 <-
-  breed_key %>% 
-  mutate(keep = case_when(cross %in% c("SIM", "RAN", "SH", "GEL", "CHIA") ~ TRUE,
-                          source %in% c("American Simmental Association", "Red Angus Association of America", "American Shorthorn Association", "American Gelbvieh Association") ~ TRUE,
-                          brd_source %in% c("American Simmental Association", "Red Angus Association of America", "American Shorthorn Association", "American Gelbvieh Association", "SRA", "RHF") ~ TRUE,
-                          TRUE ~ FALSE)) %>% 
-  filter(keep == TRUE) 
-  
-```
-
-```{r}
-igs1 %>% 
-  select(Lab_ID:temp_id) %>% 
-  distinct(farm_id)
-  left_join(cleaned)
-```
-
-```{r}
-breed_key %>% 
-  mutate(keep = case_when(cross == "AN" ~ TRUE,
-                          source == "American Angus Association" ~ TRUE,
-                          brd_source == "American Angus Association" ~ TRUE,
-                          an == 1 ~ TRUE,
-                          TRUE ~ FALSE)) %>% 
-  filter(keep == TRUE) %>% 
-  distinct(brd_source)
-  
 ```
 

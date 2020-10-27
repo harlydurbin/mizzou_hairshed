@@ -21,7 +21,7 @@ ped.igs1.txt
 FILE_POS
 1 2 3 0 0
 SNP_FILE
-genotypes.txt
+genotypes.igs1.txt
 PED_DEPTH
 3
 INBREEDING
