@@ -29,9 +29,13 @@ source(here::here("source_functions/calculate_acc.R"))
 * Is SNP1101 expecting reliability or $\frac{1-reliability}{1}$?
     + Am I using the right columns from `DRP` output? Using the `Anim_DRP_Trait` and `Anim_DRP_Trait_r2` columns, but should I be using the `DRP_Trait` and `DRP_Trait_r2` (which are `NA` in the case of one or more missing parent)? Or the `DRP_Trait_w` column (also `NA` in the case of one or more missing parent)? 
     + Giving SNP1101 the actual value in the `Anim_DRP_Trait_r2` as the reliability appears to have been incorrect. Should I be using the square root of the `Anim_DRP_Trait_r2` column instead? 
+        - Thinking maybe it wants $r$ rather than $r^2$ based on this message in the log file: `R : (1/rel)-1`
+* In manual and example Duc gave me, `Rel` is above 1 and appears to maybe be reliability*100. Why???
+    + "...corresponding reliability (0-100). When reliabilities are unknown, the reliability column should be set to 50."
 * Should I use a different value of $c$ for de-regression? Would that just be $h^2$ estimated with single-step minus $h^2_{SNP}$? Calculate $h^2_{SNP}$ by running AIREML on only genotyped animals (which I've already done for `fixed9` model)?
 * What is `DRP_Trait_ERC`?
 * Based on *A model using repeated records on the individual* section in Garrick et al. 2009: could I skip calculating EBVs entirely and run weighted GWAS on the average hair shedding values for each individual?
+    + "Here, it makes sense to factor out the residual variance of one phenotypic observation... from the expression for the residual variance of the mean of n observations. In this circumstance, a scaled inverse of the residual variance being... or equivalently, $w_n = \frac{1-h^2}{ch^2+\frac{1+(n-1)t}{n}-h^{2`}}$ which can be used for weighted regression analyses treating marker effects as fixed or random. When $c = 0$, the genetic effects can be perfectly explained by the model, and for $n = 1$, a single observation on the individual, the weight is 1 for any heritability. Scaling the weights is convenient because records with high information exceed 1 and the weights are trait independent..."
 
 # Setup
 
@@ -143,6 +147,14 @@ drp <-
         c = 0.1,
         h2 = h2)
 ```
+
+```{r}
+drp %>% 
+  filter(is.na(DRP_Trait_w)) %>% 
+  arrange(full_reg) %>% 
+  View()
+```
+
 
 ```{r}
 drp %>% 
