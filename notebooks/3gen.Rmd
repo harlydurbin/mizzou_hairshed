@@ -1297,6 +1297,55 @@ full_ped %<>%
                            dam_reg))
 ```
 
+# Additional ASA and RAAA pedigree info 10/27/20
+
+## ASA
+
+```{r}
+full_ped %<>% 
+  left_join(read_csv(here::here("data/raw_data/201027.SIM.6-gen-ped.csv")) %>% 
+              mutate(prefix = str_extract(animal, "^[[:upper:]]{3}"),
+                     prefix = if_else(prefix == "AAN", "AAA", prefix)) %>% 
+              filter(!is.na(prefix)) %>% 
+              filter(str_detect(animal, "USA")) %>% 
+              mutate(full_reg = glue("{prefix}{str_extract(animal, '(?<=0)[1-9][[:digit:]]+$')}"))) %>% 
+  mutate(sex = case_when(is.na(sex) & !is.na(animal) ~ str_extract(animal, "(?<=USA)M|F"),
+                     TRUE ~ sex),
+     sire_reg = case_when(!is.na(sire) & !str_detect(sire, "CAN") ~ 
+                            glue("{str_extract(sire, '^[[:upper:]]{3}')}{str_extract(sire, '(?<=0)[1-9][[:digit:]]+$')}"),
+                          TRUE ~ sire_reg),
+     sire_reg = str_replace(sire_reg, "^AAN", "AAA"),
+     dam_reg = case_when(!is.na(dam) & !str_detect(dam, "CAN") ~ 
+                            glue("{str_extract(dam, '^[[:upper:]]{3}')}{str_extract(dam, '(?<=0)[1-9][[:digit:]]+$')}"),
+                          TRUE ~ dam_reg),
+     dam_reg = str_replace(dam_reg, "^AAN", "AAA")) %>% 
+  select(-animal, -sire, -dam, -prefix)
+```
+
+## RAAA
+
+```{r}
+full_ped %<>% 
+  left_join(read_csv(here::here("data/raw_data/201027.RAN.All_Animals_SireDam.csv")) %>%
+              janitor::remove_empty(which = c("rows", "cols")) %>% 
+              mutate(full_reg = glue("RAN{anm_key}")) %>% 
+              select(full_reg, sire_key, dam_key)) %>% 
+  mutate(sire_reg = case_when(!is.na(sire_key) & !str_detect(sire_reg, "^AAA") ~ glue("RAN{sire_key}"),
+                              TRUE ~ sire_reg),
+         dam_reg = case_when(!is.na(dam_key) & !str_detect(dam_reg, "^AAA") ~ glue("RAN{dam_key}"),
+                              TRUE ~ dam_reg)) %>% 
+  select(-sire_key, -dam_key)
+```
+
+## Misc.
+
+```{r}
+full_ped %<>% 
+  left_join(readxl::read_excel(here::here("data/raw_data/201027.ped_fixes.xlsx"))) %>% 
+  mutate(sire_reg = if_else(!is.na(misc_sire), misc_sire, sire_reg),
+         dadm_reg = if_else(!is.na(misc_dam), misc_dam, dam_reg)) %>% 
+  select(-misc_sire, -misc_dam)
+```
 
 # Final
 

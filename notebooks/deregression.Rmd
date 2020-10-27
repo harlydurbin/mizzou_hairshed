@@ -150,14 +150,6 @@ drp <-
 
 ```{r}
 drp %>% 
-  filter(is.na(DRP_Trait_w)) %>% 
-  arrange(full_reg) %>% 
-  View()
-```
-
-
-```{r}
-drp %>% 
   select(full_reg, solution, acc, DRP_Trait:Anim_DRP_Trait_r2) %>% 
   DT::datatable(rownames = FALSE,
                 options = list(scrollX = TRUE))
