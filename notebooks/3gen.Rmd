@@ -1342,8 +1342,8 @@ full_ped %<>%
 ```{r}
 full_ped %<>% 
   left_join(readxl::read_excel(here::here("data/raw_data/201027.ped_fixes.xlsx"))) %>% 
-  mutate(sire_reg = if_else(!is.na(misc_sire), misc_sire, sire_reg),
-         dadm_reg = if_else(!is.na(misc_dam), misc_dam, dam_reg)) %>% 
+  mutate(sire_reg = if_else(!is.na(misc_sire), misc_sire, as.character(sire_reg)),
+         dam_reg = if_else(!is.na(misc_dam), misc_dam, as.character(dam_reg))) %>% 
   select(-misc_sire, -misc_dam)
 ```
 
