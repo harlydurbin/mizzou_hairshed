@@ -72,7 +72,7 @@ ped_inb <-
   select(Indiv = full_reg,
          Sire = sire_reg,
          Dam = dam_reg) %>% 
-  mutate_all(~ if_else(. == "0", NA_character_, .)) %>% 
+  mutate_all(~ if_else(. == "0", NA_character_, as.character(.))) %>% 
   prePed() %>% 
   pedInbreeding() %>% 
   tibble::remove_rownames() %>% 

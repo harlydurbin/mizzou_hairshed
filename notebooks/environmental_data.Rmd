@@ -174,7 +174,7 @@ weather %>%
 ## Temperature + latitude (`fixed2`)
 
 ```{r, warning=FALSE, message=FALSE}
-read_table2(here::here("data/derived_data/base_varcomp/fixed2/solutions"),
+read_table2(here::here("data/derived_data/aireml_varcomp/fixed2/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
   filter(effect %in% c(5, 6)) %>% 
@@ -188,7 +188,7 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed2/solutions"),
 ## Temperature only (`fixed6`)
 
 ```{r, warning=FALSE, message=FALSE}
-read_table2(here::here("data/derived_data/base_varcomp/fixed6/solutions"),
+read_table2(here::here("data/derived_data/aireml_varcomp/fixed6/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
   filter(effect %in% c(5)) %>% 
@@ -199,7 +199,7 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed6/solutions"),
 ## Day length only (`fixed5`)
 
 ```{r, warning=FALSE, message=FALSE}
-read_table2(here::here("data/derived_data/base_varcomp/fixed5/solutions"),
+read_table2(here::here("data/derived_data/aireml_varcomp/fixed5/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
   filter(effect %in% c(5)) %>% 
@@ -212,7 +212,7 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed5/solutions"),
 When temperature and day length are fit together, their BLUEs are much smaller than when they're fit in their own models independently. The solution for day length is less than half its original estimate Collinearity? 
 
 ```{r, warning=FALSE, message=FALSE}
-read_table2(here::here("data/derived_data/base_varcomp/fixed3/solutions"),
+read_table2(here::here("data/derived_data/aireml_varcomp/fixed3/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
   filter(effect %in% c(5, 6)) %>% 
@@ -225,9 +225,9 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed3/solutions"),
 
 ```{r}
 
-lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed6/airemlf90.fixed6.log"),
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed6/airemlf90.fixed6.log"),
                                 option = "logL"),
-         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed3/airemlf90.fixed3.log"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed3/airemlf90.fixed3.log"),
                                 option = "logL"))
 
 ```
@@ -236,9 +236,9 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcom
 
 ```{r}
 
-lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed5/airemlf90.fixed5.log"),
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed5/airemlf90.fixed5.log"),
                                 option = "logL"),
-         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed3/airemlf90.fixed3.log"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed3/airemlf90.fixed3.log"),
                                 option = "logL"))
 
 ```
@@ -248,7 +248,7 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcom
 ```{r}
 tibble(Model = c("fixed3", "fixed6", "fixed5")) %>%
   mutate(AIC = purrr::map_dbl(.x = Model,
-                              ~ parse_loglik(path = here::here(glue("data/derived_data/base_varcomp/{.x}/airemlf90.{.x}.log")),
+                              ~ parse_loglik(path = here::here(glue("data/derived_data/aireml_varcomp/{.x}/airemlf90.{.x}.log")),
                                              option = "AIC")),
          Model = case_when(Model == "fixed3" ~ "Temperature + day length",
                            Model == "fixed6" ~ "Temperature only",
@@ -258,7 +258,7 @@ tibble(Model = c("fixed3", "fixed6", "fixed5")) %>%
 ## Most complicated model: temperature + day length + centered temperature*day length (`fixed13`)
 
 ```{r, warning=FALSE, message=FALSE}
-read_table2(here::here("data/derived_data/base_varcomp/fixed13/solutions"),
+read_table2(here::here("data/derived_data/aireml_varcomp/fixed13/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
   filter(effect %in% c(5, 6, 7)) %>% 
@@ -272,9 +272,9 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed13/solutions"),
 
 ```{r}
 
-lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed3/airemlf90.fixed3.log"),
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed3/airemlf90.fixed3.log"),
                                 option = "logL"),
-         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed13/airemlf90.fixed13.log"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed13/airemlf90.fixed13.log"),
                                 option = "logL"))
 
 ```
@@ -284,7 +284,7 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcom
 ```{r}
 tibble(Model = c("fixed13", "fixed3")) %>%
   mutate(AIC = purrr::map_dbl(.x = Model,
-                              ~ parse_loglik(path = here::here(glue("data/derived_data/base_varcomp/{.x}/airemlf90.{.x}.log")),
+                              ~ parse_loglik(path = here::here(glue("data/derived_data/aireml_varcomp/{.x}/airemlf90.{.x}.log")),
                                              option = "AIC")),
          Model = case_when(Model == "fixed3" ~ "Temperature + day length",
                            Model == "fixed13" ~ "Temperature + day length + temperature*day length")) 
@@ -298,9 +298,9 @@ tibble(Model = c("fixed13", "fixed3")) %>%
 
 ```{r}
 
-lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed7/airemlf90.fixed7.log"),
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed7/airemlf90.fixed7.log"),
                                 option = "logL"),
-         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed8/airemlf90.fixed8.log"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed8/airemlf90.fixed8.log"),
                                 option = "logL"))
 
 ```
@@ -309,9 +309,9 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcom
 
 ```{r}
 
-lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed3/airemlf90.fixed3.log"),
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed3/airemlf90.fixed3.log"),
                                 option = "logL"),
-         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed8/airemlf90.fixed8.log"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed8/airemlf90.fixed8.log"),
                                 option = "logL"))
 
 ```
@@ -321,7 +321,7 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcom
 ```{r}
 tibble(Model = c("fixed7", "fixed3", "fixed8")) %>%
   mutate(AIC = purrr::map_dbl(.x = Model,
-                              ~ parse_loglik(path = here::here(glue("data/derived_data/base_varcomp/{.x}/airemlf90.{.x}.log")),
+                              ~ parse_loglik(path = here::here(glue("data/derived_data/aireml_varcomp/{.x}/airemlf90.{.x}.log")),
                                              option = "AIC")),
          Model = case_when(Model == "fixed3" ~ "Temperature + day length",
                            Model == "fixed7" ~ "Farm ID only",
@@ -335,7 +335,7 @@ I think one issue with this comparison is the lack of a `score_group` effect, wh
 ## Contemporary group + temperature (`fixed10`)
 
 ```{r, warning=FALSE, message=FALSE}
-read_table2(here::here("data/derived_data/base_varcomp/fixed10/solutions"),
+read_table2(here::here("data/derived_data/aireml_varcomp/fixed10/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
   filter(effect %in% c(2)) %>% 
@@ -347,9 +347,9 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed10/solutions"),
 
 ```{r}
 
-lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed9/airemlf90.fixed9.log"),
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed9/airemlf90.fixed9.log"),
                                 option = "logL"),
-         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed10/airemlf90.fixed10.log"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed10/airemlf90.fixed10.log"),
                                 option = "logL"))
 
 ```
@@ -357,7 +357,7 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcom
 ## Contemporary group + day length (`fixed11`)
 
 ```{r, warning=FALSE, message=FALSE}
-read_table2(here::here("data/derived_data/base_varcomp/fixed11/solutions"),
+read_table2(here::here("data/derived_data/aireml_varcomp/fixed11/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
   filter(effect %in% c(2)) %>% 
@@ -369,9 +369,9 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed11/solutions"),
 
 ```{r}
 
-lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed9/airemlf90.fixed9.log"),
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed9/airemlf90.fixed9.log"),
                                 option = "logL"),
-         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed11/airemlf90.fixed11.log"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed11/airemlf90.fixed11.log"),
                                 option = "logL"))
 
 ```
@@ -381,7 +381,7 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcom
 Temperature sign change
 
 ```{r, warning=FALSE, message=FALSE}
-read_table2(here::here("data/derived_data/base_varcomp/fixed12/solutions"),
+read_table2(here::here("data/derived_data/aireml_varcomp/fixed12/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
   filter(effect %in% c(2, 3)) %>% 
@@ -393,9 +393,9 @@ read_table2(here::here("data/derived_data/base_varcomp/fixed12/solutions"),
 
 ```{r}
 
-lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed10/airemlf90.fixed10.log"),
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed10/airemlf90.fixed10.log"),
                                 option = "logL"),
-         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed12/airemlf90.fixed12.log"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed12/airemlf90.fixed12.log"),
                                 option = "logL"))
 
 ```
@@ -404,9 +404,9 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcom
 
 ```{r}
 
-lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed11/airemlf90.fixed11.log"),
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed11/airemlf90.fixed11.log"),
                                 option = "logL"),
-         ll_test = parse_loglik(path = here::here("data/derived_data/base_varcomp/fixed12/airemlf90.fixed12.log"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed12/airemlf90.fixed12.log"),
                                 option = "logL"))
 
 ```
@@ -416,7 +416,7 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/base_varcom
 ```{r}
 tibble(Model = c("fixed9", "fixed10", "fixed11", "fixed12")) %>%
   mutate(AIC = purrr::map_dbl(.x = Model,
-                              ~ parse_loglik(path = here::here(glue("data/derived_data/base_varcomp/{.x}/airemlf90.{.x}.log")),
+                              ~ parse_loglik(path = here::here(glue("data/derived_data/aireml_varcomp/{.x}/airemlf90.{.x}.log")),
                                              option = "AIC")),
          Model = case_when(Model == "fixed10" ~ "Contemporary group + temperature",
                            Model == "fixed9" ~ "Contemporary group only",
