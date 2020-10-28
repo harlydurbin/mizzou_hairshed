@@ -79,8 +79,12 @@ breed_h2 <-
                                 effect3 = c("hair_pe"),
                                 resids = c("hair_res")) %>% 
                     univ_heritability(abbrv = "hair",
-                                      desc = glue("{.y}"),
+                                      desc = .y,
                                       pe = TRUE))
 
+```
+
+```{r}
+breed_h2
 ```
 

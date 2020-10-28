@@ -86,7 +86,9 @@ output: html_document
 
 ## `fescue1`
 
-# Breed specific evaluations
+# Breed-specific evaluations
+
+In breed-specific evaluations, only use genotypes & 3-generation pedigree for breed of interest (rather than full ped and all 11,560 genotyped animals)
 
 ## `igs1`
 
@@ -103,5 +105,9 @@ output: html_document
 * Used also in epistatic meta-analysis
 
 ## `an1`
+
+* AAA records
+* Used also in epistatic meta-analysis
+
 
 

@@ -67,7 +67,7 @@ manall <-
   hair_manhattan(df = snp_sol,
                  y_var = neglog10p, 
                  y_lab = "neglog10p",
-                 sigline = 4.670765,
+                 sigline = 4.955896,
                  color1 = "#ef8759",
                  color2 = "#5da19a")
 
@@ -82,5 +82,3 @@ manall
 ```{r}
 ggqq(pvector = snp_sol$p_value)
 ```
-
-

@@ -40,3 +40,6 @@ OPTION residual
 OPTION sol se
 OPTION missing -999
 OPTION solv_method FSPAK
+OPTION saveGInverse
+OPTION snp_p_value
+OPTION snp_pev

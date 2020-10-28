@@ -79,8 +79,7 @@ rule airemlf90:
 		renf90_par = "data/derived_data/aireml_varcomp/{model}/renf90.par",
 		renf90_tables = "data/derived_data/aireml_varcomp/{model}/renf90.tables",
 		renf90_dat = "data/derived_data/aireml_varcomp/{model}/renf90.dat",
-		map = config['geno_prefix'] + '.chrinfo.txt',
-		moved_geno = "data/derived_data/aireml_varcomp/{model}/genotypes.txt"
+		map = config['geno_prefix'] + '.chrinfo.txt'
 	params:
 		dir = "data/derived_data/aireml_varcomp/{model}",
 		aireml_out_name = "aireml.{model}.out",
@@ -111,6 +110,6 @@ rule cleanup:
 		cleaned = "data/derived_data/aireml_varcomp/{model}/cleaned.txt"
 	shell:
 		"""
-		rm {params.dir}/genotypes*
-		cat {output.cleaned}
+		rm {params.dir}/genotypes.txt*
+		echo 'done' > {output.cleaned}
 		"""
