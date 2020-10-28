@@ -150,8 +150,12 @@ drp <-
 ```{r}
 drp %>% 
   filter(is.na(DRP_Trait)) %>% 
-  filter(!is.na(sire_reg)) %>% 
-  filter(!is.na(dam_reg))
+  left_join(full_ped %>% 
+              select(full_reg, Lab_ID, farm_id, animal_id, temp_id)) %>% 
+  filter(!farm_id %in% c("BAT", "SAV", "UMF", "UMCT")) %>% 
+  filter(is.na(sire_reg) | is.na(dam_reg)) %>% 
+  select(full_reg, Lab_ID, farm_id, animal_id, temp_id, sire_misc = sire_reg, dam_misc = dam_reg) %>% 
+  writexl::write_xlsx("~/Desktop/miss.xlsx")
 ```
 
 

@@ -23,6 +23,7 @@ library(tidylog)
 
 source(here::here("source_functions/coalesce_join.R"))
 source(here::here("source_functions/iterative_id_search.R"))
+source(here::here("source_functions/three_gen.R"))
 
 ```
 
@@ -1311,11 +1312,11 @@ full_ped %<>%
               mutate(full_reg = glue("{prefix}{str_extract(animal, '(?<=0)[1-9][[:digit:]]+$')}"))) %>% 
   mutate(sex = case_when(is.na(sex) & !is.na(animal) ~ str_extract(animal, "(?<=USA)M|F"),
                      TRUE ~ sex),
-     sire_reg = case_when(!is.na(sire) & !str_detect(sire, "CAN") ~ 
+     sire_reg = case_when(!is.na(sire) & sire_reg == "0" ~ 
                             glue("{str_extract(sire, '^[[:upper:]]{3}')}{str_extract(sire, '(?<=0)[1-9][[:digit:]]+$')}"),
                           TRUE ~ sire_reg),
      sire_reg = str_replace(sire_reg, "^AAN", "AAA"),
-     dam_reg = case_when(!is.na(dam) & !str_detect(dam, "CAN") ~ 
+     dam_reg = case_when(!is.na(dam) & dam_reg == "0" ~ 
                             glue("{str_extract(dam, '^[[:upper:]]{3}')}{str_extract(dam, '(?<=0)[1-9][[:digit:]]+$')}"),
                           TRUE ~ dam_reg),
      dam_reg = str_replace(dam_reg, "^AAN", "AAA")) %>% 
@@ -1330,9 +1331,9 @@ full_ped %<>%
               janitor::remove_empty(which = c("rows", "cols")) %>% 
               mutate(full_reg = glue("RAN{anm_key}")) %>% 
               select(full_reg, sire_key, dam_key)) %>% 
-  mutate(sire_reg = case_when(!is.na(sire_key) & !str_detect(sire_reg, "^AAA") ~ glue("RAN{sire_key}"),
+  mutate(sire_reg = case_when(!is.na(sire_key) & sire_reg == "0" ~ glue("RAN{sire_key}"),
                               TRUE ~ sire_reg),
-         dam_reg = case_when(!is.na(dam_key) & !str_detect(dam_reg, "^AAA") ~ glue("RAN{dam_key}"),
+         dam_reg = case_when(!is.na(dam_key) & dam_reg == "0" ~ glue("RAN{dam_key}"),
                               TRUE ~ dam_reg)) %>% 
   select(-sire_key, -dam_key)
 ```
@@ -1340,14 +1341,26 @@ full_ped %<>%
 ## Misc.
 
 ```{r}
+full_ped %<>%
+  mutate_at(vars("full_reg", "sire_reg", "dam_reg"), ~ str_replace_all(., "^GVHAMGV", "GVH"))
+```
+
+```{r}
 full_ped %<>% 
-  coalesce_join(readxl::read_excel(here::here("data/raw_data/201027.ped_fixes.xlsx")),
-                by = c("farm_id", "temp_id"),
-                join = dplyr::full_join) %>% 
+  left_join(readxl::read_excel(here::here("data/raw_data/201027.ped_fixes.xlsx")) %>% 
+              select(farm_id, temp_id, full_reg, misc_sire, misc_dam),
+            by = c("farm_id", "temp_id", "full_reg")) %>% 
   mutate(sire_reg = if_else(!is.na(misc_sire), misc_sire, as.character(sire_reg)),
          dam_reg = if_else(!is.na(misc_dam), misc_dam, as.character(dam_reg))) %>% 
   select(-misc_sire, -misc_dam)
 ```
+
+```{r}
+full_ped %<>% 
+  mutate_at(vars(contains("reg")), ~ if_else(str_detect(., "(?<=[[:upper:]]{3})NA"), "0", .)) %>%
+  filter(full_reg != "0")
+```
+
 
 # Final
 
@@ -1361,12 +1374,6 @@ full_ped %<>%
 full_ped %<>%
   filter(full_reg != "RHF107F739")
 ```
-
-```{r}
-full_ped %<>%
-  mutate_at(vars("full_reg", "sire_reg", "dam_reg"), ~ str_replace_all(., "^GVHAMGV", "GVH"))
-```
-
 
 # Tallies
 
@@ -1431,8 +1438,12 @@ full_ped %>%
 ```
 
 ```{r}
-full_ped %>% 
-  select(full_reg, sire_reg, dam_reg) %>% 
+read_rds(here::here("data/derived_data/breed_key/breed_key.rds")) %>% 
+  select(full_reg) %>% 
+  left_join(full_ped %>% 
+              select(full_reg, sire_reg, dam_reg)) %>% 
+  three_gen(full_ped = full_ped) %>% 
+  mutate_all(~ replace_na(., "0")) %>% 
   assertr::verify(!is.na(full_reg)) %>% 
   assertr::verify(!is.na(sire_reg)) %>% 
   assertr::verify(!is.na(dam_reg)) %>% 

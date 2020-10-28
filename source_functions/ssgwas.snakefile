@@ -69,7 +69,8 @@ rule ssgwas:
 		postGSf90_out = "ssgwas.{model}.out",
 		postGSf90_path = config['postGSf90_path'],
 		mpi_export = config['mpi_export'],
-		mpi_module = config['mpi_module']
+		mpi_module = config['mpi_module'],
+		psrecord = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/log/psrecord/ssgwas/ssgwas/ssgwas.{model}.log"
 	output:
 		snp_sol = "data/derived_data/ssgwas/{model}/snp_sol"
 	shell:
@@ -78,6 +79,7 @@ rule ssgwas:
 		module load {params.mpi_module}
 		ulimit -s unlimited
 		ulimit -v unlimited
+		export OMP_STACKSIZE=128M
 		cd {params.dir}
-		{params.postGSf90_path} renf90.ssgwas.par &> {params.postGSf90_out}
+		psrecord "{params.postGSf90_path} renf90.ssgwas.par &> {params.postGSf90_out}" --log {params.psrecord} --include-children --interval 2
 		"""

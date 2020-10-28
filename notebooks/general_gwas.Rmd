@@ -79,6 +79,14 @@ manall
 
 ## QQ plot
 
+## All SNPs
+
 ```{r}
 ggqq(pvector = snp_sol$p_value)
+```
+
+## Non-significant SNPs
+
+```{r}
+ggqq(pvector = snp_sol[snp_sol$fdr == -1, "p_value"][[1]])
 ```

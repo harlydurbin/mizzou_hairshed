@@ -24,6 +24,7 @@ library(tidylog)
 source(here::here("source_functions/melt_aireml.R"))
 source(here::here("source_functions/calculate_heritability.R"))
 
+options(scipen = 999)
 ```
 
 # Notes & questions
@@ -86,6 +87,18 @@ breed_h2 <-
 
 ```{r}
 breed_h2 %>% 
-  add_row(key = "AGI dataset", `Total variance` = 0.949, `Direct h2` = 0.40, Repeatability = 0.44)
+  left_join(purrr::map2_dfr(.x = c("hfd1", "an1", "bg1", "igs1", "fixed9"),
+                            .y = c("Hereford", "Angus", "Brangus", "IGS breeds", "Full dataset"),
+                            ~ melt_aireml(path = here::here(glue("data/derived_data/aireml_varcomp/{.x}/airemlf90.{.x}.log")),
+                                          effect2 = c("hair_dir"),
+                                          effect3 = c("hair_pe"),
+                                          resids = c("hair_res")) %>% 
+                              mutate(key = .y)) %>% 
+              filter(val1 == val2) %>% 
+              select(-val1) %>% 
+              tidyr::pivot_wider(values_from = var_cov,
+                                 names_from = val2,
+                                 id_cols = key)) %>% 
+  select(key, `Direct var.` = hair_dir, `PE var.` = hair_pe, `Residual var.` = hair_res, `Direct h2`, Repeatability) %>% 
+  add_row(key = "AGI dataset", `Direct var.` = 0.37679, `PE var.` = 0.039171, `Residual var.` = 0.53274, `Direct h2` = 0.40, Repeatability = 0.44)
 ```
-

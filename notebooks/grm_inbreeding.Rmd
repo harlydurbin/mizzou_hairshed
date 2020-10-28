@@ -78,11 +78,8 @@ fixed9_genomic_inb <-
 
 ```{r}
 ped_inb <-
-  breed_key %>% 
-  select(full_reg, Lab_ID, farm_id, animal_id, temp_id) %>% 
-  left_join(full_ped %>% 
-              select(full_reg, sire_reg, dam_reg)) %>% 
-  three_gen(full_ped = full_ped) %>% 
+  full_ped %>% 
+  select(full_reg, sire_reg, dam_reg) %>% 
   optiSel::prePed() %>% 
   pedInbreeding() %>% 
   tibble::remove_rownames() %>% 
