@@ -1,4 +1,4 @@
-rules: ['cp', 'ssgwas_par', 'ssgwas']
+rules: ['cp', 'blupf90', 'ssgwas_par', 'ssgwas']
 
 mpi_module: "openmpi/openmpi-3.1.3-intel-16.0.2"
 
@@ -7,6 +7,8 @@ mpi_export: "export OMPI_MCA_btl_openib_if_include='mlx5_3:1'"
 renumf90_path: "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_functions/renumf90"
 
 postGSf90_path: "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_functions/postGSf90"
+
+blupf90_path: "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_functions/blupf90"
 
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 

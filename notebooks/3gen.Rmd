@@ -1341,7 +1341,9 @@ full_ped %<>%
 
 ```{r}
 full_ped %<>% 
-  left_join(readxl::read_excel(here::here("data/raw_data/201027.ped_fixes.xlsx"))) %>% 
+  coalesce_join(readxl::read_excel(here::here("data/raw_data/201027.ped_fixes.xlsx")),
+                by = c("farm_id", "temp_id"),
+                join = dplyr::full_join) %>% 
   mutate(sire_reg = if_else(!is.na(misc_sire), misc_sire, as.character(sire_reg)),
          dam_reg = if_else(!is.na(misc_dam), misc_dam, as.character(dam_reg))) %>% 
   select(-misc_sire, -misc_dam)
@@ -1359,6 +1361,12 @@ full_ped %<>%
 full_ped %<>%
   filter(full_reg != "RHF107F739")
 ```
+
+```{r}
+full_ped %<>%
+  mutate_at(vars("full_reg", "sire_reg", "dam_reg"), ~ str_replace_all(., "^GVHAMGV", "GVH"))
+```
+
 
 # Tallies
 

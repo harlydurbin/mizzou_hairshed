@@ -67,7 +67,7 @@ purrr::map2_dfr(.x = c("hfd1", "an1", "bg1", "igs1"),
                               summarise(`n genotyped` = n(),
                                         key = .y))) %>% 
   mutate_if(is.numeric, ~ scales::comma(.)) %>% 
-  select(key, everything())
+  select(key, everything()) 
 ```
 
 ```{r, warning = FALSE, message = FALSE}
@@ -85,6 +85,7 @@ breed_h2 <-
 ```
 
 ```{r}
-breed_h2
+breed_h2 %>% 
+  add_row(key = "AGI dataset", `Total variance` = 0.949, `Direct h2` = 0.40, Repeatability = 0.44)
 ```
 

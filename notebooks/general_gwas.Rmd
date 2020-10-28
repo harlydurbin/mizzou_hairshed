@@ -10,7 +10,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(readr)
 library(dplyr)
 library(ggplot2)
@@ -54,7 +54,7 @@ snp_sol %>%
   filter(fdr != -1)
 ```
 
-# Manhattan plot of $$-log_{10}(p-value)$$
+# Manhattan plot of $-log_{10}(p-value)$
 
 ```{r}
 snp_sol %>% 

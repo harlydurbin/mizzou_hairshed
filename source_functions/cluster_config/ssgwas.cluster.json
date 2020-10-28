@@ -16,6 +16,14 @@
         "mem" : 6G,
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     },
+    "blupf90":
+    {
+        "t": "12:00:00",
+        "p" : "BioCompute,htc4,hpc5",
+        "mem" : 100G,
+        "c": 32,
+        "mail-type" : "END"
+    },
     "ssgwas_par":
     {
         "t": "01:00:00",
@@ -26,7 +34,7 @@
     {
         "t": "12:00:00",
         "p" : "BioCompute,htc4,hpc5",
-        "mem" : 100G,
+        "mem" : 200G,
         "c": 32,
         "mail-type" : "END"
     }

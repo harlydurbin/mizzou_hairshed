@@ -147,6 +147,13 @@ drp <-
         c = 0.1,
         h2 = h2)
 ```
+```{r}
+drp %>% 
+  filter(is.na(DRP_Trait)) %>% 
+  filter(!is.na(sire_reg)) %>% 
+  filter(!is.na(dam_reg))
+```
+
 
 ```{r}
 drp %>% 
