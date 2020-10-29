@@ -11,8 +11,6 @@ library(tidylog)
 
 source(here::here("source_functions/calculate_acc.R"))
 
-
-
 ## -------------------------------------------------------------------------------------------------------------------------------
 dir <- as.character(commandArgs(trailingOnly = TRUE)[1])
 
@@ -28,10 +26,39 @@ model <- str_extract(dir, "(?<=/)[[:alnum:]]+$")
 ## -------------------------------------------------------------------------------------------------------------------------------
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
+renaddped <-
+  read_table2(here::here(glue("{dir}/renadd0{animal_effect}.ped")),
+            col_names = FALSE) %>%
+  select(id_new = X1, sire_id = X2, dam_id = X3, full_reg = X10)
 
-## -------------------------------------------------------------------------------------------------------------------------------
-ped_inb <- read_csv(here::here("data/derived_data/grm_inbreeding/ped_inb.csv"))
+renaddped %<>%
+  left_join(renaddped %>%
+              select(sire_id = id_new,
+                     sire_reg = full_reg)) %>%
+  left_join(renaddped %>%
+              select(dam_id = id_new,
+                     dam_reg = full_reg)) %>%
+  select(id_new, full_reg, sire_reg, dam_reg) %>%
+  filter(!is.na(full_reg)) %>%
+  mutate_at(vars(contains("reg")), ~ replace_na(., "0")) %>% 
+  filter(full_reg != "0")
 
+renaddped %<>%
+  left_join(full_ped %>%
+              select(full_reg, sex)) %>%
+  mutate(sex = case_when(full_reg %in% renaddped$sire_reg ~ "M",
+                         full_reg %in% renaddped$dam_reg ~ "F",
+                         TRUE ~ sex),
+         sex = replace_na(sex, "F"))
+
+pedinb <-
+  renaddped %>%
+  select(full_reg, sire_reg, dam_reg) %>%
+  optiSel::prePed() %>%
+  optiSel::pedInbreeding() %>%
+  tibble::remove_rownames() %>%
+  rename(full_reg = Indiv,
+         f = Inbr)
 
 ## -------------------------------------------------------------------------------------------------------------------------------
 trait <-
@@ -42,10 +69,8 @@ trait <-
   filter(effect == animal_effect) %>%
   select(id_new, solution, se) %>%
   # Re-attach original IDs
-  left_join(read_table2(here::here(glue("{dir}/renadd0{animal_effect}.ped")),
-                        col_names = FALSE) %>%
-              select(id_new = X1, full_reg = X10)) %>%
-  left_join(ped_inb) %>%
+  left_join(renaddped) %>%
+  left_join(pedinb) %>%
   mutate(f = tidyr::replace_na(f, 0),
          acc = purrr::map2_dbl(.x = se,
                                .y = f,
@@ -53,20 +78,21 @@ trait <-
                                               se = .x,
                                               f = .y,
                                               option = "reliability")),
-         acc = if_else(0 > acc, 0, acc))
+         acc = if_else(0 > acc, 0, acc)) %>%
+  filter(!is.na(full_reg)) %>%
+  assertr::verify(!is.na(sire_reg)) %>%
+  assertr::verify(!is.na(dam_reg)) %>%
+  assertr::verify(full_reg != "0")
 
 
 ## -------------------------------------------------------------------------------------------------------------------------------
+# Append sire and dam accuracies
 trait %<>%
-  left_join(full_ped %>%
-              select(full_reg, sire_reg, dam_reg)) %>%
   left_join(trait %>%
               select(sire_reg = full_reg, sire_acc = acc, sire_sol = solution)) %>%
   left_join(trait %>%
               select(dam_reg = full_reg, dam_acc = acc, dam_sol = solution)) %>%
-  select(contains("reg"), contains("sol"), contains("acc")) %>%
-  mutate_at(vars(contains("reg")),
-            ~ if_else(. == "0", NA_character_, .))
+  select(contains("reg"), contains("sol"), contains("acc"))
 
 
 ## -------------------------------------------------------------------------------------------------------------------------------
@@ -82,8 +108,18 @@ wideDRP(Data = trait,
         damr2 = "dam_acc",
         c = 0.1,
         h2 = h2) %>%
-  mutate(Group = 1,
+  mutate(DRP_Trait_r2 = if_else(0 > DRP_Trait_r2, 0, DRP_Trait_r2),
+         Group = 1,
          Rel = DRP_Trait_r2*100) %>%
+  filter(!is.na(DRP_Trait)) %>% 
+  assertr::verify(Rel >= 0) %>% 
   select(ID = full_reg, Group, Obs = DRP_Trait, Rel) %>%
-  filter(!is.na(Obs)) %>%
   write_tsv(here::here(glue("data/derived_data/snp1101/{model}/trait.txt")))
+
+renaddped %>%
+  assertr::verify(!is.na(sire_reg)) %>%
+  assertr::verify(!is.na(dam_reg)) %>%
+  assertr::verify(full_reg != "0") %>%
+  select(full_reg, sire_reg, dam_reg, sex) %>%
+  write_tsv(here::here(glue("data/derived_data/snp1101/{model}/ped.{model}.txt")),
+            col_names = FALSE)
