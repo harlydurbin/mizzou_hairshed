@@ -31,7 +31,7 @@
         "t": "48:00:00",
         "p" : "BioCompute",
         "mem" : 100G,
-        "c": 56,
+        "c": 32,
         "mail-type" : "END"
     },
     "cleanup":
