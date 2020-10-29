@@ -58,8 +58,6 @@ trait <-
 
 ## -------------------------------------------------------------------------------------------------------------------------------
 trait %<>%
-  left_join(read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"))) %>%
-  filter(!is.na(diagonal)) %>%
   left_join(full_ped %>%
               select(full_reg, sire_reg, dam_reg)) %>%
   left_join(trait %>%
