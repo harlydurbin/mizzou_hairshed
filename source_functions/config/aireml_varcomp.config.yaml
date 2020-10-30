@@ -14,4 +14,4 @@ geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
 # grep -Fwf data/derived_data/aireml_varcomp/igs1/pull_list.txt data/raw_data/geno_dump/200924_HairShed.850K.fwf.txt | awk '{printf "%-25s %s\n", $1, $2}' > data/derived_data/aireml_varcomp/igs1/genotypes.igs1.txt
 
-model: ['fixed9', 'an1', 'bg1', 'hfd1', 'igs1']
+model: ['fixed9', 'an1', 'bg1', 'hfd1', 'igs1', '2016an', '2017an', '2018an', '2019an', 'fixed15']

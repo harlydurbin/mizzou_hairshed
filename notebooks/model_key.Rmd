@@ -67,6 +67,11 @@ output: html_document
 * Exact same as `fixed9` model, but use only genotyped animals
 * Running GBLUP instead of ssGBLUP to attempt to get around inbreeding/reliability issue
 
+## `fixed15`
+
+* Exact same as `fixed14` model, but use add correction for PC 1 and PC 2
+* Trying to solve potential population structure
+
 ## `fixed10`
 
 * `{farm_id + year + calving_season + age_group + score_group + toxic_fescue} + {mean_apparent_high}`
@@ -109,5 +114,13 @@ In breed-specific evaluations, only use genotypes & 3-generation pedigree for br
 * AAA records
 * Used also in epistatic meta-analysis
 
+# Year-specific evaluations
 
+## `2016an`
+
+## `2017an`
+
+## `2018an`
+
+## `2019an`
 
