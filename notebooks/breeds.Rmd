@@ -198,8 +198,35 @@ breed_h2 %>%
 ```
 srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/breeds/metasoft_in.breeds.txt -output data/derived_data/metasoft/breeds/metasoft_out.breeds.txt -mvalue -log data/derived_data/metasoft/breeds/metasoft.breeds.log
 ```
+```
+srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/breeds/metasoft_in.breeds.txt -output data/derived_data/metasoft/breeds/metasoft_out.breeds_corrected.txt -mvalue -log data/derived_data/metasoft/breeds/metasoft.breeds_corrected.log -lambda_mean 23196.908717 -lambda_hetero 73471.714859
+```
+
+RSID, #STUDY, PVALUE_FE, BETA_FE, STD_FE, PVALUE_RE, BETA_RE, STD_RE, PVALUE_RE2, STAT1_RE2, STAT2_RE2, PVALUE_BE, I_SQUARE, Q, PVALUE_Q, TAU_SQUARE
+1:530998, 4, 0.00000, -0.0304635, 0.000336349, 0.254139, 0.0315562, 0.0276723, 0.00000, 8203.13, 14111.9, NA, 99.9788, 14151.4, 0.00000, 0.00306030
 
 ```{r}
 metasoft_out <- 
-  read_table2(here::here("data/derived_data/metasoft/breeds/"))
+  read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds_corrected.txt"),
+              col_types = cols(.default = "d", RSID = "c")) %>% 
+  janitor::clean_names() %>% 
+  select(-pvalues_of_studies_tab_delimitered, -mvalues_of_studies_tab_delimitered) 
 ```
+
+```{r}
+mbreed <-
+  read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds_corrected.txt"),
+              skip = 1,
+              col_types = "----------------dddddddd", 
+              col_names = c("an1p", "bg1p", "hfd1p", "igs1p", "an1m", "bg1m", "hfd1m", "igs1m"))
+```
+
+```{r}
+mbreed %>% 
+  filter_at(vars(contains("p")), any_vars(. != 0))
+```
+
+```{r}
+metasoft_out
+```
+

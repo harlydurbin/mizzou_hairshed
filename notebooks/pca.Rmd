@@ -1,0 +1,69 @@
+---
+title: "PCA"
+author: "Harly Durbin"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    df_print: paged
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(readr)
+library(magrittr)
+library(purrr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+
+source(here::here("source_functions/plot_pca.R"))
+```
+
+# Notes & questions
+
+# Setup
+
+```{r}
+breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
+```
+
+```{r}
+vec <-
+  read_table2(here::here("data/derived_data/smartpca/smartpca.mizzou_hairshed.evec"),
+              skip = 1, col_names = FALSE) %>%
+  select(-X12) %>%
+  set_names(c("full_reg", map_chr(1:10, ~ str_c("PC", .x)))) %>% 
+  mutate(full_reg = str_extract(full_reg, "(?<=[[:alnum:]]:)[[:alnum:]]+$")) %>% 
+  left_join(breed_key) %>% 
+  mutate(cross = case_when(is.na(cross) ~ str_extract(full_reg, "^[[:upper:]]{3}"),
+                           TRUE ~ cross),
+         cross = case_when(cross == "AAA" ~ "AN",
+                           cross == "GVH" ~ "GEL",
+                           cross == "BSH" ~ "SH",
+                           cross == "HER" ~ "HFD",
+                           TRUE ~ cross)) 
+```
+
+# Plot
+
+```{r}
+        vec %>%
+          ggplot(aes(
+            x = !!col1,
+            y = !!col2
+          )) +
+          geom_point(aes(color = !!color_var),
+                     alpha = 0.6)
+      } else{
+        vec %>%
+          ggplot(aes(
+            x = !!col1,
+            y = !!col2
+          )) +
+          geom_point(aes(color = !!color_var, 
+                         shape = !!shape_var),
+                     alpha = 0.6)
+```
+
