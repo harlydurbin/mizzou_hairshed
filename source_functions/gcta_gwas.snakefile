@@ -1,4 +1,4 @@
-# snakemake -s source_functions/gcta_gwas.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/gcta_gwas.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/gcta_gwas/201020.gcta_gwas.log
+# snakemake -s source_functions/gcta_gwas.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/gcta_gwas.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/gcta_gwas/201030.gcta_gwas.log
 
 import os
 
@@ -10,7 +10,7 @@ for x in expand("log/slurm_out/gcta_gwas/{rules}", rules = config['rules']):
 	os.makedirs(x, exist_ok = True)
 
 rule all:
-	input: expand("data/derived_data/gcta_gwas/mizzou_hairshed.grm.{extension}", extension = ['gz', 'id'])
+	input: expand("data/derived_data/gcta_gwas/{model}/{model}.mlma", model = config['model'])
 
 rule pheno_file:
 	input:
@@ -23,8 +23,8 @@ rule pheno_file:
 	params:
 		r_module = config['r_module']
 	output:
-		pheno = "data/derived_data/gcta_gwas/{model}/data.txt",
-		covar = "data/derived_data/gcta_gwas/{model}/covar.txt"
+		pheno = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/gcta_gwas/{model}/pheno.txt",
+		covar = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/gcta_gwas/{model}/covar.txt"
 	shell:
 		"""
 		module load {params.r_module}
@@ -35,8 +35,8 @@ rule mlma:
 	input:
 		plink = expand("{geno_prefix}.qc.{extension}", geno_prefix = config['geno_prefix'], extension = ['bed', 'bim', 'fam']),
 		grm = expand("{grm}", grm = config['grm_path']),
-		pheno = "data/derived_data/gcta_gwas/{model}/data.txt",
-		covar = "data/derived_data/gcta_gwas/{model}/covar.txt"
+		pheno = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/gcta_gwas/{model}/pheno.txt",
+		covar = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/gcta_gwas/{model}/covar.txt"
 	params:
 		gcta_path = config['gcta_path'],
 		mpi_module = config['mpi_module'],
@@ -44,11 +44,10 @@ rule mlma:
 		threads = config['mlma_threads'],
 		out_prefix = "data/derived_data/gcta_gwas/{model}/{model}"
 	output:
-		grm_gz = "data/derived_data/gcta_gwas/mizzou_hairshed.grm.gz",
-		id = "data/derived_data/gcta_gwas/mizzou_hairshed.grm.id"
+		out = "data/derived_data/gcta_gwas/{model}/{model}.mlma"
 	shell:
 		"""
 		export OMPI_MCA_btl_openib_if_include='mlx5_3:1'
 		module load {params.mpi_module}
-		{params.gcta_path} mlma --bfile {params.in_prefix} --pheno {input.pheno} --covar {input.covar} --mlma-no-preadj-covar --grm {input.grm}  --thread-num {params.threads} --out {params.out_prefix}
+		{params.gcta_path} --mlma --bfile {params.in_prefix} --pheno {input.pheno} --covar {input.covar} --grm-gz {input.grm}  --thread-num {params.threads} --out {params.out_prefix}
 		"""
