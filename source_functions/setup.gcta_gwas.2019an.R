@@ -1,5 +1,5 @@
 #' ---
-#' title: "Basic variance components and parameters"
+#' title: "GCTA GWAS"
 #' author: "Harly Durbin"
 #' output: html_document
 #' ---
@@ -16,9 +16,6 @@ library(lubridate)
 library(tidylog)
 library(readxl)
 
-source(here::here("source_functions/cg_tallies.R"))
-source(here::here("source_functions/three_gen.R"))
-
 #'
 #' # Notes & questions
 #'
@@ -29,11 +26,12 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
 
 #'
 ## ---- warning=FALSE, message=FALSE--------------------------------------------------------------------------------------------------
-full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
 breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
 
 genotyped <- read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"))
+
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
 ## Angus data only
 
@@ -93,11 +91,7 @@ dat %<>%
                                       between(lubridate::month(dob),
                                               left = 7,
                                               right = 12) ~ "FALL",
-                                    TRUE ~ calving_season)) %>%
-  filter(!is.na(calving_season)) %>%
-  assertr::verify(!is.na(calving_season))
-
-
+                                    TRUE ~ calving_season))
 
 #'
 #' # Age group
@@ -108,9 +102,7 @@ dat %<>%
   mutate(age_group = case_when(age == 1 ~ "yearling",
                                age %in% c(2, 3) ~ "growing",
                                between(age, 4, 9) ~ "mature",
-                               age >= 10 ~ "old")) %>%
-  filter(!is.na(age_group)) %>%
-  assertr::verify(!is.na(age_group))
+                               age >= 10 ~ "old"))
 
 
 #'
@@ -131,20 +123,6 @@ dat %<>%
 dat %<>%
   mutate(cg = glue("{farm_id}{year}{calving_season}{age_group}{score_group}{toxic_fescue}"),
          cg_num = as.integer(factor(cg)))
-
-
-#'
-## -----------------------------------------------------------------------------------------------------------------------------------
-dat %>%
-  cg_tallies()
-
-#'
-## -----------------------------------------------------------------------------------------------------------------------------------
-dat %<>%
-  group_by(cg) %>%
-  filter(n() >= 5) %>%
-  ungroup()
-
 
 # Specified year only
 
@@ -173,36 +151,28 @@ matched <-
                                 is.na(registration_number) ~ glue("{farm_id}{animal_id}{temp_id}"),
                               TRUE ~ full_reg)) %>%
   assertr::verify(!is.na(full_reg)) %>%
-  assertr::verify(!is.na(hair_score))
+  assertr::verify(!is.na(hair_score)) 
 
-#'
-## -----------------------------------------------------------------------------------------------------------------------------------
-print("Duplicate animals, different full_reg")
-matched %>%
-  distinct(farm_id, temp_id, full_reg) %>%
-  group_by(farm_id, temp_id) %>%
-  filter(n() > 1)
 
 matched %<>% 
   group_by(full_reg) %>% 
   slice(1) %>% 
   ungroup()
 
-#'
-## -----------------------------------------------------------------------------------------------------------------------------------
-matched %>%
-  distinct(Lab_ID,farm_id, animal_id, temp_id, registration_number, full_reg) %>%
-  write_csv(here::here("data/derived_data/aireml_varcomp/2019an/sanity_key.csv"),
-            na = "")
-
-#'
-## -----------------------------------------------------------------------------------------------------------------------------------
-matched %>%
-  select(full_reg, cg_num, hair_score) %>%
-  write_delim(here::here("data/derived_data/aireml_varcomp/2019an/data.txt"),
-              col_names = FALSE)
-
-matched %>% 
+matched %<>% 
   left_join(read_table2(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.grm.id"),
                         col_names = c("full_reg", "iid"))) %>% 
   filter(!is.na(iid))
+
+#'
+## -----------------------------------------------------------------------------------------------------------------------------------
+matched %>%
+  select(full_reg, iid, hair_score) %>%
+  write_delim(here::here("data/derived_data/gcta_gwas/2019an/pheno.txt"),
+              col_names = FALSE)
+
+matched %>%
+  select(full_reg, iid, cg_num) %>%
+  write_delim(here::here("data/derived_data/gcta_gwas/2019an/covar.txt"),
+              col_names = FALSE)
+

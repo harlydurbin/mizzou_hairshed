@@ -20,16 +20,8 @@ RANDOM
 animal
 OPTIONAL
 pe
-FILE
-ped.txt
-FILE_POS
-1 2 3 0 0
 SNP_FILE
 genotypes.txt
-PED_DEPTH
-3
-INBREEDING
-pedigree
 (CO)VARIANCES
 0.3
 (CO)VARIANCES_PE
