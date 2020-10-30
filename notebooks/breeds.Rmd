@@ -21,6 +21,7 @@ library(glue)
 library(readxl)
 library(magrittr)
 library(tidylog)
+library(rlang)
 
 source(here::here("source_functions/melt_aireml.R"))
 source(here::here("source_functions/calculate_heritability.R"))
@@ -51,6 +52,8 @@ scales::show_col(bakeoff::bakeoff_pal()(11))
     
 # Setup
 
+## Raw GWAS results
+
 ```{r, warning=FALSE, message=FALSE}
 breed_gwas <-
   c("hfd1", "an1", "bg1", "igs1") %>% 
@@ -63,6 +66,28 @@ breed_gwas <-
                                          skip = 12) %>%
                                select(chr = Chr, pos = Pos, fdr = FDR_GW, a)),
                  .id = "dataset")
+```
+
+## `METASOFT`
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+
+metasoft_in <-
+  purrr::map2(.x = c("an1", "bg1", "hfd1", "igs1"),
+              .y = c(3079, 882, 1009, 4375),
+              ~ breed_gwas %>% 
+                filter(dataset == .x) %>% 
+                mutate(id = glue("{chr}:{pos}"),
+                       se = sqrt(var/.y)) %>%
+                select(id, !!rlang::sym(glue("{.x}_b")) := b_value, !!rlang::sym(glue("{.x}_se")) := se)) %>% 
+  purrr::reduce(left_join) %>% 
+  mutate_if(is.numeric, ~ if_else(. == 0, na_dbl, .))
+
+```
+
+```{r, eval=FALSE}
+write_tsv(metasoft_in, here::here("data/derived_data/metasoft/breeds/metasoft_in.breeds.txt"),
+          col_names = FALSE)
 ```
 
 # Heritability and repeatability
@@ -168,9 +193,13 @@ breed_h2 %>%
 ```
 
 
-# Metasoft
-
-```{r}
+# `METASOFT`
 
 ```
+srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/breeds/metasoft_in.breeds.txt -output data/derived_data/metasoft/breeds/metasoft_out.breeds.txt -mvalue -log data/derived_data/metasoft/breeds/metasoft.breeds.log
+```
 
+```{r}
+metasoft_out <- 
+  read_table2(here::here("data/derived_data/metasoft/breeds/"))
+```
