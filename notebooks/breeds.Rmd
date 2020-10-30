@@ -16,6 +16,7 @@ library(readr)
 library(tidyr)
 library(stringr)
 library(dplyr)
+library(ggplot2)
 library(glue)
 library(readxl)
 library(magrittr)
@@ -23,11 +24,17 @@ library(tidylog)
 
 source(here::here("source_functions/melt_aireml.R"))
 source(here::here("source_functions/calculate_heritability.R"))
+source(here::here("source_functions/hair_manhattan.R"))
 
 options(scipen = 999)
 ```
 
 # Notes & questions
+
+* Angus: #126180
+* IGS: #B578A6
+* Hereford: #F57195
+* Brangus: #4EB7B8
 
 ## Datasets
 
@@ -37,23 +44,30 @@ options(scipen = 999)
 * Brangus
 * Angus
     
+```{r, eval=FALSE}
+scales::show_col(bakeoff::bakeoff_pal()(11))
+```
+    
+    
 # Setup
 
 ```{r, warning=FALSE, message=FALSE}
-cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
-```
-
-```{r}
-full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
-```
-
-```{r}
-breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
+breed_gwas <-
+  c("hfd1", "an1", "bg1", "igs1") %>% 
+  purrr::set_names() %>% 
+  purrr::map_dfr(~ read_table2(here::here(glue("data/derived_data/snp1101/{.x}/out/gwas_ssr_{.x}_bvs_p.txt")))  %>%
+                   janitor::clean_names() %>%
+                   mutate(neglog10p = -log10(p_value),
+                          neglog10q = -log10(qvalue::qvalue(p_value)$qvalues)) %>%
+                   left_join(read_table2(here::here(glue("data/derived_data/snp1101/{.x}/out/gwas_ssr_{.x}_bvs.txt")),
+                                         skip = 12) %>%
+                               select(chr = Chr, pos = Pos, fdr = FDR_GW, a)),
+                 .id = "dataset")
 ```
 
 # Heritability and repeatability
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 purrr::map2_dfr(.x = c("hfd1", "an1", "bg1", "igs1"),
                 .y = c("Hereford", "Angus", "Brangus", "IGS breeds"),
                 ~ read_table2(here::here(glue("data/derived_data/aireml_varcomp/{.x}/data.txt")),
@@ -102,3 +116,61 @@ breed_h2 %>%
   select(key, `Direct var.` = hair_dir, `PE var.` = hair_pe, `Residual var.` = hair_res, `Direct h2`, Repeatability) %>% 
   add_row(key = "AGI dataset", `Direct var.` = 0.37679, `PE var.` = 0.039171, `Residual var.` = 0.53274, `Direct h2` = 0.40, Repeatability = 0.44)
 ```
+
+# GWAS
+
+## Hereford
+
+```{r, fig.width = 11, fig.height = 6.16}
+  hair_manhattan(df = breed_gwas %>% 
+                   filter(dataset == "hfd1"),
+                 y_var = neglog10q, 
+                 y_lab = "-log10(q-value)",
+                 sigline = 1,
+                 color1 = "gray1",
+                 color2 = "gray91")
+```
+
+## Angus
+
+```{r, fig.width = 11, fig.height = 6.16}
+  hair_manhattan(df = breed_gwas %>% 
+                   filter(dataset == "an1"),
+                 y_var = neglog10q, 
+                 y_lab = "-log10(q-value)",
+                 sigline = 1,
+                 color1 = "gray1",
+                 color2 = "gray91")
+```
+
+## IGS
+
+```{r, fig.width = 11, fig.height = 6.16}
+  hair_manhattan(df = breed_gwas %>% 
+                   filter(dataset == "igs1"),
+                 y_var = neglog10q, 
+                 y_lab = "-log10(q-value)",
+                 sigline = 1,
+                 color1 = "gray1",
+                 color2 = "gray91")
+```
+
+## Brangus
+
+```{r, fig.width = 11, fig.height = 6.16}
+  hair_manhattan(df = breed_gwas %>% 
+                   filter(dataset == "bg1"),
+                 y_var = neglog10q, 
+                 y_lab = "-log10(q-value)",
+                 sigline = 1,
+                 color1 = "gray1",
+                 color2 = "gray91")
+```
+
+
+# Metasoft
+
+```{r}
+
+```
+

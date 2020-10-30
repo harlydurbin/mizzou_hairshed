@@ -28,6 +28,19 @@ source(here::here("source_functions/ggqq.R"))
 # Notes & questions
 
 * Column names in *_bvs.txt file: SNPID, Chr, Pos, freq, g0, g1, g2, a, b, Var, F, p-value, FDR_GW
+* Column names in *_bvs_p.txt file: Chr, Pos, freq, b-value, Var, p-value
+* `b` and `b-value` are the same, assuming SNP effect? 
+* Guessing g0, g1, g2 are number of individuals with genotypes 0, 1, 2
+* What is F?
+* What is a?
+
+*_bvs.txt
+Chr     Pos     freq    b-value Var     p-value
+1       530998  0.4526  -0.052163       0.00134825      0.146002
+
+*_bvs_p.txt
+SNPID   Chr     Pos     freq    g0      g1      g2      a       b       Var     F       p-value FDR_GW
+1       1       530998  0.4526  946     1479    654     0.0175772       -0.052163       0.00134825      2.1146  0.146002        -1
 
 # Setup
 
