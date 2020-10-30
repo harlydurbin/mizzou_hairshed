@@ -32,7 +32,8 @@ breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
 ```{r}
 vec <-
   read_table2(here::here("data/derived_data/smartpca/smartpca.mizzou_hairshed.evec"),
-              skip = 1, col_names = FALSE) %>%
+              skip = 1,
+              col_names = FALSE) %>%
   select(-X12) %>%
   set_names(c("full_reg", map_chr(1:10, ~ str_c("PC", .x)))) %>% 
   mutate(full_reg = str_extract(full_reg, "(?<=[[:alnum:]]:)[[:alnum:]]+$")) %>% 
@@ -46,24 +47,32 @@ vec <-
                            TRUE ~ cross)) 
 ```
 
+```{r}
+  val <-
+    read_lines(here::here("data/derived_data/smartpca/smartpca.mizzou_hairshed.evec"),
+               n_max = 1) %>%
+      str_remove("#eigvals:") %>%
+      str_squish() %>%
+      str_split(pattern = "[[:space:]]") %>%
+      flatten_chr() %>%
+      map_dbl( ~ as.numeric(.x))
+```
+
+
 # Plot
 
-```{r}
-        vec %>%
-          ggplot(aes(
-            x = !!col1,
-            y = !!col2
-          )) +
-          geom_point(aes(color = !!color_var),
-                     alpha = 0.6)
-      } else{
-        vec %>%
-          ggplot(aes(
-            x = !!col1,
-            y = !!col2
-          )) +
-          geom_point(aes(color = !!color_var, 
-                         shape = !!shape_var),
-                     alpha = 0.6)
+```{r, fig.width = 7, fig.height=5}
+vec %>%
+  ggplot(aes(x = PC1,
+             y = PC2)) +
+  geom_point(aes(color = cross),
+             alpha = 0.6) +
+  bakeoff::scale_color_bakeoff() +
+  guides(colour = guide_legend(override.aes = list(alpha = 1))) +
+  theme_classic() +
+  labs(x = str_c("PC 1: ", scales::percent(val[1] / sum(val))),
+       y = str_c("PC 2: ", scales::percent(val[2] / sum(val))),
+       color = str_wrap("Reported or inferred breed",
+                        width = 15))
 ```
 
