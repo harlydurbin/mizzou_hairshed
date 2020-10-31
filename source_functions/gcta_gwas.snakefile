@@ -34,7 +34,7 @@ rule pheno_file:
 rule mlma:
 	input:
 		plink = expand("{geno_prefix}.qc.{extension}", geno_prefix = config['geno_prefix'], extension = ['bed', 'bim', 'fam']),
-		grm = expand("{grm}", grm = config['grm_path']),
+		grm_gz = config['grm_prefix'] + ".grm.gz",
 		pheno = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/gcta_gwas/{model}/pheno.txt",
 		covar = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/gcta_gwas/{model}/covar.txt"
 	params:
@@ -42,6 +42,7 @@ rule mlma:
 		mpi_module = config['mpi_module'],
 		in_prefix = config['geno_prefix'] + '.qc',
 		threads = config['mlma_threads'],
+		grm_prefix = config['grm_prefix'],
 		out_prefix = "data/derived_data/gcta_gwas/{model}/{model}"
 	output:
 		out = "data/derived_data/gcta_gwas/{model}/{model}.mlma"
@@ -49,5 +50,5 @@ rule mlma:
 		"""
 		export OMPI_MCA_btl_openib_if_include='mlx5_3:1'
 		module load {params.mpi_module}
-		{params.gcta_path} --mlma --bfile {params.in_prefix} --pheno {input.pheno} --covar {input.covar} --grm-gz {input.grm}  --thread-num {params.threads} --out {params.out_prefix}
+		{params.gcta_path} --mlma --bfile {params.in_prefix} --pheno {input.pheno} --covar {input.covar} --grm-gz {params.grm_prefix}  --thread-num {params.threads} --out {params.out_prefix}
 		"""
