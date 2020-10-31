@@ -50,11 +50,11 @@ animal_effect <- 2
 
 #gen_var <- as.numeric(commandArgs(trailingOnly = TRUE)[3])
 
-gen_var <- 0.34243
+gen_var <- 0.33133
 
 #h2 <- as.numeric(commandArgs(trailingOnly = TRUE)[4])
 
-h2 <- 0.3128792
+h2 <- 0.3675115
 
 model <- str_extract(dir, "(?<=/)[[:alnum:]]+$")
 ```

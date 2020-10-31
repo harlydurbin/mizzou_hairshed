@@ -40,4 +40,5 @@ html/*
 scratch.Rmd
 *dat
 *evec
+*mlma
 data/derived_data/breed_key/rhfbrm.png

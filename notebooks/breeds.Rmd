@@ -226,7 +226,6 @@ mbreed %>%
   filter_at(vars(contains("p")), any_vars(. != 0))
 ```
 
-I’m more interested in the q-values for identifying low heterogeneity SNPs, but I am worried that my m-values are flawed, my interpretation of the q-values may also be/I ran it incorrectly. 
 
 ```{r}
 metasoft_out %>% 

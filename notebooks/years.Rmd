@@ -1,0 +1,163 @@
+---
+title: "Year-by-year univariate GWAS"
+author: "Harly Durbin"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(readr)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(glue)
+library(readxl)
+library(magrittr)
+library(tidylog)
+library(rlang)
+
+source(here::here("source_functions/hair_manhattan.R"))
+
+options(scipen = 999)
+```
+
+# Notes & questions
+
+# Setup 
+
+## Raw GWAS results
+
+```{r}
+years_gwas <-
+  c("2016an", "2017an", "2018an", "2019an") %>% 
+  purrr::set_names() %>% 
+  purrr::map_dfr(~ read_table2(here::here(glue("data/derived_data/gcta_gwas/{.x}/{.x}.mlma"))) %>% 
+                   janitor::clean_names() %>% 
+                   mutate(neglog10p = -log10(p),
+                          neglog10q = -log10(qvalue::qvalue(p)$qvalues)),
+                 .id = "dataset") %>% 
+  rename(pos = bp)
+
+```
+
+## `METASOFT`
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+
+years_metasoft_in <-
+  purrr::map2(.x = c("2016an", "2017an", "2018an", "2019an"),
+              .y = c(1535, 1906, 2164, 1412),
+              ~ years_gwas %>% 
+                filter(dataset == .x) %>% 
+                mutate(id = glue("{chr}:{pos}")) %>%
+                select(id, !!rlang::sym(glue("{.x}_b")) := b, !!rlang::sym(glue("{.x}_se")) := se)) %>% 
+  purrr::reduce(left_join) %>% 
+  mutate_at(vars(contains("_b"), contains("_se")), 
+            ~ case_when(is.na(.) ~ na_dbl,
+                      is.infinite(.) ~ na_dbl,
+                      TRUE ~ .))  
+
+```
+
+```{r, eval=FALSE}
+write_tsv(years_metasoft_in, here::here("data/derived_data/metasoft/years/metasoft_in.years.txt"),
+          col_names = FALSE)
+```
+
+
+# Manhattan plots
+
+## 2016
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = years_gwas %>% 
+                 filter(dataset == "2016an"),
+               y_var = neglog10p, 
+               y_lab = "-log10(p-value)",
+               sigline = 5,
+               color1 = "gray1",
+               color2 = "gray91")
+```
+
+## 2017
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = years_gwas %>% 
+                 filter(dataset == "2017an"),
+               y_var = neglog10p, 
+               y_lab = "-log10(p-value)",
+               sigline = 5,
+               color1 = "gray1",
+               color2 = "gray91")
+```
+
+## 2018
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = years_gwas %>% 
+                 filter(dataset == "2018an"),
+               y_var = neglog10p, 
+               y_lab = "-log10(p-value)",
+               sigline = 5,
+               color1 = "gray1",
+               color2 = "gray91")
+```
+
+## 2019
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = years_gwas %>% 
+                 filter(dataset == "2019an"),
+               y_var = neglog10p, 
+               y_lab = "-log10(p-value)",
+               sigline = 5,
+               color1 = "gray1",
+               color2 = "gray91")
+```
+
+# `METASOFT`
+
+```
+srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/years/metasoft_in.years.txt -output data/derived_data/metasoft/years/metasoft_out.years.txt -mvalue -log data/derived_data/metasoft/years/metasoft.years.log
+```
+
+```{r}
+years_metasoft_out <- 
+  read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years.txt"),
+              col_types = cols(.default = "d", RSID = "c")) %>% 
+  janitor::clean_names() %>% 
+  select(-pvalues_of_studies_tab_delimitered, -mvalues_of_studies_tab_delimitered) 
+```
+
+```{r}
+myears <-
+  read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years.txt"),
+              skip = 1,
+              col_types = "c---------------dddddddd", 
+              col_names = c("rsid", "p2016an", "p2017an", "p2018an", "p2019an", "m2016an", "m2017an", "m2018an", "m2019an")) %>% 
+  select(-contains("m")) %>% 
+  tidyr::pivot_longer(cols = contains("p"),
+                      names_to = "dataset",
+                      values_to = "p") %>%
+  mutate(dataset = str_remove(dataset, "p")) %>% 
+  left_join(myears %>% 
+              select(-contains("p")) %>% 
+              tidyr::pivot_longer(cols = contains("m"),
+                                  names_to = "dataset",
+                                  values_to = "m") %>% 
+              mutate(dataset = str_remove(dataset, "m")),
+            by = c("rsid", "dataset"))
+```
+
+```{r}
+test %>% 
+  filter_at(vars("m", "p"), all_vars(!is.na(.)))
+```
+

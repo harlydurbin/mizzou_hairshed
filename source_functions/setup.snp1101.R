@@ -123,3 +123,4 @@ renaddped %>%
   select(full_reg, sire_reg, dam_reg, sex) %>%
   write_tsv(here::here(glue("data/derived_data/snp1101/{model}/ped.{model}.txt")),
             col_names = FALSE)
+

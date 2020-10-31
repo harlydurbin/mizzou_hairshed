@@ -44,7 +44,7 @@ SNPID   Chr     Pos     freq    g0      g1      g2      a       b       Var     
 
 # Setup
 
-## Raw results
+## SNP1101 results
 
 ```{r, warning = FALSE, message=FALSE}
 snp_sol <-
@@ -57,6 +57,44 @@ snp_sol <-
               select(chr = Chr, pos = Pos, fdr = FDR_GW, a))
   
 ```
+
+## GCTA results
+
+```
+srun -c 24 source_functions/gcta_1.93.2beta/gcta64 --mlma --bfile data/raw_data/geno_dump/200924_HairShed.850K.qc --pheno /storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/gcta_gwas/fixed9/pheno.txt --grm-gz data/derived_data/grm_inbreeding/mizzou_hairshed --thread-num 24 --out data/derived_data/gcta_gwas/fixed9/fixed9
+```
+
+```{r}
+
+gctatest <-
+  wideDRP(Data = trait,
+        animalId = "full_reg",
+        sireId = "sire_reg",
+        damId = "dam_reg",
+        animalEBV = "solution",
+        sireEBV = "sire_sol",
+        damEBV = "dam_sol",
+        animalr2 = "acc",
+        sirer2 = "sire_acc",
+        damr2 = "dam_acc",
+        c = 0.1,
+        h2 = h2) %>% 
+  left_join(read_table2(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.grm.id"),
+                        col_names = c("full_reg", "iid"))) %>% 
+  filter(!is.na(iid))
+
+
+gctatest %>% 
+  filter(!is.na(DRP_Trait)) %>% 
+  filter(!is.na(DRP_Trait_w)) %>% 
+  mutate(pheno = DRP_Trait*DRP_Trait_w) %>% 
+  select(full_reg, iid, pheno, solution) %>% 
+  filter(!is.na(pheno)) %>% 
+  write_delim(here::here("data/derived_data/gcta_gwas/fixed9/pheno.txt"),
+              col_names = FALSE)
+```
+
+
 
 # Summary of raw results
 
