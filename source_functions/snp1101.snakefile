@@ -24,7 +24,7 @@ rule setup_snp1101:
 		dir = lambda wildcards: expand("{dir}", dir = config['dir'][wildcards.model]),
 		animal_effect = lambda wildcards: expand("{animal_effect}", animal_effect = config['animal_effect'][wildcards.model]),
 		gen_var = lambda wildcards: expand("{gen_var}", gen_var = config['gen_var'][wildcards.model]),
-		h2 = lambda wildcards: expand("{gen_var}", gen_var = config['h2'][wildcards.model]),
+		h2 = lambda wildcards: expand("{gen_var}", gen_var = config['h2'][wildcards.model])
 	output:
 		traitfile = "data/derived_data/snp1101/{model}/trait.txt"
 	shell:
