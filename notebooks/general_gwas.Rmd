@@ -51,7 +51,8 @@ snp_sol <-
   read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs_p.txt"))  %>%
   janitor::clean_names() %>%
   mutate(neglog10p = -log10(p_value),
-         abs_snp = abs(b_value)) %>%
+         abs_snp = abs(b_value),
+         neglog10q = -log10(qvalue::qvalue(p_value)$qvalues)) %>%
   left_join(read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs.txt"),
                         skip = 12) %>%
               select(chr = Chr, pos = Pos, fdr = FDR_GW, a))
@@ -63,8 +64,8 @@ snp_sol <-
 ```
 srun -c 24 source_functions/gcta_1.93.2beta/gcta64 --mlma --bfile data/raw_data/geno_dump/200924_HairShed.850K.qc --pheno /storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/gcta_gwas/fixed9/pheno.txt --grm-gz data/derived_data/grm_inbreeding/mizzou_hairshed --thread-num 24 --out data/derived_data/gcta_gwas/fixed9/fixed9
 ```
-
-```{r}
+ 
+```{r, eval = FALSE}
 
 gctatest <-
   wideDRP(Data = trait,
@@ -94,31 +95,31 @@ gctatest %>%
               col_names = FALSE)
 ```
 
-
-
-# Summary of raw results
-
-## How many variants passed FDR 0.05?
-
 ```{r}
+gcta_mlma <- 
+  read_table2(here::here("data/derived_data/gcta_gwas/fixed9/fixed9.mlma")) %>% 
+  janitor::clean_names() %>% 
+  mutate(neglog10p = -log10(p),
+         neglog10q = -log10(qvalue::qvalue(p)$qvalues)) %>% 
+  rename(pos = bp)
+```
+
+
+```{r, eval = FALSE}
 snp_sol %>% 
   filter(fdr != -1)
 ```
 
-# Manhattan plot of $-log_{10}(p-value)$
+# Manhattan plot of $-log_{10}(q-value)$
 
-```{r}
-snp_sol %>% 
-  filter(fdr == 0.01) %>% 
-  arrange(neglog10p)
-```
+## SNP1101
 
 ```{r, fig.width = 11, fig.height = 6.16}
 manall <- 
   hair_manhattan(df = snp_sol,
-                 y_var = neglog10p, 
-                 y_lab = "neglog10p",
-                 sigline = 4.955896,
+                 y_var = neglog10q, 
+                 y_lab = "neglog10q",
+                 sigline = 1,
                  color1 = "#ef8759",
                  color2 = "#5da19a")
 
@@ -128,16 +129,40 @@ manall
 #ggsave(filename = here::here("figures/snp1101_p.png"), height = 6.16, width = 11)
 ```
 
-## QQ plot
+## GCTA
 
-## All SNPs
+```{r}
+
+  hair_manhattan(df = gcta_mlma,
+                 y_var = neglog10q, 
+                 y_lab = "neglog10q",
+                 sigline = 1,
+                 color1 = "#ef8759",
+                 color2 = "#5da19a")
+
+#ggsave(here::here("figures/gcta_q.png"))
+```
+
+
+# QQ plot
+
+## SNP1101
+
+### All SNPs
 
 ```{r}
 ggqq(pvector = snp_sol$p_value)
 ```
 
-## Non-significant SNPs
+### Non-significant SNPs
 
 ```{r}
 ggqq(pvector = snp_sol[snp_sol$fdr == -1, "p_value"][[1]])
 ```
+
+## GCTA
+
+```{r}
+ggqq(pvector = gcta_mlma$p)
+```
+
