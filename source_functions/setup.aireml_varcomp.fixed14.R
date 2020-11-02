@@ -30,7 +30,13 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
 ## ---- warning=FALSE, message=FALSE--------------------------------------------------------------------------------------------------
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
-genotyped <- read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"))
+vec <- 
+  read_table2(here::here("data/derived_data/smartpca/smartpca.mizzou_hairshed.evec"),
+              skip = 1,
+              col_names = FALSE) %>%
+  select(-X12) %>%
+  set_names(c("full_reg", purrr::map_chr(1:10, ~ str_c("PC", .x)))) %>% 
+  mutate(full_reg = str_extract(full_reg, "(?<=[[:alnum:]]:)[[:alnum:]]+$")) 
 
 #'
 #' # Score group
@@ -153,9 +159,6 @@ matched <-
   assertr::verify(!is.na(full_reg)) %>%
   assertr::verify(!is.na(hair_score))
 
-matched %<>%
-  filter(full_reg %in% genotyped$full_reg)
-
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------
 print("Duplicate animals, different full_reg")
@@ -171,11 +174,17 @@ matched %>%
   write_csv(here::here("data/derived_data/aireml_varcomp/fixed14/sanity_key.csv"),
             na = "")
 
+
+## Add PCs
+
+matched %<>% 
+  left_join(vec %>% 
+              select(full_reg, PC1, PC2)) %>% 
+  filter(!is.na(PC1))
+
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------
 matched %>%
-  group_by(full_reg, cg_num) %>%
-  filter(n() == 1) %>%
   ungroup() %>%
   select(full_reg, cg_num, hair_score) %>%
   write_delim(here::here("data/derived_data/aireml_varcomp/fixed14/data.txt"),

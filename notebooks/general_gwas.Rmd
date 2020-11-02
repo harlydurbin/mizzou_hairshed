@@ -20,9 +20,10 @@ library(magrittr)
 library(stringr)
 library(tidylog)
 
-source(here::here("source_functions/calculate_acc.R"))
 source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
+source(here::here("source_functions/parse_loglik.R"))
+source(here::here("source_functions/lrt_calc.R"))
 ```
 
 # Notes & questions
@@ -47,7 +48,7 @@ SNPID   Chr     Pos     freq    g0      g1      g2      a       b       Var     
 ## SNP1101 results
 
 ```{r, warning = FALSE, message=FALSE}
-snp_sol <-
+fixed9_snp1101 <-
   read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs_p.txt"))  %>%
   janitor::clean_names() %>%
   mutate(neglog10p = -log10(p_value),
@@ -60,43 +61,9 @@ snp_sol <-
 ```
 
 ## GCTA results
-
-```
-srun -c 24 source_functions/gcta_1.93.2beta/gcta64 --mlma --bfile data/raw_data/geno_dump/200924_HairShed.850K.qc --pheno /storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/gcta_gwas/fixed9/pheno.txt --grm-gz data/derived_data/grm_inbreeding/mizzou_hairshed --thread-num 24 --out data/derived_data/gcta_gwas/fixed9/fixed9
-```
  
-```{r, eval = FALSE}
-
-gctatest <-
-  wideDRP(Data = trait,
-        animalId = "full_reg",
-        sireId = "sire_reg",
-        damId = "dam_reg",
-        animalEBV = "solution",
-        sireEBV = "sire_sol",
-        damEBV = "dam_sol",
-        animalr2 = "acc",
-        sirer2 = "sire_acc",
-        damr2 = "dam_acc",
-        c = 0.1,
-        h2 = h2) %>% 
-  left_join(read_table2(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.grm.id"),
-                        col_names = c("full_reg", "iid"))) %>% 
-  filter(!is.na(iid))
-
-
-gctatest %>% 
-  filter(!is.na(DRP_Trait)) %>% 
-  filter(!is.na(DRP_Trait_w)) %>% 
-  mutate(pheno = DRP_Trait*DRP_Trait_w) %>% 
-  select(full_reg, iid, pheno, solution) %>% 
-  filter(!is.na(pheno)) %>% 
-  write_delim(here::here("data/derived_data/gcta_gwas/fixed9/pheno.txt"),
-              col_names = FALSE)
-```
-
 ```{r}
-gcta_mlma <- 
+fixed9_gcta <- 
   read_table2(here::here("data/derived_data/gcta_gwas/fixed9/fixed9.mlma")) %>% 
   janitor::clean_names() %>% 
   mutate(neglog10p = -log10(p),
@@ -104,10 +71,24 @@ gcta_mlma <-
   rename(pos = bp)
 ```
 
+```{r}
+fixed15_gcta <-
+  read_table2(here::here("data/derived_data/gcta_gwas/fixed15/fixed15.mlma")) %>% 
+  janitor::clean_names() %>% 
+  mutate(neglog10p = -log10(p),
+         neglog10q = -log10(qvalue::qvalue(p)$qvalues)) %>% 
+  rename(pos = bp)
+```
 
-```{r, eval = FALSE}
-snp_sol %>% 
-  filter(fdr != -1)
+# Does including first two PCs as fixed effect in the ssGBLUP model provide a better fit?
+
+* Issue: only included phenotypes for genotyped animals in `fixed15` model (can't have missing covariates in BLUPF90), so it isn't really an equal comparison
+
+```{r}
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed9/airemlf90.fixed9.log"),
+                                option = "logL"),
+         ll_test = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed15/airemlf90.fixed15.log"),
+                                option = "logL"))
 ```
 
 # Manhattan plot of $-log_{10}(q-value)$
@@ -115,34 +96,48 @@ snp_sol %>%
 ## SNP1101
 
 ```{r, fig.width = 11, fig.height = 6.16}
-manall <- 
-  hair_manhattan(df = snp_sol,
-                 y_var = neglog10q, 
-                 y_lab = "neglog10q",
-                 sigline = 1,
-                 color1 = "#ef8759",
-                 color2 = "#5da19a")
 
+hair_manhattan(df = fixed9_snp1101 %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "#ef8759",
+               color2 = "#5da19a")
 
-manall
 
 #ggsave(filename = here::here("figures/snp1101_p.png"), height = 6.16, width = 11)
 ```
 
 ## GCTA
 
-```{r}
+### Without PC correction
 
-  hair_manhattan(df = gcta_mlma,
-                 y_var = neglog10q, 
-                 y_lab = "neglog10q",
-                 sigline = 1,
-                 color1 = "#ef8759",
-                 color2 = "#5da19a")
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = fixed9_gcta %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "#ef8759",
+               color2 = "#5da19a")
 
 #ggsave(here::here("figures/gcta_q.png"))
 ```
 
+### With PC correction
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = fixed15_gcta %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "#ef8759",
+               color2 = "#5da19a")
+
+#ggsave(here::here("figures/gcta_q.png"))
+```
 
 # QQ plot
 
@@ -151,18 +146,25 @@ manall
 ### All SNPs
 
 ```{r}
-ggqq(pvector = snp_sol$p_value)
+ggqq(pvector = fixed9_snp1101$p_value)
 ```
 
 ### Non-significant SNPs
 
 ```{r}
-ggqq(pvector = snp_sol[snp_sol$fdr == -1, "p_value"][[1]])
+ggqq(pvector = fixed9_snp1101[fixed9_snp1101$fdr == -1, "p_value"][[1]])
 ```
 
 ## GCTA
 
+### Without PC correction
+
 ```{r}
-ggqq(pvector = gcta_mlma$p)
+ggqq(pvector = fixed9_gcta$p)
 ```
 
+### With PC correction
+
+```{r}
+ggqq(pvector = fixed15_gcta$p)
+```

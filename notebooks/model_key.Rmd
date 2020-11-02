@@ -64,13 +64,12 @@ output: html_document
 
 ## `fixed14`
 
-* Exact same as `fixed9` model, but use only genotyped animals
-* Running GBLUP instead of ssGBLUP to attempt to get around inbreeding/reliability issue
+* Exact same as `fixed9` model, but use phenotyeps for genotyped animals
 
 ## `fixed15`
 
 * Exact same as `fixed14` model, but use add correction for PC 1 and PC 2
-* Trying to solve potential population structure
+* Trying to solve issues potentially caused by population structure
 
 ## `fixed10`
 

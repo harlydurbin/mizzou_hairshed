@@ -54,6 +54,8 @@ scales::show_col(bakeoff::bakeoff_pal()(11))
 
 ## Raw GWAS results
 
+### SNP1101
+
 ```{r, warning=FALSE, message=FALSE}
 breed_gwas <-
   c("hfd1", "an1", "bg1", "igs1") %>% 
@@ -66,6 +68,21 @@ breed_gwas <-
                                          skip = 12) %>%
                                select(chr = Chr, pos = Pos, fdr = FDR_GW, a)),
                  .id = "dataset")
+```
+
+### GCTA
+
+```{r}
+gcta_breed_gwas <-
+  c("hfd1", "an1", "bg1", "igs1") %>% 
+  purrr::set_names() %>% 
+  purrr::map_dfr(~ read_table2(here::here(glue("data/derived_data/gcta_gwas/{.x}/{.x}.mlma"))) %>% 
+                   janitor::clean_names() %>% 
+                   mutate(neglog10p = -log10(p),
+                          neglog10q = -log10(qvalue::qvalue(p)$qvalues)),
+                 .id = "dataset") %>% 
+  rename(pos = bp)
+
 ```
 
 ## `METASOFT`
@@ -146,52 +163,115 @@ breed_h2 %>%
 
 ## Hereford
 
+### SNP1101
+
 ```{r, fig.width = 11, fig.height = 6.16}
-  hair_manhattan(df = breed_gwas %>% 
-                   filter(dataset == "hfd1"),
-                 y_var = neglog10q, 
-                 y_lab = "-log10(q-value)",
-                 sigline = 1,
-                 color1 = "gray1",
-                 color2 = "gray91")
+hair_manhattan(df = breed_gwas %>% 
+                 filter(dataset == "hfd1") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "gray1",
+               color2 = "gray91")
+```
+
+### GCTA
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = gcta_breed_gwas %>% 
+                 filter(dataset == "hfd1") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "gray1",
+               color2 = "gray91")
 ```
 
 ## Angus
 
+## SNP1101
+
 ```{r, fig.width = 11, fig.height = 6.16}
-  hair_manhattan(df = breed_gwas %>% 
-                   filter(dataset == "an1"),
-                 y_var = neglog10q, 
-                 y_lab = "-log10(q-value)",
-                 sigline = 1,
-                 color1 = "gray1",
-                 color2 = "gray91")
+hair_manhattan(df = breed_gwas %>% 
+                 filter(dataset == "an1") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "gray1",
+               color2 = "gray91")
+```
+
+### GCTA
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = gcta_breed_gwas %>% 
+                 filter(dataset == "an1") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "gray1",
+               color2 = "gray91")
 ```
 
 ## IGS
 
+### SNP1101
+
 ```{r, fig.width = 11, fig.height = 6.16}
-  hair_manhattan(df = breed_gwas %>% 
-                   filter(dataset == "igs1"),
-                 y_var = neglog10q, 
-                 y_lab = "-log10(q-value)",
-                 sigline = 1,
-                 color1 = "gray1",
-                 color2 = "gray91")
+hair_manhattan(df = breed_gwas %>% 
+                 filter(dataset == "igs1") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "gray1",
+               color2 = "gray91")
+```
+
+### GCTA
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = gcta_breed_gwas %>% 
+                 filter(dataset == "igs1") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "gray1",
+               color2 = "gray91")
 ```
 
 ## Brangus
 
+### SNP1101
+
 ```{r, fig.width = 11, fig.height = 6.16}
-  hair_manhattan(df = breed_gwas %>% 
-                   filter(dataset == "bg1"),
-                 y_var = neglog10q, 
-                 y_lab = "-log10(q-value)",
-                 sigline = 1,
-                 color1 = "gray1",
-                 color2 = "gray91")
+hair_manhattan(df = breed_gwas %>% 
+                 filter(dataset == "bg1") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "gray1",
+               color2 = "gray91")
 ```
 
+### GCTA
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = gcta_breed_gwas %>% 
+                 filter(dataset == "bg1") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "gray1",
+               color2 = "gray91")
+```
 
 # `METASOFT`
 
