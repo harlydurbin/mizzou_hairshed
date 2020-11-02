@@ -35,7 +35,7 @@ options(scipen = 999)
 ## Raw GWAS results
 
 ```{r}
-years_gwas <-
+years_gcta <-
   c("2016an", "2017an", "2018an", "2019an") %>% 
   purrr::set_names() %>% 
   purrr::map_dfr(~ read_table2(here::here(glue("data/derived_data/gcta_gwas/{.x}/{.x}.mlma"))) %>% 
@@ -54,7 +54,7 @@ years_gwas <-
 years_metasoft_in <-
   purrr::map2(.x = c("2016an", "2017an", "2018an", "2019an"),
               .y = c(1535, 1906, 2164, 1412),
-              ~ years_gwas %>% 
+              ~ years_gcta %>% 
                 filter(dataset == .x) %>% 
                 mutate(id = glue("{chr}:{pos}")) %>%
                 select(id, !!rlang::sym(glue("{.x}_b")) := b, !!rlang::sym(glue("{.x}_se")) := se)) %>% 
@@ -71,55 +71,66 @@ write_tsv(years_metasoft_in, here::here("data/derived_data/metasoft/years/metaso
           col_names = FALSE)
 ```
 
-
 # Manhattan plots
 
 ## 2016
 
 ```{r, fig.width = 11, fig.height = 6.16}
-hair_manhattan(df = years_gwas %>% 
-                 filter(dataset == "2016an"),
-               y_var = neglog10p, 
-               y_lab = "-log10(p-value)",
-               sigline = 5,
+hair_manhattan(df = years_gcta %>% 
+                 filter(dataset == "2016an") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
                color1 = "gray1",
                color2 = "gray91")
+
+ggsave(here::here("figures/years/2016an_gcta.q.png"))
 ```
 
 ## 2017
 
 ```{r, fig.width = 11, fig.height = 6.16}
-hair_manhattan(df = years_gwas %>% 
-                 filter(dataset == "2017an"),
-               y_var = neglog10p, 
-               y_lab = "-log10(p-value)",
-               sigline = 5,
+hair_manhattan(df = years_gcta %>% 
+                 filter(dataset == "2017an") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
                color1 = "gray1",
                color2 = "gray91")
+
+ggsave(here::here("figures/years/2017an_gcta.q.png"))
 ```
 
 ## 2018
 
 ```{r, fig.width = 11, fig.height = 6.16}
-hair_manhattan(df = years_gwas %>% 
-                 filter(dataset == "2018an"),
-               y_var = neglog10p, 
-               y_lab = "-log10(p-value)",
-               sigline = 5,
+hair_manhattan(df = years_gcta %>% 
+                 filter(dataset == "2018an") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
                color1 = "gray1",
                color2 = "gray91")
+
+ggsave(here::here("figures/years/2018an_gcta.q.png"))
 ```
 
 ## 2019
 
 ```{r, fig.width = 11, fig.height = 6.16}
-hair_manhattan(df = years_gwas %>% 
-                 filter(dataset == "2019an"),
-               y_var = neglog10p, 
-               y_lab = "-log10(p-value)",
-               sigline = 5,
+hair_manhattan(df = years_gcta %>% 
+                 filter(dataset == "2019an") %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
                color1 = "gray1",
                color2 = "gray91")
+
+ggsave(here::here("figures/years/2019an_gcta.q.png"))
 ```
 
 # `METASOFT`
@@ -128,7 +139,7 @@ hair_manhattan(df = years_gwas %>%
 srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/years/metasoft_in.years.txt -output data/derived_data/metasoft/years/metasoft_out.years.txt -mvalue -log data/derived_data/metasoft/years/metasoft.years.log
 ```
 
-```{r}
+```{r, eval=FALSE}
 years_metasoft_out <- 
   read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years.txt"),
               col_types = cols(.default = "d", RSID = "c")) %>% 
@@ -137,17 +148,21 @@ years_metasoft_out <-
 ```
 
 ```{r}
-myears <-
+years_m <-
   read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years.txt"),
               skip = 1,
               col_types = "c---------------dddddddd", 
-              col_names = c("rsid", "p2016an", "p2017an", "p2018an", "p2019an", "m2016an", "m2017an", "m2018an", "m2019an")) %>% 
+              col_names = c("rsid", "p2016an", "p2017an", "p2018an", "p2019an", "m2016an", "m2017an", "m2018an", "m2019an"))
+```
+
+```{r}
+years_m %<>% 
   select(-contains("m")) %>% 
   tidyr::pivot_longer(cols = contains("p"),
                       names_to = "dataset",
                       values_to = "p") %>%
   mutate(dataset = str_remove(dataset, "p")) %>% 
-  left_join(myears %>% 
+  left_join(years_m %>% 
               select(-contains("p")) %>% 
               tidyr::pivot_longer(cols = contains("m"),
                                   names_to = "dataset",
@@ -157,7 +172,7 @@ myears <-
 ```
 
 ```{r}
-test %>% 
+years_m %>% 
   filter_at(vars("m", "p"), all_vars(!is.na(.)))
 ```
 

@@ -122,7 +122,7 @@ hair_manhattan(df = fixed9_gcta %>%
                color1 = "#ef8759",
                color2 = "#5da19a")
 
-#ggsave(here::here("figures/gcta_q.png"))
+ggsave(here::here("figures/general_gwas/fixed9_gcta.q.png"))
 ```
 
 ### With PC correction
@@ -136,7 +136,7 @@ hair_manhattan(df = fixed15_gcta %>%
                color1 = "#ef8759",
                color2 = "#5da19a")
 
-#ggsave(here::here("figures/gcta_q.png"))
+ggsave(here::here("figures/general_gwas/fixed15_gcta.q.png"))
 ```
 
 # QQ plot
@@ -160,11 +160,16 @@ ggqq(pvector = fixed9_snp1101[fixed9_snp1101$fdr == -1, "p_value"][[1]])
 ### Without PC correction
 
 ```{r}
-ggqq(pvector = fixed9_gcta$p)
+ggqq(pvector = fixed9_gcta$p) +
+  theme_classic()
+
+ggsave(here::here("figures/general_gwas/fixed9_gcta.Q-Q.png"))
 ```
 
 ### With PC correction
 
 ```{r}
 ggqq(pvector = fixed15_gcta$p)
+
+ggsave(here::here("figures/general_gwas/fixed15_gcta.Q-Q.png"))
 ```
