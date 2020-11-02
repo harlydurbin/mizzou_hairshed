@@ -14,7 +14,7 @@ traitfile
        name "fixed9_bvs"
        file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/fixed9/trait.txt"
        est 1
-       h2 0.37
+       //h2 0.37
        skip 1;
 
 qc
