@@ -7,31 +7,32 @@ gfile
 mapfile
        "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/raw_data/geno_dump/200924_HairShed.850K.chrinfo.txt";
 
-// pedfile
-      // "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/fixed15/ped.txt";
+//pedfile
+      //"/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/fixed15/ped.fixed15.txt";
 
 traitfile
        name "fixed15_bvs"
        file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/fixed15/trait.txt"
        est 1
+       h2 0.36
        skip 1;
 
 qc
        maf_range 0.0 0.5;
 
 //kinship
-       //matrix
-       //name "hair_grm"
-       //method vanraden;
-      // save_text gmtx;
+      //matrix
+      //name "hair_grm"
+      //method vanraden;
+      //save_text gmtx;
 
 gwas ssr
-       kinship file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/gmtx_hair_grm.bin"
-       wt rel
-       maf_range 0.0 0.5
-       mca gwise fdr
-       plot
-       plot qq;
+      kinship file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/fixed15/gmtx_hair_grm.bin"
+      wt rel
+      maf_range 0.0 0.5
+      mca gwise fdr
+      plot
+      plot qq;
 
 nthread
        32;

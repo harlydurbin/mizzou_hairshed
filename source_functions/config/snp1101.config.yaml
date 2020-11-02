@@ -12,12 +12,12 @@ snp1101_path: "/storage/hpc/group/UMAG/SCRIPTS/snp1101/snp1101"
 
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
-model: ['hfd1', 'an1', 'bg1', 'igs1', 'fixed15']
+model: ['fixed9', 'fixed15']
 
 dir: {'fixed9':['data/derived_data/aireml_varcomp/fixed9'], 'hfd1':['data/derived_data/aireml_varcomp/hfd1'], 'an1':['data/derived_data/aireml_varcomp/an1'], 'bg1':['data/derived_data/aireml_varcomp/bg1'], 'igs1':['data/derived_data/aireml_varcomp/igs1'], 'fixed15':['data/derived_data/aireml_varcomp/fixed15']}
 
 animal_effect: {'fixed9':['2'], 'hfd1':[2], 'an1':[2], 'bg1':[2], 'igs1':[2], 'fixed15':[4]}
 
-gen_var: {'fixed9':['0.33133'], 'hfd1':['0.21463'], 'an1':['0.35806'], 'bg1':['0.26718'], 'igs1':['0.39053'], 'fixed15':['0.33243']}
+gen_var: {'fixed9':['0.33133'], 'hfd1':['0.21463'], 'an1':['0.35806'], 'bg1':['0.26718'], 'igs1':['0.39053'], 'fixed15':['0.32491']}
 
-h2: {'fixed9':['0.3675115'], 'hfd1':['0.320991'], 'an1':['0.3700003'], 'bg1':['0.3988189'], 'igs1':['0.4072084'], 'fixed15':['0.3705285']}
+h2: {'fixed9':['0.3675115'], 'hfd1':['0.320991'], 'an1':['0.3700003'], 'bg1':['0.3988189'], 'igs1':['0.4072084'], 'fixed15':['0.3628175']}

@@ -96,23 +96,35 @@ trait %<>%
 
 
 ## -------------------------------------------------------------------------------------------------------------------------------
-wideDRP(Data = trait,
-        animalId = "full_reg",
-        sireId = "sire_reg",
-        damId = "dam_reg",
-        animalEBV = "solution",
-        sireEBV = "sire_sol",
-        damEBV = "dam_sol",
-        animalr2 = "acc",
-        sirer2 = "sire_acc",
-        damr2 = "dam_acc",
-        c = 0.1,
-        h2 = h2) %>%
+drp <-
+  wideDRP(Data = trait,
+          animalId = "full_reg",
+          sireId = "sire_reg",
+          damId = "dam_reg",
+          animalEBV = "solution",
+          sireEBV = "sire_sol",
+          damEBV = "dam_sol",
+          animalr2 = "acc",
+          sirer2 = "sire_acc",
+          damr2 = "dam_acc",
+          c = 0.1,
+          h2 = h2) %>%
   mutate(DRP_Trait_r2 = if_else(0 > DRP_Trait_r2, 0, DRP_Trait_r2),
          Group = 1,
-         Rel = DRP_Trait_r2*100) %>%
+         Rel = DRP_Trait_r2*100,
+         # Change unknown reliabilities to 50
+         Rel = if_else(Rel == 0, 50, Rel)) 
+
+
+drp %>%
   filter(!is.na(DRP_Trait)) %>% 
+  # Remove infinite values, otherwise will fail with "Matrix is singular"
+  filter(!is.infinite(DRP_Trait)) %>% 
   assertr::verify(Rel >= 0) %>% 
+  # limit to only animals with genotypes
+  left_join(read_table2(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.grm.id"),
+                        col_names = c("full_reg", "iid"))) %>%
+  filter(!is.na(iid)) %>% 
   select(ID = full_reg, Group, Obs = DRP_Trait, Rel) %>%
   write_tsv(here::here(glue("data/derived_data/snp1101/{model}/trait.txt")))
 
