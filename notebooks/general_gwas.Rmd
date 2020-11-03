@@ -60,9 +60,22 @@ fixed9_snp1101 <-
   
 ```
 
+```{r, warning = FALSE, message=FALSE}
+fixed15_snp1101 <-
+  read_table2(here::here("data/derived_data/snp1101/fixed15/out/gwas_ssr_fixed15_bvs_p.txt"))  %>%
+  janitor::clean_names() %>%
+  mutate(neglog10p = -log10(p_value),
+         abs_snp = abs(b_value),
+         neglog10q = -log10(qvalue::qvalue(p_value)$qvalues)) %>%
+  left_join(read_table2(here::here("data/derived_data/snp1101/fixed15/out/gwas_ssr_fixed15_bvs.txt"),
+                        skip = 12) %>%
+              select(chr = Chr, pos = Pos, fdr = FDR_GW, a))
+  
+```
+
 ## GCTA results
  
-```{r}
+```{r, eval=FALSE}
 fixed9_gcta <- 
   read_table2(here::here("data/derived_data/gcta_gwas/fixed9/fixed9.mlma")) %>% 
   janitor::clean_names() %>% 
@@ -71,7 +84,7 @@ fixed9_gcta <-
   rename(pos = bp)
 ```
 
-```{r}
+```{r, eval = FALSE}
 fixed15_gcta <-
   read_table2(here::here("data/derived_data/gcta_gwas/fixed15/fixed15.mlma")) %>% 
   janitor::clean_names() %>% 
@@ -82,10 +95,10 @@ fixed15_gcta <-
 
 # Does including first two PCs as fixed effect in the ssGBLUP model provide a better fit?
 
-* Issue: only included phenotypes for genotyped animals in `fixed15` model (can't have missing covariates in BLUPF90), so it isn't really an equal comparison
+* Issue: only included phenotypes for genotyped animals in `fixed15` model (can't have missing covariates in BLUPF90), so it isn't really an equal comparison to `fixed9` model. Compare instead to `fixed14` model, which only includes phenotypes for genotyped animals
 
 ```{r}
-lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed9/airemlf90.fixed9.log"),
+lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed14/airemlf90.fixed14.log"),
                                 option = "logL"),
          ll_test = parse_loglik(path = here::here("data/derived_data/aireml_varcomp/fixed15/airemlf90.fixed15.log"),
                                 option = "logL"))
@@ -95,10 +108,12 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varc
 
 ## SNP1101
 
+### Without PC correction
+
 ```{r, fig.width = 11, fig.height = 6.16}
 
 hair_manhattan(df = fixed9_snp1101 %>% 
-                 filter(0.01 > p),
+                 filter(0.01 > p_value),
                y_var = neglog10q, 
                y_lab = "-log10(q-value)",
                sigline = 1,
@@ -106,14 +121,30 @@ hair_manhattan(df = fixed9_snp1101 %>%
                color2 = "#5da19a")
 
 
-#ggsave(filename = here::here("figures/snp1101_p.png"), height = 6.16, width = 11)
+ggsave(filename = here::here("figures/general_gwas/fixed9_snp1101.q.png"), height = 6.16, width = 11)
+```
+
+### With PC correction
+
+```{r, fig.width = 11, fig.height = 6.16}
+
+hair_manhattan(df = fixed15_snp1101 %>% 
+                 filter(0.01 > p_value),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "#ef8759",
+               color2 = "#5da19a")
+
+
+ggsave(filename = here::here("figures/general_gwas/fixed15_snp1101.q.png"), height = 6.16, width = 11)
 ```
 
 ## GCTA
 
 ### Without PC correction
 
-```{r, fig.width = 11, fig.height = 6.16}
+```{r, fig.width = 11, fig.height = 6.16,eval=FALSE}
 hair_manhattan(df = fixed9_gcta %>% 
                  filter(0.01 > p),
                y_var = neglog10q, 
@@ -127,7 +158,7 @@ ggsave(here::here("figures/general_gwas/fixed9_gcta.q.png"))
 
 ### With PC correction
 
-```{r, fig.width = 11, fig.height = 6.16}
+```{r, fig.width = 11, fig.height = 6.16, eval = FALSE}
 hair_manhattan(df = fixed15_gcta %>% 
                  filter(0.01 > p),
                y_var = neglog10q, 
@@ -145,8 +176,16 @@ ggsave(here::here("figures/general_gwas/fixed15_gcta.q.png"))
 
 ### All SNPs
 
+#### Without PCs
+
 ```{r}
 ggqq(pvector = fixed9_snp1101$p_value)
+```
+
+#### With PCs
+
+```{r}
+ggqq(pvector = fixed15_snp1101$p_value)
 ```
 
 ### Non-significant SNPs
@@ -159,7 +198,7 @@ ggqq(pvector = fixed9_snp1101[fixed9_snp1101$fdr == -1, "p_value"][[1]])
 
 ### Without PC correction
 
-```{r}
+```{r, eval = FALSE}
 ggqq(pvector = fixed9_gcta$p) +
   theme_classic()
 
@@ -168,7 +207,7 @@ ggsave(here::here("figures/general_gwas/fixed9_gcta.Q-Q.png"))
 
 ### With PC correction
 
-```{r}
+```{r, eval = FALSE}
 ggqq(pvector = fixed15_gcta$p)
 
 ggsave(here::here("figures/general_gwas/fixed15_gcta.Q-Q.png"))

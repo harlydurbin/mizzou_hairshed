@@ -34,7 +34,7 @@ full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
 
 ```{r, warning=FALSE, message=FALSE}
-fixed3 <-
+fixed13 <-
   c(1:4) %>% 
   purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/base_varcomp/fixed2/renf90.tables"),
                                      effect_num = .x,

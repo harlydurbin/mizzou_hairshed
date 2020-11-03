@@ -4,7 +4,9 @@ author: "Harly Durbin"
 output: html_document
 ---
 
-# Latitude, temperature, day length
+Organized by goal/motivation
+
+# Latitude
 
 ## `fixed1`
 
@@ -17,20 +19,7 @@ output: html_document
 * Take out `{from_may1}` because it's highly correlated with `{mean_apparent_high}`
 * Use age groups rather than categorical ages
 
-## `fixed3`
-
-* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high}`
-* Replace latitude with mean day length
-
-## `fixed4`
-
-* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {temp_length}`
-* Add day length x temperature interaction term
-
-# #`fixed13`
-
-* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {centered_temp_length}`
-* `fixed4`, but center the interaction term
+# Temperature, day length
 
 ## `fixed5`
 
@@ -41,6 +30,22 @@ output: html_document
 
 * `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_apparent_high}`
 * Only temperature, no day length
+
+## `fixed3`
+
+* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high}`
+* Temperature and day length
+
+## `fixed4`
+
+* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {temp_length}`
+* Add day length x temperature interaction term
+
+## `fixed13`
+
+* `{year} + {calving_season} + {age_group} + {toxic_fescue} + {mean_day_length} + {mean_apparent_high} + {centered_temp_length}`
+* `fixed4`, but center the interaction term
+
 
 # Farm ID vs. environmental variables
 
@@ -123,3 +128,9 @@ In breed-specific evaluations, only use genotypes & 3-generation pedigree for br
 
 ## `2019an`
 
+# Age
+
+## `fixed16`
+
+* `{farm_id + year + calving_season + score_group + toxic_fescue} + {age}`
+* Categorical age + partial contemporary group

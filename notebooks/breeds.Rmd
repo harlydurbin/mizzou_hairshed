@@ -52,6 +52,39 @@ scales::show_col(bakeoff::bakeoff_pal()(11))
     
 # Setup
 
+```{r}
+breed_key <- 
+  read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
+```
+
+```{r}
+breed_key %>% 
+  distinct(cross)
+```
+
+```{r}
+breed_key %>% 
+  filter(cross == "GEL")
+```
+
+```{r}
+breed_key %>% 
+  filter(cross == "HFD") %>% 
+  distinct(farm_id)
+```
+
+```{r}
+breed_key %>% 
+  filter(cross == "BGR") %>% 
+  distinct(farm_id)
+```
+
+
+```{r}
+
+```
+
+
 ## Raw GWAS results
 
 ### SNP1101
@@ -72,7 +105,7 @@ breeds_snp1101 <-
 
 ### GCTA
 
-```{r}
+```{r, eval = FALSE}
 breeds_gcta <-
   c("hfd1", "an1", "bg1", "igs1") %>% 
   purrr::set_names() %>% 
@@ -95,7 +128,8 @@ metasoft_in <-
               ~ breeds_snp1101 %>% 
                 filter(dataset == .x) %>% 
                 mutate(id = glue("{chr}:{pos}"),
-                       se = sqrt(var/.y)) %>%
+                       #se = sqrt(var/.y),
+                       se = var) %>%
                 select(id, !!rlang::sym(glue("{.x}_b")) := b_value, !!rlang::sym(glue("{.x}_se")) := se)) %>% 
   purrr::reduce(left_join) %>% 
   mutate_if(is.numeric, ~ if_else(. == 0, na_dbl, .))
@@ -103,7 +137,7 @@ metasoft_in <-
 ```
 
 ```{r, eval=FALSE}
-write_tsv(metasoft_in, here::here("data/derived_data/metasoft/breeds/metasoft_in.breeds.txt"),
+write_tsv(metasoft_in, here::here("data/derived_data/metasoft/breeds/metasoft_in.breeds.var.txt"),
           col_names = FALSE)
 ```
 
@@ -168,17 +202,32 @@ breed_h2 %>%
 ```{r, fig.width = 11, fig.height = 6.16}
 hair_manhattan(df = breeds_snp1101 %>% 
                  filter(dataset == "hfd1") %>% 
-                 filter(0.01 > p),
+                 filter(0.01 > p_value),
                y_var = neglog10q, 
                y_lab = "-log10(q-value)",
                sigline = 1,
                color1 = "gray1",
                color2 = "gray91")
+
+ggsave(filename = here::here("figures/breeds/hfd1_snp1101.q.png"), height = 6.16, width = 11)
+```
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = breeds_snp1101 %>% 
+                 filter(dataset == "hfd1") %>% 
+                 filter(0.01 > p_value),
+               y_var = neglog10p, 
+               y_lab = "-log10(p-value)",
+               sigline = 5,
+               color1 = "gray1",
+               color2 = "gray91")
+
+ggsave(filename = here::here("figures/breeds/hfd1_snp1101.p.png"), height = 6.16, width = 11)
 ```
 
 ### GCTA
 
-```{r, fig.width = 11, fig.height = 6.16}
+```{r, fig.width = 11, fig.height = 6.16, eval = FALSE}
 hair_manhattan(df = breeds_gcta %>% 
                  filter(dataset == "hfd1") %>% 
                  filter(0.01 > p),
@@ -187,6 +236,8 @@ hair_manhattan(df = breeds_gcta %>%
                sigline = 1,
                color1 = "gray1",
                color2 = "gray91")
+
+
 ```
 
 ## Angus
@@ -196,15 +247,17 @@ hair_manhattan(df = breeds_gcta %>%
 ```{r, fig.width = 11, fig.height = 6.16}
 hair_manhattan(df = breeds_snp1101 %>% 
                  filter(dataset == "an1") %>% 
-                 filter(0.01 > p),
+                 filter(0.01 > p_value),
                y_var = neglog10q, 
                y_lab = "-log10(q-value)",
                sigline = 1,
                color1 = "gray1",
                color2 = "gray91")
+
+ggsave(filename = here::here("figures/breeds/an1_snp1101.q.png"), height = 6.16, width = 11)
 ```
 
-```{r}
+```{r, eval=FALSE}
 ggqq(pvector = breeds_snp1101[breeds_snp1101$dataset == "an1", "p_value"][[1]])
 
 ggsave(here::here("figures/breeds/an1_snp1101.Q-Q.png"))
@@ -212,7 +265,7 @@ ggsave(here::here("figures/breeds/an1_snp1101.Q-Q.png"))
 
 ### GCTA
 
-```{r, fig.width = 11, fig.height = 6.16}
+```{r, fig.width = 11, fig.height = 6.16, eval = FALSE}
 hair_manhattan(df = breeds_gcta %>% 
                  filter(dataset == "an1") %>% 
                  filter(0.01 > p),
@@ -223,7 +276,7 @@ hair_manhattan(df = breeds_gcta %>%
                color2 = "gray91")
 ```
 
-```{r}
+```{r, eval=FALSE}
 ggqq(pvector = breeds_gcta[breeds_gcta$dataset == "an1", "p"][[1]])
 
 ggsave(here::here("figures/breeds/an1_gcta.Q-Q.png"))
@@ -236,17 +289,19 @@ ggsave(here::here("figures/breeds/an1_gcta.Q-Q.png"))
 ```{r, fig.width = 11, fig.height = 6.16}
 hair_manhattan(df = breeds_snp1101 %>% 
                  filter(dataset == "igs1") %>% 
-                 filter(0.01 > p),
+                 filter(0.01 > p_value),
                y_var = neglog10q, 
                y_lab = "-log10(q-value)",
                sigline = 1,
                color1 = "gray1",
                color2 = "gray91")
+
+ggsave(filename = here::here("figures/breeds/igs1_snp1101.q.png"), height = 6.16, width = 11)
 ```
 
 ### GCTA
 
-```{r, fig.width = 11, fig.height = 6.16}
+```{r, fig.width = 11, fig.height = 6.16, eval = FALSE}
 hair_manhattan(df = breeds_gcta %>% 
                  filter(dataset == "igs1") %>% 
                  filter(0.01 > p),
@@ -264,17 +319,32 @@ hair_manhattan(df = breeds_gcta %>%
 ```{r, fig.width = 11, fig.height = 6.16}
 hair_manhattan(df = breeds_snp1101 %>% 
                  filter(dataset == "bg1") %>% 
-                 filter(0.01 > p),
+                 filter(0.01 > p_value),
                y_var = neglog10q, 
                y_lab = "-log10(q-value)",
                sigline = 1,
                color1 = "gray1",
                color2 = "gray91")
+
+ggsave(filename = here::here("figures/breeds/bg11_snp1101.q.png"), height = 6.16, width = 11)
+```
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = breeds_snp1101 %>% 
+                 filter(dataset == "bg1") %>% 
+                 filter(0.01 > p_value),
+               y_var = neglog10p, 
+               y_lab = "-log10(p-value)",
+               sigline = 5,
+               color1 = "gray1",
+               color2 = "gray91")
+
+ggsave(filename = here::here("figures/breeds/bg1_snp1101.p.png"), height = 6.16, width = 11)
 ```
 
 ### GCTA
 
-```{r, fig.width = 11, fig.height = 6.16}
+```{r, fig.width = 11, fig.height = 6.16, eval=FALSE}
 hair_manhattan(df = breeds_gcta %>% 
                  filter(dataset == "bg1") %>% 
                  filter(0.01 > p),
@@ -284,6 +354,18 @@ hair_manhattan(df = breeds_gcta %>%
                color1 = "gray1",
                color2 = "gray91")
 ```
+
+# Shared signal
+
+```{r}
+breeds_snp1101 %>% 
+  filter(neglog10p >= 5) %>% 
+  group_by(chr, pos) %>% 
+  filter(n() > 1) %>% 
+  summarise(n = n())
+
+```
+
 
 # `METASOFT`
 
@@ -297,7 +379,7 @@ srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_funct
 RSID, #STUDY, PVALUE_FE, BETA_FE, STD_FE, PVALUE_RE, BETA_RE, STD_RE, PVALUE_RE2, STAT1_RE2, STAT2_RE2, PVALUE_BE, I_SQUARE, Q, PVALUE_Q, TAU_SQUARE
 1:530998, 4, 0.00000, -0.0304635, 0.000336349, 0.254139, 0.0315562, 0.0276723, 0.00000, 8203.13, 14111.9, NA, 99.9788, 14151.4, 0.00000, 0.00306030
 
-```{r}
+```{r, eval=FALSE}
 metasoft_out <- 
   read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds_corrected.txt"),
               col_types = cols(.default = "d", RSID = "c")) %>% 
@@ -306,6 +388,14 @@ metasoft_out <-
 ```
 
 ```{r}
+metasoft_out %>% 
+  summarise(min(q, na.rm = TRUE), max(q, na.rm = TRUE))
+```
+
+
+## m-values
+
+```{r, eval = FALSE}
 mbreed <-
   read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds.txt"),
               skip = 1,
@@ -313,14 +403,14 @@ mbreed <-
               col_names = c("an1p", "bg1p", "hfd1p", "igs1p", "an1m", "bg1m", "hfd1m", "igs1m"))
 ```
 
-```{r}
+```{r, eval = FALSE}
 mbreed %>% 
   filter_at(vars(contains("p")), any_vars(. != 0))
 
 mbreed
 ```
 
-```{r}
+```{r, eval = FALSE}
 metasoft_out %>% 
   summarise(min(pvalue_q, na.rm = TRUE),
             max(pvalue_q, na.rm = TRUE),

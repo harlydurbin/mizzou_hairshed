@@ -7,8 +7,8 @@ gfile
 mapfile
        "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/raw_data/geno_dump/200924_HairShed.850K.chrinfo.txt";
 
-pedfile
-      "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/bg1/ped.bg1.txt";
+//pedfile
+      //"/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/bg1/ped.bg1.txt";
 
 traitfile
        name "bg1_bvs"
