@@ -46,8 +46,10 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
 
+## Breeding values
+
 ```{r}
-length2 <-
+length2_sol <-
   read_table2(here::here("data/derived_data/random_regression/length2/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>% 
@@ -65,7 +67,7 @@ length2 <-
 ```
 
 ```{r}
-length1 <-
+length1_sol <-
   read_table2(here::here("data/derived_data/random_regression/length1/solutions"),
             skip = 1,
             col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>% 
@@ -84,10 +86,22 @@ length1 <-
                      full_reg= X10))
 ```
 
+## SNP1101 results
+
+```{r, warning = FALSE, message=FALSE}
+length1_snp1101 <-
+  read_table2(here::here("data/derived_data/snp1101/length1/out/gwas_ssr_length1.txt"),
+              skip = 12)  %>%
+  janitor::clean_names() %>%
+  mutate(neglog10p = -log10(p_value),
+         neglog10q = -log10(qvalue::qvalue(p_value)$qvalues))
+  
+```
+
 # Data summary
 
 ```{r}
-length2 %>% 
+length2_sol %>% 
   filter(effect %in% c("slope_add")) %>% 
   mutate(acc = purrr::map_dbl(.x = se,
                               ~ calculate_acc(e = 0.70788,
@@ -137,9 +151,34 @@ read_table2(here::here("data/derived_data/random_regression/length1/data.txt"),
   select(day_length = X6) %>% 
   distinct() %>% 
   ggplot(aes(x = day_length,
-             y = day_length)) +
+             y = day_length))
 
 ```
 
+# GWAS
+
+```{r, fig.width = 11, fig.height = 6.16}
+
+hair_manhattan(df = length1_snp1101 %>% 
+                 filter(0.01 > p_value),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "#b9aa97",
+               color2 = "#7e756d")
+
+```
+
+```{r, fig.width = 11, fig.height = 6.16}
+
+hair_manhattan(df = fixed9_snp1101 %>% 
+                 filter(0.01 > p_value),
+               y_var = neglog10p, 
+               y_lab = "-log10(p-value)",
+               sigline = 5,
+               color1 = "#b9aa97",
+               color2 = "#7e756d") 
+
+```
 
 # Commentary

@@ -10,7 +10,7 @@ Organized by goal/motivation
 
 ## `fixed1`
 
-* `{farm_id} + {year} + {calving_season} + {age} + {from_may1} + {toxic_fescue} + {latitude}`. Everything would be fit as a categorical factor, except for days from May 1 and latitude
+* `{farm_id} + {year} + {calving_season} + {categorical age} + {from_may1} + {toxic_fescue} + {latitude}`. Everything would be fit as a categorical factor, except for days from May 1 and latitude
 
 ## `fixed2`
 

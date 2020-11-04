@@ -26,6 +26,7 @@ library(rlang)
 source(here::here("source_functions/melt_aireml.R"))
 source(here::here("source_functions/calculate_heritability.R"))
 source(here::here("source_functions/hair_manhattan.R"))
+source(here::here("source_functions/ggqq.R"))
 
 options(scipen = 999)
 ```
@@ -220,7 +221,7 @@ hair_manhattan(df = breeds_snp1101 %>%
 ggsave(filename = here::here("figures/breeds/hfd1_snp1101.p.png"), height = 6.16, width = 11)
 ```
 
-```{r, eval=FALSE}
+```{r}
 ggqq(pvector = breeds_snp1101[breeds_snp1101$dataset == "hfd1", "p_value"][[1]])
 
 ggsave(here::here("figures/breeds/hfd1_snp1101.Q-Q.png"))
@@ -276,7 +277,7 @@ hair_manhattan(df = breeds_snp1101 %>%
 ggsave(filename = here::here("figures/breeds/an1_snp1101.p.png"), height = 6.16, width = 11)
 ```
 
-```{r, eval=FALSE}
+```{r}
 ggqq(pvector = breeds_snp1101[breeds_snp1101$dataset == "an1", "p_value"][[1]])
 
 ggsave(here::here("figures/breeds/an1_snp1101.Q-Q.png"))
@@ -331,12 +332,11 @@ hair_manhattan(df = breeds_snp1101 %>%
 ggsave(filename = here::here("figures/breeds/igs1_snp1101.p.png"), height = 6.16, width = 11)
 ```
 
-```{r, eval=FALSE}
+```{r}
 ggqq(pvector = breeds_snp1101[breeds_snp1101$dataset == "igs1", "p_value"][[1]])
 
 ggsave(here::here("figures/breeds/igs1_snp1101.Q-Q.png"))
 ```
-
 
 ### GCTA
 
@@ -381,12 +381,11 @@ hair_manhattan(df = breeds_snp1101 %>%
 ggsave(filename = here::here("figures/breeds/bg1_snp1101.p.png"), height = 6.16, width = 11)
 ```
 
-```{r, eval=FALSE}
+```{r}
 ggqq(pvector = breeds_snp1101[breeds_snp1101$dataset == "bg1", "p_value"][[1]])
 
 ggsave(here::here("figures/breeds/bg1_snp1101.Q-Q.png"))
 ```
-
 
 ### GCTA
 
@@ -433,7 +432,7 @@ metasoft_out <-
   select(-pvalues_of_studies_tab_delimitered, -mvalues_of_studies_tab_delimitered) 
 ```
 
-```{r}
+```{r, eval = FALSE}
 metasoft_out %>% 
   summarise(min(q, na.rm = TRUE), max(q, na.rm = TRUE))
 ```

@@ -11,7 +11,7 @@ RESIDUAL_VARIANCE
 EFFECT
 2 cross alpha # CG effect
 EFFECT
-2 cross alpha # age
+3 cross alpha # age
 EFFECT
 1 cross alpha # animal effect
 RANDOM

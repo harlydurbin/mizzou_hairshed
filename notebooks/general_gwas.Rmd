@@ -35,17 +35,9 @@ source(here::here("source_functions/lrt_calc.R"))
 * What is F?
 * What is a?
 
-*_bvs.txt
-Chr     Pos     freq    b-value Var     p-value
-1       530998  0.4526  -0.052163       0.00134825      0.146002
-
-*_bvs_p.txt
-SNPID   Chr     Pos     freq    g0      g1      g2      a       b       Var     F       p-value FDR_GW
-1       1       530998  0.4526  946     1479    654     0.0175772       -0.052163       0.00134825      2.1146  0.146002        -1
-
 # Setup
 
-## SNP1101 results
+## SNP1101 
 
 ```{r, warning = FALSE, message=FALSE}
 fixed9_snp1101 <-
@@ -83,7 +75,7 @@ min(fixed9_snp1101$neglog10q)
 max(fixed15_snp1101$neglog10q)
 ```
 
-## GCTA results
+## GCTA
  
 ```{r, eval=FALSE}
 fixed9_gcta <- 
@@ -114,11 +106,11 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varc
                                 option = "logL"))
 ```
 
-# Manhattan plot of $-log_{10}(q-value)$
+# GWAS results
 
-## SNP1101
+## Without PC correction
 
-### Without PC correction
+### SNP1101
 
 ```{r, fig.width = 11, fig.height = 6.16}
 
@@ -150,7 +142,48 @@ hair_manhattan(df = fixed9_snp1101 %>%
 ggsave(filename = here::here("figures/general_gwas/fixed9_snp1101.p.png"), height = 6.16, width = 11)
 ```
 
-### With PC correction
+#### Q-Q plot, all SNPs
+
+```{r}
+ggqq(pvector = fixed9_snp1101$p_value)
+
+ggsave(here::here("figures/general_gwas/fixed9_snp1101.Q-Q.png"))
+```
+
+#### Q-Q plot, non-significant SNPs
+
+```{r}
+ggqq(pvector = fixed9_snp1101[fixed9_snp1101$fdr == -1, "p_value"][[1]])
+
+ggsave(here::here("figures/general_gwas/fixed9_snp1101.Q-Q.nonsig.png"))
+```
+
+### GCTA
+
+```{r, fig.width = 11, fig.height = 6.16,eval=FALSE}
+hair_manhattan(df = fixed9_gcta %>% 
+                 filter(0.01 > p),
+               y_var = neglog10q, 
+               y_lab = "-log10(q-value)",
+               sigline = 1,
+               color1 = "#ef8759",
+               color2 = "#5da19a")
+
+ggsave(here::here("figures/general_gwas/fixed9_gcta.q.png"))
+```
+
+#### Q-Q plot, all SNPs
+
+```{r, eval = FALSE}
+ggqq(pvector = fixed9_gcta$p) +
+  theme_classic()
+
+ggsave(here::here("figures/general_gwas/fixed9_gcta.Q-Q.png"))
+```
+
+## With PC correction
+
+### SNP1101
 
 ```{r, fig.width = 11, fig.height = 6.16}
 
@@ -182,23 +215,15 @@ hair_manhattan(df = fixed15_snp1101 %>%
 ggsave(filename = here::here("figures/general_gwas/fixed15_snp1101.p.png"), height = 6.16, width = 11)
 ```
 
-## GCTA
+#### Q-Q plot, all SNPs
 
-### Without PC correction
+```{r}
+ggqq(pvector = fixed15_snp1101$p_value)
 
-```{r, fig.width = 11, fig.height = 6.16,eval=FALSE}
-hair_manhattan(df = fixed9_gcta %>% 
-                 filter(0.01 > p),
-               y_var = neglog10q, 
-               y_lab = "-log10(q-value)",
-               sigline = 1,
-               color1 = "#ef8759",
-               color2 = "#5da19a")
-
-ggsave(here::here("figures/general_gwas/fixed9_gcta.q.png"))
+ggsave(here::here("figures/general_gwas/fixed15_snp1101.Q-Q.png"))
 ```
 
-### With PC correction
+### GCTA
 
 ```{r, fig.width = 11, fig.height = 6.16, eval = FALSE}
 hair_manhattan(df = fixed15_gcta %>% 
@@ -212,51 +237,12 @@ hair_manhattan(df = fixed15_gcta %>%
 ggsave(here::here("figures/general_gwas/fixed15_gcta.q.png"))
 ```
 
-# QQ plot
-
-## SNP1101
-
-### All SNPs
-
-#### Without PCs
-
-```{r}
-ggqq(pvector = fixed9_snp1101$p_value)
-
-ggsave(here::here("figures/general_gwas/fixed9_snp1101.Q-Q.png"))
-```
-
-#### With PCs
-
-```{r}
-ggqq(pvector = fixed15_snp1101$p_value)
-
-ggsave(here::here("figures/general_gwas/fixed15_snp1101.Q-Q.png"))
-```
-
-### Non-significant SNPs
-
-```{r}
-ggqq(pvector = fixed9_snp1101[fixed9_snp1101$fdr == -1, "p_value"][[1]])
-
-ggsave(here::here("figures/general_gwas/fixed9_snp1101.Q-Q.nonsig.png"))
-```
-
-## GCTA
-
-### Without PC correction
-
-```{r, eval = FALSE}
-ggqq(pvector = fixed9_gcta$p) +
-  theme_classic()
-
-ggsave(here::here("figures/general_gwas/fixed9_gcta.Q-Q.png"))
-```
-
-### With PC correction
+#### Q-Q plot, all SNPs
 
 ```{r, eval = FALSE}
 ggqq(pvector = fixed15_gcta$p)
 
 ggsave(here::here("figures/general_gwas/fixed15_gcta.Q-Q.png"))
 ```
+
+

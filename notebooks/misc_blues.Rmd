@@ -38,28 +38,24 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ```
 
+## Age model
+
 ```{r, warning=FALSE, message=FALSE}
-fixed13 <-
-  c(1:4) %>% 
-  purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/base_varcomp/fixed2/renf90.tables"),
+fixed16_sol <-
+  c(1, 2) %>% 
+  purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/aireml_varcomp/fixed16/renf90.tables"),
                                      effect_num = .x,
                                      effect_key = TRUE)) %>% 
-  mutate(effect = case_when(effect == 1 ~ "year",
-                            effect == 2 ~ "calving_season",
-                            effect == 3 ~ "toxic_fescue",
-                            effect == 4 ~ "age_group")) %>% 
-  right_join(read_table2(here::here("data/derived_data/base_varcomp/fixed2/solutions"),
+  mutate(effect = case_when(effect == 1 ~ "cg",
+                            effect == 2 ~ "age_group")) %>% 
+  right_join(read_table2(here::here("data/derived_data/aireml_varcomp/fixed16/solutions"),
                          skip = 1,
                          col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
                select(-trait) %>% 
-               filter(!effect %in% c(7, 8)) %>% 
+               filter(!effect %in% c(3, 4)) %>% 
                mutate_at(vars("effect", "id_renamed"), ~ as.character(.)) %>% 
-               mutate(effect = case_when(effect == 1 ~ "year",
-                                         effect == 2 ~ "calving_season",
-                                         effect == 3 ~ "toxic_fescue",
-                                         effect == 4 ~ "age_group",
-                                         effect == 5 ~ "mean_apparent_high",
-                                         effect == 6 ~ "lat")))
+               mutate(effect = case_when(effect == 1 ~ "cg",
+                                         effect == 2 ~ "age_group")))
   
   
 ```
@@ -67,18 +63,19 @@ fixed13 <-
 # Age
 
 ```{r}
-fixed2 %>% 
+fixed16_sol %>% 
   filter(effect == "age_group") %>% 
+  mutate(id_original = if_else(id_original == "old", 14, as.numeric(id_original))) %>% 
   arrange(id_original) %>% 
   mutate(id_original = forcats::fct_inorder(as.factor(id_original))) %>% 
   ggplot(aes(x = id_original,
              y = solution)) +
   geom_bar(stat = "identity",
-             position = "identity") +
+           position = "identity") +
   geom_errorbar(aes(ymin = solution - se,
                     ymax = solution + se)) +
   theme_classic() +
-  scale_x_discrete(labels = c("1", "2-3", "4-7", "8+")) +
+  scale_x_discrete(labels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14+")) +
   theme(plot.title = element_text(size = 22,
                                   face = "italic",
                                   margin = margin(t = 0,
@@ -96,8 +93,10 @@ fixed2 %>%
                                                     l = 0)),
         axis.text = element_text(size = 14),
         legend.position = "none") +
-  labs(x = NULL,
+  labs(x = "Age in years",
        y = "BLUE")
+
+ggsave(here::here("figures/misc_blues/fixed_16.ages.png"), width = 8, height = 5)
 ```
 
 # Days from May 1
