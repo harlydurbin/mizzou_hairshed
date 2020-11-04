@@ -73,6 +73,16 @@ fixed15_snp1101 <-
   
 ```
 
+```{r}
+max(fixed9_snp1101$neglog10q)
+
+min(fixed9_snp1101$neglog10q)
+```
+
+```{r}
+max(fixed15_snp1101$neglog10q)
+```
+
 ## GCTA results
  
 ```{r, eval=FALSE}
@@ -117,11 +127,27 @@ hair_manhattan(df = fixed9_snp1101 %>%
                y_var = neglog10q, 
                y_lab = "-log10(q-value)",
                sigline = 1,
-               color1 = "#ef8759",
-               color2 = "#5da19a")
+               color1 = "#b9aa97",
+               color2 = "#7e756d") +
+  ylim(0, 15)
 
 
 ggsave(filename = here::here("figures/general_gwas/fixed9_snp1101.q.png"), height = 6.16, width = 11)
+```
+
+```{r, fig.width = 11, fig.height = 6.16}
+
+hair_manhattan(df = fixed9_snp1101 %>% 
+                 filter(0.01 > p_value),
+               y_var = neglog10p, 
+               y_lab = "-log10(p-value)",
+               sigline = 5,
+               color1 = "#b9aa97",
+               color2 = "#7e756d") +
+  ylim(0, 20)
+
+
+ggsave(filename = here::here("figures/general_gwas/fixed9_snp1101.p.png"), height = 6.16, width = 11)
 ```
 
 ### With PC correction
@@ -133,11 +159,27 @@ hair_manhattan(df = fixed15_snp1101 %>%
                y_var = neglog10q, 
                y_lab = "-log10(q-value)",
                sigline = 1,
-               color1 = "#ef8759",
-               color2 = "#5da19a")
+               color1 = "#b9aa97",
+               color2 = "#7e756d") +
+  ylim(0, 15)
 
 
 ggsave(filename = here::here("figures/general_gwas/fixed15_snp1101.q.png"), height = 6.16, width = 11)
+```
+
+```{r, fig.width = 11, fig.height = 6.16}
+
+hair_manhattan(df = fixed15_snp1101 %>% 
+                 filter(0.01 > p_value),
+               y_var = neglog10p, 
+               y_lab = "-log10(p-value)",
+               sigline = 5,
+               color1 = "#b9aa97",
+               color2 = "#7e756d") +
+  ylim(0, 20)
+
+
+ggsave(filename = here::here("figures/general_gwas/fixed15_snp1101.p.png"), height = 6.16, width = 11)
 ```
 
 ## GCTA
@@ -180,18 +222,24 @@ ggsave(here::here("figures/general_gwas/fixed15_gcta.q.png"))
 
 ```{r}
 ggqq(pvector = fixed9_snp1101$p_value)
+
+ggsave(here::here("figures/general_gwas/fixed9_snp1101.Q-Q.png"))
 ```
 
 #### With PCs
 
 ```{r}
 ggqq(pvector = fixed15_snp1101$p_value)
+
+ggsave(here::here("figures/general_gwas/fixed15_snp1101.Q-Q.png"))
 ```
 
 ### Non-significant SNPs
 
 ```{r}
 ggqq(pvector = fixed9_snp1101[fixed9_snp1101$fdr == -1, "p_value"][[1]])
+
+ggsave(here::here("figures/general_gwas/fixed9_snp1101.Q-Q.nonsig.png"))
 ```
 
 ## GCTA

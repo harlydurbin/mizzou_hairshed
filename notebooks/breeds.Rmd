@@ -32,10 +32,12 @@ options(scipen = 999)
 
 # Notes & questions
 
-* Angus: #126180
-* IGS: #B578A6
-* Hereford: #F57195
-* Brangus: #4EB7B8
+[Miller Stone map colors](https://jrnold.github.io/ggthemes/reference/tableau_color_pal.html)
+
+* Angus: Blues ("#4f6980", "#849db1")
+* IGS/Simmental: Dark greens ("#638b66", "#a2ceaa")
+* Hereford: Orange/yellow ("#f47942", "#fbb04e")
+* Brangus: Light greens ("#bfbb60", "#d7ce9f")
 
 ## Datasets
 
@@ -48,7 +50,6 @@ options(scipen = 999)
 ```{r, eval=FALSE}
 scales::show_col(bakeoff::bakeoff_pal()(11))
 ```
-    
     
 # Setup
 
@@ -78,12 +79,6 @@ breed_key %>%
   filter(cross == "BGR") %>% 
   distinct(farm_id)
 ```
-
-
-```{r}
-
-```
-
 
 ## Raw GWAS results
 
@@ -206,8 +201,8 @@ hair_manhattan(df = breeds_snp1101 %>%
                y_var = neglog10q, 
                y_lab = "-log10(q-value)",
                sigline = 1,
-               color1 = "gray1",
-               color2 = "gray91")
+               color1 = "#f47942",
+               color2 = "#fbb04e")
 
 ggsave(filename = here::here("figures/breeds/hfd1_snp1101.q.png"), height = 6.16, width = 11)
 ```
@@ -219,11 +214,18 @@ hair_manhattan(df = breeds_snp1101 %>%
                y_var = neglog10p, 
                y_lab = "-log10(p-value)",
                sigline = 5,
-               color1 = "gray1",
-               color2 = "gray91")
-
+               color1 = "#f47942",
+               color2 = "#fbb04e")
+#("#f47942", "#fbb04e")
 ggsave(filename = here::here("figures/breeds/hfd1_snp1101.p.png"), height = 6.16, width = 11)
 ```
+
+```{r, eval=FALSE}
+ggqq(pvector = breeds_snp1101[breeds_snp1101$dataset == "hfd1", "p_value"][[1]])
+
+ggsave(here::here("figures/breeds/hfd1_snp1101.Q-Q.png"))
+```
+
 
 ### GCTA
 
@@ -242,7 +244,7 @@ hair_manhattan(df = breeds_gcta %>%
 
 ## Angus
 
-## SNP1101
+### SNP1101
 
 ```{r, fig.width = 11, fig.height = 6.16}
 hair_manhattan(df = breeds_snp1101 %>% 
@@ -251,10 +253,27 @@ hair_manhattan(df = breeds_snp1101 %>%
                y_var = neglog10q, 
                y_lab = "-log10(q-value)",
                sigline = 1,
-               color1 = "gray1",
-               color2 = "gray91")
+               color1 = "#4f6980",
+               color2 = "#849db1")
+
+#("#4f6980", "#849db1")
 
 ggsave(filename = here::here("figures/breeds/an1_snp1101.q.png"), height = 6.16, width = 11)
+```
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = breeds_snp1101 %>% 
+                 filter(dataset == "an1") %>% 
+                 filter(0.01 > p_value),
+               y_var = neglog10p, 
+               y_lab = "-log10(p-value)",
+               sigline = 5,
+               color1 = "#4f6980",
+               color2 = "#849db1")
+
+#("#4f6980", "#849db1")
+
+ggsave(filename = here::here("figures/breeds/an1_snp1101.p.png"), height = 6.16, width = 11)
 ```
 
 ```{r, eval=FALSE}
@@ -293,11 +312,31 @@ hair_manhattan(df = breeds_snp1101 %>%
                y_var = neglog10q, 
                y_lab = "-log10(q-value)",
                sigline = 1,
-               color1 = "gray1",
-               color2 = "gray91")
-
+               color1 = "#638b66",
+               color2 = "#a2ceaa")
+#("#638b66", "#a2ceaa")
 ggsave(filename = here::here("figures/breeds/igs1_snp1101.q.png"), height = 6.16, width = 11)
 ```
+
+```{r, fig.width = 11, fig.height = 6.16}
+hair_manhattan(df = breeds_snp1101 %>% 
+                 filter(dataset == "igs1") %>% 
+                 filter(0.01 > p_value),
+               y_var = neglog10p, 
+               y_lab = "-log10(p-value)",
+               sigline = 5,
+               color1 = "#638b66",
+               color2 = "#a2ceaa")
+#("#638b66", "#a2ceaa")
+ggsave(filename = here::here("figures/breeds/igs1_snp1101.p.png"), height = 6.16, width = 11)
+```
+
+```{r, eval=FALSE}
+ggqq(pvector = breeds_snp1101[breeds_snp1101$dataset == "igs1", "p_value"][[1]])
+
+ggsave(here::here("figures/breeds/igs1_snp1101.Q-Q.png"))
+```
+
 
 ### GCTA
 
@@ -323,9 +362,9 @@ hair_manhattan(df = breeds_snp1101 %>%
                y_var = neglog10q, 
                y_lab = "-log10(q-value)",
                sigline = 1,
-               color1 = "gray1",
-               color2 = "gray91")
-
+               color1 = "#bfbb60",
+               color2 = "#d7ce9f")
+#"#bfbb60", "#d7ce9f"
 ggsave(filename = here::here("figures/breeds/bg11_snp1101.q.png"), height = 6.16, width = 11)
 ```
 
@@ -336,11 +375,18 @@ hair_manhattan(df = breeds_snp1101 %>%
                y_var = neglog10p, 
                y_lab = "-log10(p-value)",
                sigline = 5,
-               color1 = "gray1",
-               color2 = "gray91")
+               color1 = "#bfbb60",
+               color2 = "#d7ce9f")
 
 ggsave(filename = here::here("figures/breeds/bg1_snp1101.p.png"), height = 6.16, width = 11)
 ```
+
+```{r, eval=FALSE}
+ggqq(pvector = breeds_snp1101[breeds_snp1101$dataset == "bg1", "p_value"][[1]])
+
+ggsave(here::here("figures/breeds/bg1_snp1101.Q-Q.png"))
+```
+
 
 ### GCTA
 

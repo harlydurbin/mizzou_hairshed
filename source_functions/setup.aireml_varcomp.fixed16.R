@@ -48,11 +48,6 @@ dat <-
 dat %>%
   distinct(score_group)
 
-dat %>% 
-  group_by(age) %>% 
-  tally() %>% 
-  View()
-
 #'
 #' # Remove males
 #'
