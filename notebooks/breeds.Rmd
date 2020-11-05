@@ -59,28 +59,6 @@ breed_key <-
   read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
 ```
 
-```{r}
-breed_key %>% 
-  distinct(cross)
-```
-
-```{r}
-breed_key %>% 
-  filter(cross == "GEL")
-```
-
-```{r}
-breed_key %>% 
-  filter(cross == "HFD") %>% 
-  distinct(farm_id)
-```
-
-```{r}
-breed_key %>% 
-  filter(cross == "BGR") %>% 
-  distinct(farm_id)
-```
-
 ## Raw GWAS results
 
 ### SNP1101
@@ -98,6 +76,8 @@ breeds_snp1101 <-
                                select(chr = Chr, pos = Pos, fdr = FDR_GW, a)),
                  .id = "dataset")
 ```
+
+
 
 ### GCTA
 
@@ -400,15 +380,117 @@ hair_manhattan(df = breeds_gcta %>%
                color2 = "gray91")
 ```
 
-# Shared signal
+# Multi-panel breeds Manhattan plot
 
 ```{r}
-breeds_snp1101 %>% 
+overlap <-
+  breeds_snp1101 %>% 
   filter(neglog10p >= 5) %>% 
   group_by(chr, pos) %>% 
   filter(n() > 1) %>% 
-  summarise(n = n())
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  left_join(breeds_snp1101) %>% 
+  mutate(chr_color = "black")
 
+```
+
+```{r, fig.width=6, fig.height=12}
+practice <-
+  breeds_snp1101 %>% 
+  filter(0.9 >= p_value) %>% 
+  chr_len() %>% 
+  full_join(overlap) %>% 
+  mutate(chr_color = case_when(!is.na(chr_color) ~ chr_color,
+                               dataset == "an1" & chr %in% c(seq(from = 1,
+                                                                 to = 29,
+                                                                 by = 2)) ~ "#4f6980",
+                               dataset == "an1" & chr %in% c(seq(from = 2,
+                                                                 to = 29,
+                                                                 by = 2)) ~ "#849db1",
+                               dataset == "bg1" & chr %in% c(seq(from = 1,
+                                                                 to = 29,
+                                                                 by = 2)) ~ "#bfbb60",
+                               dataset == "bg1" & chr %in% c(seq(from = 2,
+                                                                 to = 29,
+                                                                 by = 2)) ~ "#d7ce9f",
+                               dataset == "hfd1" & chr %in% c(seq(from = 1,
+                                                                 to = 29,
+                                                                 by = 2)) ~ "#f47942",
+                               dataset == "hfd1" & chr %in% c(seq(from = 2,
+                                                                 to = 29,
+                                                                 by = 2)) ~ "#fbb04e",
+                               dataset == "igs1" & chr %in% c(seq(from = 1,
+                                                                 to = 29,
+                                                                 by = 2)) ~ "#638b66",
+                               dataset == "igs1" & chr %in% c(seq(from = 2,
+                                                                 to = 29,
+                                                                 by = 2)) ~ "#a2ceaa"),
+         dataset = case_when(dataset == "an1" ~ "AN (n = 3,268)",
+                             dataset == "bg1" ~ "BG (n = 883)",
+                             dataset == "hfd1" ~ "HFD (n = 1,055)",
+                             dataset == "igs1" ~ "IGS (n = 4,722)"))
+```
+
+```{r}
+axisdf <-
+  practice %>%
+  group_by(chr) %>%
+  summarize(center = (max(BPcum) + min(BPcum)) / 2) 
+```
+
+```{r, fig.width=9, fig.height=12}
+ggplot(practice) +
+  geom_point(aes(x = BPcum,
+                 y = neglog10p,
+                 color = chr_color,
+                 fill = chr_color),
+                 alpha = 0.75) +
+  scale_color_identity() +
+  geom_point(data = base::subset(practice, chr_color == 'black'),
+             aes(x = BPcum,
+                 y = neglog10p,
+                 color = "black"),
+             alpha = 1) +
+  scale_fill_identity() +
+  scale_x_continuous(label = axisdf$chr[c(TRUE, FALSE)],
+                     breaks = axisdf$center[c(TRUE, FALSE)]) +
+  theme_classic() +
+  theme(plot.title = element_text(size = 24,
+                                  face = "italic",
+                                  margin = margin(t = 0,
+                                                  r = 0,
+                                                  b = 13,
+                                                  l = 0)),
+        plot.subtitle = element_text(size = 20,
+                                     face = "italic",
+                                     margin = margin(t = 0,
+                                                     r = 0,
+                                                     b = 13,
+                                                     l = 0)),
+        axis.title = element_text(size = 18),
+        axis.title.y = element_text(margin = margin(t = 0,
+                                                    r = 13,
+                                                    b = 0,
+                                                    l = 0)),
+        axis.title.x = element_text(margin = margin(t = 13,
+                                                    r = 0,
+                                                    b = 0,
+                                                    l = 0)),
+        axis.text = element_text(size = 14),
+        legend.text = element_text(size = 14),
+        strip.text = element_text(size = 14)) +
+  geom_hline(yintercept = 5,
+             color = "red",
+             size = 0.25) +
+  labs(x = NULL,
+       y = latex2exp::TeX("$-log_{10}(p-value)$")) +
+  facet_wrap(~ dataset,
+             nrow = 4)
+```
+
+```{r}
+ggsave(here::here("figures/breeds/an1bg1hfd1igs1_snp1101.p.png"), width = 9, height = 12)
 ```
 
 
@@ -436,7 +518,6 @@ metasoft_out <-
 metasoft_out %>% 
   summarise(min(q, na.rm = TRUE), max(q, na.rm = TRUE))
 ```
-
 
 ## m-values
 

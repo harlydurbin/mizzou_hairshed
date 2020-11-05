@@ -71,10 +71,6 @@ max(fixed9_snp1101$neglog10q)
 min(fixed9_snp1101$neglog10q)
 ```
 
-```{r}
-max(fixed15_snp1101$neglog10q)
-```
-
 ## GCTA
  
 ```{r, eval=FALSE}
@@ -106,7 +102,7 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varc
                                 option = "logL"))
 ```
 
-# GWAS results
+# Genome-wide results
 
 ## Without PC correction
 
@@ -120,8 +116,7 @@ hair_manhattan(df = fixed9_snp1101 %>%
                y_lab = "-log10(q-value)",
                sigline = 1,
                color1 = "#b9aa97",
-               color2 = "#7e756d") +
-  ylim(0, 15)
+               color2 = "#7e756d")
 
 
 ggsave(filename = here::here("figures/general_gwas/fixed9_snp1101.q.png"), height = 6.16, width = 11)
@@ -135,8 +130,7 @@ hair_manhattan(df = fixed9_snp1101 %>%
                y_lab = "-log10(p-value)",
                sigline = 5,
                color1 = "#b9aa97",
-               color2 = "#7e756d") +
-  ylim(0, 20)
+               color2 = "#7e756d")
 
 
 ggsave(filename = here::here("figures/general_gwas/fixed9_snp1101.p.png"), height = 6.16, width = 11)
@@ -245,4 +239,34 @@ ggqq(pvector = fixed15_gcta$p)
 ggsave(here::here("figures/general_gwas/fixed15_gcta.Q-Q.png"))
 ```
 
+# Chromosme 5 zoom-in
+
+```{r}
+fixed9_snp1101 %>% 
+  filter(chr == 5) %>% 
+  summarise(max(pos))
+```
+
+
+```{r}
+fixed9_snp1101 %>% 
+  filter(chr == 5) %>%
+  ggplot(aes(x = pos,
+             y = neglog10q)) +
+  geom_point(color = "#7e756d", alpha = 0.75) +
+  scale_x_continuous(breaks = c(0, 25000000, 50000000, 75000000, 100000000, 120000000),
+                     labels = c("0 Kb", "25 Kb", "50 Kb", "75 Kb", "100 Kb", "120 Kb")) +
+  theme_classic() +
+  theme(axis.title.y = element_text(margin = margin(t = 0,
+                                                    r = 1,
+                                                    b = 0,
+                                                    l = 0)),
+        axis.title.x = element_blank()) +
+  labs(x = NULL,
+       y = latex2exp::TeX("$-log_{10}(q-value)$"),
+       title = NULL) +
+  geom_hline(yintercept = 5,
+             color = "red",
+             size = 0.25)
+```
 

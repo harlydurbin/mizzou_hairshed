@@ -18,7 +18,7 @@ library(dplyr)
 library(stringr)
 library(ggplot2)
 
-source(here::here("source_functions/plot_pca.R"))
+source(here::here("source_functions/iterative_id_search.R"))
 ```
 
 # Notes & questions
@@ -30,6 +30,48 @@ breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
 ```
 
 ```{r}
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
+
+
+
+```{r}
+sim_breed <-
+  read_csv(here::here("data/raw_data/201005.SIM.breeds.csv")) %>% 
+  select(registration_number = asa_nbr, brd = breed_code, pct) %>% 
+  mutate(cross = if_else(pct == 1, brd, "CROS")) %>% 
+  tidyr::pivot_wider(id_cols = c("registration_number", cross),
+                     names_from = brd,
+                     values_from = pct) %>% 
+  mutate_at(vars(SM:SH), ~ replace_na(., 0)) %>% 
+  janitor::clean_names() %>% 
+  # Don't differentiate between horned and polled Hereford
+  mutate(hfd = hh + hp,
+         # Don't differentiate between purebred and commercial 
+         sim = sm + cs) %>% 
+  select(registration_number, cross, an, ar, br, chi = ca, gv, hfd, sim) %>% 
+  # Don't differentiate between Red Angus and Angus since RAAA doesn't
+  mutate(ar = case_when(ar != 0 & an != 0 & br == 0 & chi == 0 & gv == 0 & hfd == 0 & sim == 0 ~ ar + an,
+                        TRUE ~ ar),
+         ar = if_else(ar > 1, 1, ar),
+         cross = case_when(ar == 1 ~ "AR",
+                           (ar + an) == 1 ~ "AR",
+                           sim == 1 ~ "SIM",
+                           an == 1 ~ "AN",
+                           TRUE ~ cross),
+         brd_source = glue("ASA{row_number()}"),
+         cross = case_when(an >= 0.625 ~ "AN",
+                           sim >= 0.625 ~ "SIM",
+                           ar >= 0.625 ~ "RAN",
+                           gv >= 0.625 ~ "GEL",
+                           hfd >= 0.625 ~ "HFD",
+                           TRUE ~ "Crossbred or other"),
+         registration_number = as.character(glue("SIM{registration_number}")))
+```
+
+
+```{r}
+
 vec <-
   read_table2(here::here("data/derived_data/smartpca/smartpca.mizzou_hairshed.evec"),
               skip = 1,
@@ -37,14 +79,50 @@ vec <-
   select(-X12) %>%
   set_names(c("full_reg", map_chr(1:10, ~ str_c("PC", .x)))) %>% 
   mutate(full_reg = str_extract(full_reg, "(?<=[[:alnum:]]:)[[:alnum:]]+$")) %>% 
-  left_join(breed_key) %>% 
-  mutate(cross = case_when(is.na(cross) ~ str_extract(full_reg, "^[[:upper:]]{3}"),
-                           TRUE ~ cross),
-         cross = case_when(cross == "AAA" ~ "AN",
-                           cross == "GVH" ~ "GEL",
-                           cross == "BSH" ~ "SH",
-                           cross == "HER" ~ "HFD",
-                           TRUE ~ cross)) 
+  left_join(breed_key %>% 
+              select(-breed_code)) %>% 
+  left_join(cleaned %>% 
+              distinct(farm_id, animal_id, temp_id, breed_code)) %>% 
+  id_search(source_col = full_reg,
+            search_df = sim_breed,
+            search_col = registration_number,
+            key_col = cross) %>% 
+  mutate(map_breed = case_when(cross == "AN" ~ "Angus",
+                               str_detect(full_reg, "BIR|AAA") ~ "Angus",
+                               an >= 0.625 ~ "Angus",
+                               cross == "HFD" ~ "Hereford",
+                               str_detect(full_reg, "HER") ~ "Hereford",
+                               hfd >= 0.625 ~ "Hereford",
+                               cross == "BGR" ~ "Brangus",
+                               str_detect(full_reg, "BGR") ~ "Brangus",
+                               cross == "RAN" ~ "Red Angus",
+                               cross == "CHA" ~ "Charolais",
+                               str_detect(full_reg, "CHA") ~ "Charolais",
+                               cross == "SH" ~ "Shorthorn",
+                               str_detect(full_reg, "BSH") ~ "Shorthorn",
+                               cross == "RDP" ~ "Maine-Anjou",
+                               str_detect(full_reg, "RDP") ~ "Maine-Anjou",
+                               cross == "GEL" ~ "Gelbvieh",
+                               gv >= 0.625 ~ "Gelbvieh", 
+                               str_detect(full_reg, "^GVH") ~ "Gelbvieh",
+                               source == "American Gelbvieh Association" ~ "Gelbvieh",
+                               cross == "RAN" ~ "Red Angus",
+                               ar >= 0.625 ~ "Red Angus",
+                               str_detect(full_reg, "^RAN") ~ "Red Angus",
+                               source == "Red Angus Association of America" ~ "Red Angus",
+                               cross == "SIM" ~ "Simmental",
+                               sim >= 0.625 ~ "Simmental",
+                               TRUE ~ "Crossbred or other"),
+         map_color = case_when(map_breed == "Crossbred or other" ~ "#a2ceaa",
+                               map_breed == "Angus" ~ "#4f6980",
+                               map_breed == "Hereford" ~ "#f47942",
+                               map_breed == "Red Angus" ~ "#fbb04e",
+                               map_breed == "Simmental" ~ "#638b66",
+                               map_breed == "Brangus" ~ "#bfbb60",
+                               map_breed == "Gelbvieh"~ "#d7ce9f",
+                               map_breed == "Charolais"~ "#849db1",
+                               map_breed == "Shorthorn"~ "#b9aa97",
+                               map_breed == "Maine-Anjou"~ "#7e756d")) 
 ```
 
 ```{r}
@@ -58,21 +136,69 @@ vec <-
       map_dbl( ~ as.numeric(.x))
 ```
 
-
 # Plot
 
 ```{r, fig.width = 7, fig.height=5}
-vec %>%
+vec %>% 
+  arrange(map_breed) %>% 
+  mutate(map_breed = forcats::fct_inorder(map_breed),
+         map_breed = forcats::fct_relevel(map_breed, "Crossbred or other", after = Inf)) %>% 
   ggplot(aes(x = PC1,
              y = PC2)) +
-  geom_point(aes(color = cross),
-             alpha = 0.6) +
-  bakeoff::scale_color_bakeoff() +
+  geom_point(aes(color = map_breed),
+             alpha = 0.5) +
+  scale_color_manual(values = c("Crossbred or other" = "#a2ceaa",
+                                "Angus" = "#4f6980",
+                                "Hereford" = "#f47942",
+                                "Red Angus" = "#fbb04e",
+                                "Simmental" = "#638b66",
+                                "Brangus" = "#bfbb60",
+                                "Gelbvieh"= "#d7ce9f",
+                                "Charolais"= "#849db1",
+                                "Shorthorn"= "#b9aa97",
+                                "Maine-Anjou"= "#7e756d")) +
   guides(colour = guide_legend(override.aes = list(alpha = 1))) +
   theme_classic() +
   labs(x = str_c("PC 1: ", scales::percent(val[1] / sum(val))),
        y = str_c("PC 2: ", scales::percent(val[2] / sum(val))),
        color = str_wrap("Reported or inferred breed",
                         width = 15))
+
+ggsave(here::here("figures/pca/mizzou_hairshed.pc1pc2.png"), width = 7, height = 5)
+```
+
+```{r, fig.width = 7, fig.height=5}
+vec %>% 
+  arrange(map_breed) %>% 
+  mutate(map_breed = forcats::fct_inorder(map_breed),
+         map_breed = forcats::fct_relevel(map_breed, "Crossbred or other", after = Inf)) %>% 
+  ggplot(aes(x = PC3,
+             y = PC4)) +
+  geom_point(aes(color = map_breed),
+             alpha = 0.5) +
+  scale_color_manual(values = c("Crossbred or other" = "#a2ceaa",
+                                "Angus" = "#4f6980",
+                                "Hereford" = "#f47942",
+                                "Red Angus" = "#fbb04e",
+                                "Simmental" = "#638b66",
+                                "Brangus" = "#bfbb60",
+                                "Gelbvieh"= "#d7ce9f",
+                                "Charolais"= "#849db1",
+                                "Shorthorn"= "#b9aa97",
+                                "Maine-Anjou"= "#7e756d")) +
+  guides(colour = guide_legend(override.aes = list(alpha = 1))) +
+  theme_classic() +
+  labs(x = str_c("PC 3: ", scales::percent(val[3] / sum(val))),
+       y = str_c("PC 4: ", scales::percent(val[4] / sum(val))),
+       color = str_wrap("Reported or inferred breed",
+                        width = 15))
+
+ggsave(here::here("figures/pca/mizzou_hairshed.pc3pc4.png"), width = 7, height = 5)
+```
+
+```{r}
+vec %>% 
+  group_by(map_breed) %>% 
+  tally()
 ```
 

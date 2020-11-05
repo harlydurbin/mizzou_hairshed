@@ -62,6 +62,8 @@ fixed16_sol <-
 
 # Age
 
+Supplementary Figure XXX. Best linear unbiased estimates for age in years fit as a categorical effect were used to determine age grouping in contemporary group definition. Records from very old animals aged 14-21 were combined to increase sample size. 
+
 ```{r}
 fixed16_sol %>% 
   filter(effect == "age_group") %>% 
