@@ -94,27 +94,29 @@ breeds_gcta <-
 
 ```
 
-## `METASOFT`
+## `METASOFT` input file
 
 ```{r, warning=FALSE, message=FALSE, eval=FALSE}
 
-metasoft_in <-
-  purrr::map2(.x = c("an1", "bg1", "hfd1", "igs1"),
-              .y = c(3079, 882, 1009, 4375),
-              ~ breeds_snp1101 %>% 
-                filter(dataset == .x) %>% 
-                mutate(id = glue("{chr}:{pos}"),
-                       #se = sqrt(var/.y),
-                       se = var) %>%
-                select(id, !!rlang::sym(glue("{.x}_b")) := b_value, !!rlang::sym(glue("{.x}_se")) := se)) %>% 
+purrr::map2(.x = c("an1", "bg1", "hfd1", "igs1"),
+            .y = c(3079, 882, 1009, 4375),
+            ~ breeds_snp1101 %>% 
+              filter(dataset == .x) %>% 
+              mutate(id = glue("{chr}:{pos}"),
+                     #se = sqrt(var/.y),
+                     se = var) %>%
+              select(id, !!rlang::sym(glue("{.x}_b")) := b_value, !!rlang::sym(glue("{.x}_se")) := se)) %>% 
   purrr::reduce(left_join) %>% 
-  mutate_if(is.numeric, ~ if_else(. == 0, na_dbl, .))
-
+  mutate_if(is.numeric, ~ if_else(. == 0, na_dbl, .)) %>% 
+  write_tsv(here::here("data/derived_data/metasoft/breeds/metasoft_in.breeds.var.txt"),
+            col_names = FALSE)
 ```
 
-```{r, eval=FALSE}
-write_tsv(metasoft_in, here::here("data/derived_data/metasoft/breeds/metasoft_in.breeds.var.txt"),
-          col_names = FALSE)
+```
+srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/breeds/metasoft_in.breeds.var.txt -output data/derived_data/metasoft/breeds/metasoft_out.breeds.var.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/breeds/metasoft.breeds.var.log
+```
+```
+srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/breeds/metasoft_in.breeds.txt -output data/derived_data/metasoft/breeds/metasoft_out.breeds_corrected.var.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/breeds/metasoft.breeds_corrected.var.log -lambda_mean 185496.070770 -lambda_hetero 68271.065091
 ```
 
 # Heritability and repeatability
@@ -496,50 +498,45 @@ ggsave(here::here("figures/breeds/an1bg1hfd1igs1_snp1101.p.png"), width = 9, hei
 
 # `METASOFT`
 
-```
-srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/breeds/metasoft_in.breeds.txt -output data/derived_data/metasoft/breeds/metasoft_out.breeds.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/breeds/metasoft.breeds.log
-```
-```
-srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/breeds/metasoft_in.breeds.txt -output data/derived_data/metasoft/breeds/metasoft_out.breeds_corrected.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/breeds/metasoft.breeds_corrected.log -lambda_mean 23196.908717 -lambda_hetero 73471.714859
-```
-
 RSID, #STUDY, PVALUE_FE, BETA_FE, STD_FE, PVALUE_RE, BETA_RE, STD_RE, PVALUE_RE2, STAT1_RE2, STAT2_RE2, PVALUE_BE, I_SQUARE, Q, PVALUE_Q, TAU_SQUARE
 1:530998, 4, 0.00000, -0.0304635, 0.000336349, 0.254139, 0.0315562, 0.0276723, 0.00000, 8203.13, 14111.9, NA, 99.9788, 14151.4, 0.00000, 0.00306030
 
 ```{r, eval=FALSE}
-metasoft_out <- 
-  read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds_corrected.txt"),
+breeds_metasoft <- 
+  read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds_corrected.var.txt"),
               col_types = cols(.default = "d", RSID = "c")) %>% 
   janitor::clean_names() %>% 
-  select(-pvalues_of_studies_tab_delimitered, -mvalues_of_studies_tab_delimitered) 
+  select(-pvalues_of_studies_tab_delimitered, -mvalues_of_studies_tab_delimitered, -pvalue_be) %>% 
+  left_join(read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds_corrected.var.txt"),
+                        skip = 1,
+                        col_types = "c---------------dddddddd", 
+                        col_names = c("rsid", "an1p", "bg1p", "hfd1p", "igs1p", "an1m", "bg1m", "hfd1m", "igs1m")))
+
 ```
 
-```{r, eval = FALSE}
-metasoft_out %>% 
-  summarise(min(q, na.rm = TRUE), max(q, na.rm = TRUE))
+```{r}
+breeds_metasoft %<>% 
+  mutate_at(vars(ends_with("1m")), ~ if_else(is.nan(.), na_dbl, .)) %>% 
+  filter_at(vars(ends_with("1m")), any_vars(!is.na(.))) %>% 
+  select(-contains("fe"), -pvalue_re, -beta_re, -std_re) %>% 
+  mutate(neglog10re2 = -log10(pvalue_re2))
 ```
 
-## m-values
-
-```{r, eval = FALSE}
-mbreed <-
-  read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds.txt"),
-              skip = 1,
-              col_types = "----------------dddddddd", 
-              col_names = c("an1p", "bg1p", "hfd1p", "igs1p", "an1m", "bg1m", "hfd1m", "igs1m"))
+```{r}
+breeds_metasoft %<>%
+  mutate(neglog10qp = -log10(pvalue_q)) %>% 
+  select(rsid, number_study, stat1_re2, stat2_re2, neglog10re2, q, neglog10qp, tau_square:igs1m, everything())
 ```
 
-```{r, eval = FALSE}
-mbreed %>% 
-  filter_at(vars(contains("p")), any_vars(. != 0))
-
-mbreed
+```{r}
+breeds_metasoft %>% 
+  filter(neglog10re2 >= 5)
+  
+  arrange(q)
 ```
 
-```{r, eval = FALSE}
-metasoft_out %>% 
-  summarise(min(pvalue_q, na.rm = TRUE),
-            max(pvalue_q, na.rm = TRUE),
-            mean(pvalue_q, na.rm = TRUE))
+```{r}
+breeds_metasoft %>% 
+  filter_at(vars(ends_with("1m")), any_vars(. > 0 & 1 > .))
 ```
 
