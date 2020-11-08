@@ -503,11 +503,11 @@ RSID, #STUDY, PVALUE_FE, BETA_FE, STD_FE, PVALUE_RE, BETA_RE, STD_RE, PVALUE_RE2
 
 ```{r, eval=FALSE}
 breeds_metasoft <- 
-  read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds_corrected.var.txt"),
+  read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds.txt"),
               col_types = cols(.default = "d", RSID = "c")) %>% 
   janitor::clean_names() %>% 
   select(-pvalues_of_studies_tab_delimitered, -mvalues_of_studies_tab_delimitered, -pvalue_be) %>% 
-  left_join(read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds_corrected.var.txt"),
+  left_join(read_table2(here::here("data/derived_data/metasoft/breeds/metasoft_out.breeds.txt"),
                         skip = 1,
                         col_types = "c---------------dddddddd", 
                         col_names = c("rsid", "an1p", "bg1p", "hfd1p", "igs1p", "an1m", "bg1m", "hfd1m", "igs1m")))

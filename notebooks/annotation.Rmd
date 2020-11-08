@@ -22,7 +22,7 @@ library(tidylog)
 library(GALLO)
 library(gprofiler2)
 
-options(scipen = 999)
+options(scipen = 0)
 ```
 
 # Notes & questions
@@ -411,7 +411,6 @@ breeds_qtl_enrich10k <-
 
 # Ontology enrichment results
 
-
 ```{r}
 full_gene_enrich10k$result %>% 
   arrange(p_value)
@@ -443,8 +442,9 @@ breeds_go_result <-
   select(dataset, term_name, everything())
 ```
 
-
 # QTL enrichment results
+
+## Full dataset
 
 ```{r}
 full_qtl_enrich10k %>% 
@@ -453,17 +453,64 @@ full_qtl_enrich10k %>%
   select(adj.pval, everything()) 
 ```
 
+## Breed-specific datasets
+
 ```{r}
 breeds_qtl_enrich10k %>% 
-  filter(0.05 >= adj.pval) %>% 
-  select(dataset, everything()) %>% 
+  filter(0.05 > adj.pval) %>% 
+  select(dataset, adj.pval, everything()) %>% 
   arrange(dataset, adj.pval) %>% 
-  View()
+  filter(N_QTLs > 1) %>% 
+  select(dataset:N_QTLs_db) %>% 
+  writexl::write_xlsx("~/Desktop/qtl.xlsx")
+```
+
+## White spotting?
+
+```{r}
+full_qtl10k %>% 
+  filter(trait_ID == "White spotting") %>% 
+  select(-start_pos, -end_pos) %>% 
+  left_join(full_gene0 %>% 
+              filter(CHR == 22) %>% 
+              select(CHR, BP, gene_name, gene_id, start_pos, end_pos)) %>% 
+  filter(between(BP, start_pos, end_pos))
+  
+  
+  
 ```
 
 ```{r}
-breeds_qtl10k %>% 
-  select(dataset, everything()) %>% 
-  View()
+full_gene0 %>% 
+  filter(CHR == 22) %>% 
+  filter(between(BP, start_pos, end_pos))
 ```
 
+# String DB
+
+```{r}
+full_gene10k %>% 
+  mutate(id = if_else(!is.na(gene_name), gene_name, gene_id),
+         # Try ENSEMBL IDs for genes whose names returned no hits/might be parsing errors
+         id = case_when(id %in% c("5S_rRNA", "U6", "TAFA1", "TAFA4", "WFDC1", "SNORA50C", "SNORD104") ~ gene_id,
+                        TRUE ~ id)) %>% 
+  group_by(id) %>% 
+  tally(sort = TRUE) %>% 
+  select(id) %>% 
+  write_delim(here::here("data/derived_data/annotation/string_genes.txt"),
+              col_names = FALSE)
+```
+
+```{r}
+breeds_gene10k %>% 
+  filter(dataset == "an1") %>% 
+  mutate(id = if_else(!is.na(gene_name), gene_name, gene_id),
+         # Try ENSEMBL IDs for genes whose names returned no hits/might be parsing errors
+         id = case_when(id %in% c("5S_rRNA", "U6", "TAFA1", "TAFA4", "WFDC1", "SNORA50C", "SNORD104", "MUCL", "SCRT2") ~ gene_id,
+                        TRUE ~ id)) %>% 
+  group_by(id) %>% 
+  tally(sort = TRUE) %>% 
+  select(id) %>% 
+  write_delim(here::here("data/derived_data/annotation/string_genes.an1.txt"),
+              col_names = FALSE)
+```
