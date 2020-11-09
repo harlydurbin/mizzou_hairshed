@@ -381,6 +381,18 @@ breeds_gene_enrich10k <-
   
 ```
 
+```{r}
+all_go_results <-
+  purrr::map2_dfr(.x = c("an1", "bg1", "hfd1", "igs1"),
+                  .y = c(1:4),
+                  ~ breeds_gene_enrich10k[[.y]]$result %>% 
+                    mutate(dataset = .x)) %>% 
+  select(dataset, term_name, everything()) %>% 
+  bind_rows(full_gene_enrich10k$result %>% 
+              mutate(dataset = "full")) %>% 
+  mutate(p_value = round(p_value, 3))
+```
+
 ## QTLs
 
 ```{r}
@@ -412,18 +424,6 @@ breeds_qtl_enrich10k <-
 # Ontology enrichment results
 
 ```{r}
-full_gene_enrich10k$result %>% 
-  arrange(p_value)
-```
-
-```{r,eval=FALSE}
-full_gene_enrich10k$result %>% 
-  select(-parents) %>% 
-  as_tibble() %>% 
-  write_csv(path = here::here("data/derived_data/annotation/fixed9.gene_enrich10k.csv"))
-```
-
-```{r}
 gostplot(full_gene_enrich10k)
 ```
 
@@ -431,16 +431,15 @@ gostplot(full_gene_enrich10k)
 publish_gosttable(full_gene_enrich10k)
 ```
 
-## Breed-specific
+## Testosterone?
 
 ```{r}
-breeds_go_result <-
-  purrr::map2_dfr(.x = c("an1", "bg1", "hfd1", "igs1"),
-                  .y = c(1:4),
-                  ~ breeds_gene_enrich10k[[.y]]$result %>% 
-                    mutate(dataset = .x)) %>% 
-  select(dataset, term_name, everything())
+all_go_results %>% 
+  group_by(term_name) %>% 
+  filter(str_detect(term_name, "testosterone")) 
+  
 ```
+
 
 # QTL enrichment results
 
@@ -461,8 +460,7 @@ breeds_qtl_enrich10k %>%
   select(dataset, adj.pval, everything()) %>% 
   arrange(dataset, adj.pval) %>% 
   filter(N_QTLs > 1) %>% 
-  select(dataset:N_QTLs_db) %>% 
-  writexl::write_xlsx("~/Desktop/qtl.xlsx")
+  select(dataset:N_QTLs_db) 
 ```
 
 ## White spotting?

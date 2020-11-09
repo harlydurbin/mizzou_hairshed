@@ -173,6 +173,21 @@ breed_h2 %>%
 
 # GWAS
 
+```{r}
+breeds_snp1101 %>% 
+  filter(neglog10p > 5) %>% 
+  group_by(dataset) %>% 
+  tally()
+```
+
+```{r}
+breeds_snp1101 %>% 
+  filter(neglog10p > 5) %>% 
+  group_by(chr, pos) %>% 
+  tally() %>% 
+  filter(n > 1)
+```
+
 ## Hereford
 
 ### SNP1101
