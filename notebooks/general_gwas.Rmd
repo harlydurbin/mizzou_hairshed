@@ -102,7 +102,18 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varc
                                 option = "logL"))
 ```
 
-# Genome-wide results
+# Summary/exploratory
+
+```{r}
+fixed9_snp1101 %>% 
+  filter(neglog10q > 1) %>% 
+  group_by(chr) %>% 
+  summarise(n = n(),
+            pct = n()/557) %>% 
+  arrange(desc(pct))
+```
+
+# Genome-wide Manhattan and Q-Q plots
 
 ## Without PC correction
 
@@ -274,5 +285,50 @@ fixed9_snp1101 %>%
   geom_hline(yintercept = 5,
              color = "red",
              size = 0.25)
+```
+
+```{r, fig.width=7, fig.height=7}
+fixed9_snp1101 %>% 
+  filter(chr %in% c(5, 23)) %>% 
+  mutate(dataset = "full") %>% 
+  bind_rows(breeds_snp1101 %>% 
+              filter(chr %in% c(5, 23))) %>%
+  arrange(dataset, chr) %>% 
+  mutate(dataset = case_when(dataset == "full" ~ "Full",
+                             dataset == "an1" ~ "AN",
+                             dataset == "bg1" ~ "BG",
+                             dataset == "hfd1" ~ "HFD",
+                             dataset == "igs1" ~ "IGS"),
+         dataset = forcats::fct_relevel(as.factor(dataset), "Full", "AN", "BG", "HFD", "IGS"),
+         chr = if_else(chr == 5, "Chromosome 5", "Chromosome 23"),
+         chr = forcats::fct_inorder(chr)) %>% 
+  ggplot(aes(x = pos,
+             y = neglog10p,
+             color = dataset)) +
+  geom_point(alpha = 0.75) +
+  scale_color_manual(values = c("Full" = "#7e756d",
+                                "AN" = "#4f6980",
+                                "BG" = "#bfbb60",
+                                "HFD" = "#f47942",
+                                "IGS"= "#638b66"),
+                     guide = FALSE) +
+  scale_x_continuous(breaks = c(0, 25000000, 50000000, 75000000, 100000000, 120000000),
+                     labels = c("0 Kb", "25 Kb", "50 Kb", "75 Kb", "100 Kb", "120 Kb")) +
+  theme_classic() +
+  theme(axis.title.y = element_text(margin = margin(t = 0,
+                                                    r = 1,
+                                                    b = 0,
+                                                    l = 0)),
+        axis.title.x = element_blank()) +
+  labs(x = NULL,
+       y = latex2exp::TeX("$-log_{10}(p-value)$"),
+       title = NULL) +
+  geom_hline(yintercept = 5,
+             color = "red",
+             size = 0.25) +
+  facet_grid(dataset ~ chr,
+             scales = "free_x")
+
+ggsave(here::here("figures/breeds/chr_zoomin.p.png"), width = 7, height = 7)
 ```
 

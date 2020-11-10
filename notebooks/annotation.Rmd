@@ -78,13 +78,6 @@ breeds_pass <-
   select(dataset, CHR = chr, BP = pos)
 ```
 
-```{r}
-fixed9_snp1101 %>% 
-  mutate(se = sqrt(var/(g0+g1+g2))) %>% 
-  select(se, var, everything())
-```
-
-
 ## BIM, GFF, and GTF files
 
 ```{r, eval=FALSE}
@@ -350,6 +343,13 @@ breeds_qtl10k <-
 
 # Calculate enrichments
 
+```{r}
+all_gene10k <-
+  full_gene10k %>% 
+  mutate(dataset = "full") %>% 
+  bind_rows(breeds_gene10k)
+```
+
 ## Genes
 
 ```{r}
@@ -382,15 +382,19 @@ breeds_gene_enrich10k <-
 ```
 
 ```{r}
-all_go_results <-
-  purrr::map2_dfr(.x = c("an1", "bg1", "hfd1", "igs1"),
-                  .y = c(1:4),
-                  ~ breeds_gene_enrich10k[[.y]]$result %>% 
-                    mutate(dataset = .x)) %>% 
-  select(dataset, term_name, everything()) %>% 
-  bind_rows(full_gene_enrich10k$result %>% 
-              mutate(dataset = "full")) %>% 
-  mutate(p_value = round(p_value, 3))
+shared_gene_enrich_10k <-
+  all_gene10k %>% 
+  group_by(gene_id) %>% 
+  filter(n_distinct(dataset) > 1) %>% 
+  ungroup() %>% 
+  mutate(id = if_else(!is.na(gene_name), gene_name, gene_id)) %>%
+  distinct(id) %>% 
+  pull(id) %>% 
+  as.list() %>% 
+  purrr::set_names() %>% 
+  gost(organism = "btaurus",
+       significant = TRUE)
+
 ```
 
 ## QTLs
@@ -421,7 +425,12 @@ breeds_qtl_enrich10k <-
   
 ```
 
-# Ontology enrichment results
+# Gene ontology enrichment results
+
+```{r}
+shared_gene_enrich_10k$result
+```
+
 
 ```{r}
 gostplot(full_gene_enrich10k)
@@ -439,7 +448,6 @@ all_go_results %>%
   filter(str_detect(term_name, "testosterone")) 
   
 ```
-
 
 # QTL enrichment results
 
@@ -484,6 +492,18 @@ full_gene0 %>%
   filter(between(BP, start_pos, end_pos))
 ```
 
+# Chromosome 5 lead SNP
+
+```{r}
+fixed9_snp1101 %>% 
+  filter(chr == 23) %>% 
+  arrange(desc(neglog10q)) %>% 
+  filter(neglog10q > 1) %>% 
+  select(CHR = chr, BP = pos, neglog10q) %>% 
+  left_join(full_gene0)
+```
+
+
 # String DB
 
 ```{r}
@@ -512,3 +532,50 @@ breeds_gene10k %>%
   write_delim(here::here("data/derived_data/annotation/string_genes.an1.txt"),
               col_names = FALSE)
 ```
+
+# EnrichmentMap
+
+```{r}
+gostres <-
+  purrr::map(.x = c("full", "an1", "bg1", "hfd1", "igs1"),
+             ~ all_gene10k %>% 
+               filter(dataset == .x) %>% 
+               mutate(id = if_else(!is.na(gene_name), gene_name, gene_id)) %>%
+               distinct(id) %>% 
+               pull(id) %>% 
+               as.list() %>% 
+               purrr::set_names() %>% 
+               gost(organism = "btaurus",
+                    evcodes = TRUE, 
+                    multi_query = FALSE,
+                    sources = c("GO", "REAC", "MIRNA", "CORUM", "HP", "HPA", "WP")))
+
+```
+
+```{r}
+write_gem <-
+  function(x, y) {
+               gem <- gostres[[x]]$result[,c("term_id", "term_name", "p_value", "intersection")]
+               
+               colnames(gem) <- c("GO.ID", "Description", "p.Val", "Genes")
+               
+               gem$FDR <- gem$p.Val
+               
+               gem$Phenotype = "+1"
+               
+               gem <- gem[,c("GO.ID", "Description", "p.Val", "FDR", "Phenotype", "Genes")]
+               
+               write.table(gem,
+                           file = here::here(glue("data/derived_data/annotation/enrichment_map/{y}_gem.txt")),
+                           sep = "\t",
+                           quote = F,
+                           row.names = F)
+               }
+```
+
+```{r}
+purrr::walk2(.x = c(1:5), 
+             .y = c("full", "an1", "bg1", "hfd1", "igs1"),
+             ~ write_gem(x = .x, y = .y))
+```
+

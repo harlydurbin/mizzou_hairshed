@@ -6,12 +6,22 @@ library(stringr)
 library(glue)
 library(ggplot2)
 library(magrittr)
+library(tidyr)
 
 source(here::here("source_functions/iterative_id_search.R"))
+source(here::here("source_functions/calculate_acc.R"))
+
+## Setup
 
 breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
 
 cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+
+gen_var <- 0.33133
+
+## sim_breed breed percentages
 
 sim_breed <-
   read_csv(here::here("data/raw_data/201005.SIM.breeds.csv")) %>% 
@@ -45,6 +55,45 @@ sim_breed <-
                            TRUE ~ "Crossbred or other"),
          registration_number = as.character(glue("SIM{registration_number}")))
 
+## Pedigree & inbreeding
+
+renaddped <-
+  read_table2(here::here("data/derived_data/aireml_varcomp/fixed9/renadd02.ped"),
+              col_names = FALSE) %>%
+  select(id_new = X1, sire_id = X2, dam_id = X3, full_reg = X10)
+
+renaddped %<>%
+  left_join(renaddped %>%
+              select(sire_id = id_new,
+                     sire_reg = full_reg)) %>%
+  left_join(renaddped %>%
+              select(dam_id = id_new,
+                     dam_reg = full_reg)) %>%
+  select(id_new, full_reg, sire_reg, dam_reg) %>%
+  filter(!is.na(full_reg)) %>%
+  mutate_at(vars(contains("reg")), ~ replace_na(., "0")) %>% 
+  filter(full_reg != "0")
+
+renaddped %<>%
+  left_join(full_ped %>%
+              select(full_reg, sex)) %>%
+  mutate(sex = case_when(full_reg %in% renaddped$sire_reg ~ "M",
+                         full_reg %in% renaddped$dam_reg ~ "F",
+                         TRUE ~ sex),
+         sex = replace_na(sex, "F"))
+
+pedinb <-
+  renaddped %>%
+  select(full_reg, sire_reg, dam_reg) %>%
+  optiSel::prePed() %>%
+  optiSel::pedInbreeding() %>%
+  tibble::remove_rownames() %>%
+  rename(full_reg = Indiv,
+         f = Inbr)
+
+
+## Breeding values
+
 bvs <- 
   read_table2(here::here("data/derived_data/aireml_varcomp/fixed9/solutions"),
               skip = 1,
@@ -54,6 +103,22 @@ bvs <-
                         col_names = FALSE) %>% 
               select(id_renamed = X1, full_reg = X10)) %>% 
   select(-trait, -effect, -id_renamed)
+
+### Add pedigree inbreeding, calculate accuracy
+
+bvs %<>% 
+  left_join(pedinb) %>%
+  mutate(f = tidyr::replace_na(f, 0),
+         acc = purrr::map2_dbl(.x = se,
+                               .y = f,
+                               ~ calculate_acc(u = gen_var,
+                                               se = .x,
+                                               f = .y,
+                                               option = "reliability")),
+         acc = if_else(0 > acc, 0, acc)) %>% 
+  filter(acc >= 0.4)
+
+### Add breed codes for plotting
 
 bvs %<>% 
   left_join(breed_key %>% 
@@ -138,7 +203,11 @@ breeds_boxswarm <-
   labs(y = "EBV")
 
 
-ggsave(here::here("figures/breeds/fixed9.breeds_boxswarm.png"),
+ggsave(here::here("figures/breeds/fixed9.breeds_boxswarm.acc04.png"),
        plot = breeds_boxswarm, 
        width = 12,
        height = 8)
+
+bvs %>% 
+  arrange(solution) %>% 
+  View()
