@@ -103,7 +103,9 @@ weather %>%
   slice_max(order_by = value, n = 30) %>% 
   summarise(mean_apparent_high = mean(apparent_high)) %>% 
   ungroup() %>% 
-  summarise(`Mean of mean apparent high` = mean(mean_apparent_high),
+  summarise(`Min. mean apparent high` = min(mean_apparent_high),
+            `Max. mean apparent high` = max(mean_apparent_high),
+            `Mean of mean apparent high` = mean(mean_apparent_high),
             `Median mean apparent high` = median(mean_apparent_high),
             `SD mean apparent high` = sd(mean_apparent_high))
 ```

@@ -11,6 +11,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(TissueEnrich)
 library(readr)
 library(dplyr)
 library(ggplot2)
@@ -21,6 +22,7 @@ library(stringr)
 library(tidylog)
 library(GALLO)
 library(gprofiler2)
+
 
 options(scipen = 0)
 ```
@@ -270,6 +272,15 @@ srun --account deckerlab -p BioCompute,htc4,hpc5 -t 48:00:00 --mem 100G -c 56 so
 ## Genes
 
 ```{r}
+full_gene50k <-
+  find_genes_qtls_around_markers(db_file = gtf,
+                                 marker_file = full_pass,
+                                 method = c("gene"),
+                                 marker = c("snp"),
+                                 interval = 50000) 
+```
+
+```{r}
 full_gene10k <-
   find_genes_qtls_around_markers(db_file = gtf,
                                  marker_file = full_pass,
@@ -285,6 +296,20 @@ full_gene0 <-
                                  method = c("gene"),
                                  marker = c("snp"),
                                  interval = 0) 
+```
+
+```{r}
+breeds_gene50k <-
+  map_dfr(.x = c("an1", "bg1", "hfd1", "igs1"),
+          ~ breeds_pass %>% 
+            filter(dataset == .x) %>% 
+            select(-dataset) %>% 
+            find_genes_qtls_around_markers(db_file = gtf,
+                                           marker_file = .,
+                                           method = c("gene"),
+                                           marker = c("snp"),
+                                           interval = 50000) %>% 
+            mutate(dataset = .x))
 ```
 
 ```{r}
@@ -315,6 +340,26 @@ breeds_gene0 <-
             mutate(dataset = .x))
 ```
 
+```{r}
+all_gene10k <-
+  full_gene10k %>% 
+  mutate(dataset = "full") %>% 
+  bind_rows(breeds_gene10k)
+```
+
+```{r}
+all_gene50k <-
+  full_gene50k %>% 
+  mutate(dataset = "full") %>% 
+  bind_rows(breeds_gene50k)
+```
+
+```{r}
+full_gene10k %>% 
+  group_by(chr, gene_id, gene_name) %>% 
+  tally(sort = TRUE)
+```
+
 ## QTLs
 
 ```{r}
@@ -341,14 +386,13 @@ breeds_qtl10k <-
    
 ```
 
-# Calculate enrichments
-
 ```{r}
-all_gene10k <-
-  full_gene10k %>% 
-  mutate(dataset = "full") %>% 
-  bind_rows(breeds_gene10k)
+breeds_gene_enrich10k[[1]]$result %>% 
+  View()
 ```
+
+
+# Calculate enrichments
 
 ## Genes
 
@@ -492,17 +536,84 @@ full_gene0 %>%
   filter(between(BP, start_pos, end_pos))
 ```
 
-# Chromosome 5 lead SNP
+
+```{r}
+full_qtl10k %>% 
+  filter(trait_ID == "Eye area pigmentation") %>% 
+  select(-start_pos, -end_pos) %>% 
+  left_join(full_gene0 %>% 
+              filter(CHR == 22) %>% 
+              select(CHR, BP, gene_name, gene_id, start_pos, end_pos)) 
+  
+  
+  
+```
+
+# Chromosome 5
+
+## Lead peak
 
 ```{r}
 fixed9_snp1101 %>% 
-  filter(chr == 23) %>% 
-  arrange(desc(neglog10q)) %>% 
   filter(neglog10q > 1) %>% 
-  select(CHR = chr, BP = pos, neglog10q) %>% 
-  left_join(full_gene0)
+  filter(chr == 5) %>% 
+  filter(21000000 > pos) %>% 
+  arrange(desc(neglog10q)) %>% 
+  select(neglog10q, CHR = chr, BP = pos) %>% 
+  left_join(full_gene10k) %>% 
+  group_by(gene_name) %>% 
+  tally(sort = TRUE)
 ```
 
+## Second peak
+
+```{r}
+fixed9_snp1101 %>% 
+  filter(neglog10q > 1) %>% 
+  filter(chr == 5) %>% 
+  filter(pos > 21000000) %>% 
+  arrange(desc(neglog10q)) %>% 
+  select(neglog10q, CHR = chr, BP = pos) %>% 
+  left_join(full_gene0) %>% 
+  group_by(gene_id, gene_name) %>% 
+  tally(sort = TRUE)
+
+```
+
+```{r}
+fixed9_snp1101 %>% 
+  filter(neglog10q > 1) %>% 
+  filter(chr == 5) %>% 
+  filter(pos > 21000000) %>% 
+  arrange(desc(neglog10q)) %>% 
+  select(neglog10q, CHR = chr, BP = pos) %>% 
+  left_join(full_gene0) %>% 
+  group_by(gene_id, gene_name) %>% 
+  tally(sort = TRUE)
+
+```
+
+# Chromosome 8 BG
+
+```{r}
+breeds_snp1101 %>% 
+  filter(neglog10p > 5) %>% 
+  filter(dataset == "bg1") %>% 
+  filter(chr == 8) %>% 
+  select(neglog10p, CHR = chr, BP = pos) %>% 
+  left_join(breeds_gene10k)
+```
+
+# Chromosome 9 HFD
+
+```{r}
+breeds_snp1101 %>% 
+  filter(neglog10p > 5) %>% 
+  filter(dataset == "hfd1") %>% 
+  filter(chr == 9) %>% 
+  select(neglog10p, CHR = chr, BP = pos) %>% 
+  left_join(breeds_gene10k)
+```
 
 # String DB
 
@@ -533,7 +644,7 @@ breeds_gene10k %>%
               col_names = FALSE)
 ```
 
-# EnrichmentMap
+# `EnrichmentMap`
 
 ```{r}
 gostres <-
@@ -579,3 +690,130 @@ purrr::walk2(.x = c(1:5),
              ~ write_gem(x = .x, y = .y))
 ```
 
+# `TissueEnrich`
+
+First, convert gene names from cattle to human and mouse using `gorth()`.
+
+```{r}
+orthologs <-
+  c("hsapiens", "mmusculus") %>% 
+  purrr::map_dfr(~ all_gene50k %>% 
+                   mutate(id = if_else(!is.na(gene_name),
+                                       gene_name,
+                                       gene_id)) %>%
+                   distinct(id) %>% 
+                   pull(id) %>% 
+                   gorth(query = .,
+                         source_organism = "btaurus",
+                         target_organism = .x,
+                         mthreshold = 1,
+                         filter_na = TRUE) %>% 
+                   mutate(species = .x)) %>% 
+  group_by(input, species) %>% 
+  arrange(ensg_number) %>% 
+  slice(1) %>% 
+  ungroup()
+  
+```
+
+```{r}
+
+mm_gs <-
+  orthologs %>% 
+  filter(species == "mmusculus") %>% 
+  distinct(ortholog_ensg) %>% 
+  pull(ortholog_ensg) %>% 
+  GeneSet(geneIds = .,
+          organism = "Mus Musculus",
+          geneIdType = ENSEMBLIdentifier())
+  
+```
+
+```{r}
+mm_te <- 
+  teEnrichment(inputGenes = mm_gs,
+               tissueSpecificGeneType = 3,
+               rnaSeqDataset = 3)
+```
+
+```{r}
+
+hs_gs <-
+  orthologs %>% 
+  filter(species == "hsapiens") %>% 
+  distinct(ortholog_ensg) %>% 
+  pull(ortholog_ensg) %>% 
+  GeneSet(geneIds = .,
+          organism = "Homo Sapiens",
+          geneIdType = ENSEMBLIdentifier())
+  
+```
+
+```{r}
+hs_te_hpa <- 
+  teEnrichment(inputGenes = hs_gs,
+               tissueSpecificGeneType = 3,
+               rnaSeqDataset = 1)
+```
+
+```{r}
+hs_te_gtex <- 
+  teEnrichment(inputGenes = hs_gs,
+               tissueSpecificGeneType = 3,
+               rnaSeqDataset = 2)
+```
+
+```{r}
+
+transform_te <- 
+  function(output){
+    seEnrichmentOutput <- output[[1]]
+  
+    enrichmentOutput <- setNames(data.frame(assay(seEnrichmentOutput),
+                                            row.names = rowData(seEnrichmentOutput)[,1]),
+                                 colData(seEnrichmentOutput)[,1])
+    
+    enrichmentOutput$Tissue <- row.names(enrichmentOutput)
+    
+    enrichmentOutput %<>%
+      tibble::remove_rownames() %>% 
+      select(Tissue, everything()) %>% 
+      arrange(desc(Log10PValue))
+    
+    return(enrichmentOutput)
+    }
+
+```
+
+```{r}
+transform_te(mm_te) 
+```
+
+```{r}
+transform_te(hs_te_hpa) 
+```
+
+```{r}
+transform_te(hs_te_gtex) 
+```
+
+# Supplementary file
+
+```{r}
+all_gene10k %>% 
+  select(-CHR) %>% 
+  rename(snp_pos = BP, gene_start = start_pos, gene_end = end_pos) %>% 
+  left_join(fixed9_snp1101 %>% 
+              mutate(dataset = "full",
+                     chr = as.character(chr)) %>% 
+              filter(neglog10q > 1) %>% 
+              select(dataset, snp_pos = pos, chr, snp_p = p_value) %>% 
+              bind_rows(breeds_snp1101 %>% 
+                          mutate(chr = as.character(chr)) %>% 
+                          filter(neglog10p > 5) %>% 
+                          select(dataset, snp_pos = pos, chr, snp_p = p_value))) %>% 
+  mutate(within_gene = case_when(snp_pos >= gene_start & gene_end >= snp_pos ~ TRUE,
+                                 TRUE ~ FALSE)) %>% 
+  select(dataset, chr, snp_pos, snp_p, gene_start, gene_end, gene_id, gene_name, gene_biotype, within_gene) %>% 
+  write_csv(here::here("talks_articles/s1.genes10kb.csv"))
+```

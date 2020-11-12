@@ -19,6 +19,7 @@ library(patchwork)
 library(magrittr)
 library(stringr)
 library(tidylog)
+library(patchwork)
 
 source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
@@ -113,30 +114,36 @@ fixed9_snp1101 %>%
   arrange(desc(pct))
 ```
 
+```{r}
+fixed9_snp1101 %>% 
+  filter(neglog10q > 1) %>% 
+  filter(chr == 5) %>% 
+  mutate(distance = pos - lag(pos)) %>% 
+  select(distance, everything()) %>% 
+  arrange(desc(pos))
+```
+
+
 # Genome-wide Manhattan and Q-Q plots
 
 ## Without PC correction
 
 ### SNP1101
 
-```{r}
-fixed9_snp1101 %>% 
-  filter(neglog10q > 1)
-```
-
-
 ```{r, fig.width = 11, fig.height = 6.16}
 
-hair_manhattan(df = fixed9_snp1101 %>% 
-                 filter(0.5 > p_value),
-               y_var = neglog10q, 
-               y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
-               sigline = 1,
-               color1 = "#b9aa97",
-               color2 = "#7e756d")
+full_q <-
+  hair_manhattan(df = fixed9_snp1101 %>% 
+                   filter(0.5 > p_value),
+                 y_var = neglog10q, 
+                 y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
+                 sigline = 1,
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d")
 
+full_q
 
-ggsave(filename = here::here("figures/general_gwas/fixed9_snp1101.q.png"), height = 6.16, width = 11)
+ggsave(filename = here::here("figures/general_gwas/fixed9_snp1101.q.png"), plot = full_q, height = 6.16, width = 11)
 ```
 
 ```{r, fig.width = 11, fig.height = 6.16}
@@ -266,25 +273,30 @@ fixed9_snp1101 %>%
 
 
 ```{r}
-fixed9_snp1101 %>% 
+full_q_chr5 <-
+  fixed9_snp1101 %>% 
   filter(chr == 5) %>%
+  filter(50000000 >= pos) %>% 
   ggplot(aes(x = pos,
              y = neglog10q)) +
   geom_point(color = "#7e756d", alpha = 0.75) +
-  scale_x_continuous(breaks = c(0, 25000000, 50000000, 75000000, 100000000, 120000000),
-                     labels = c("0 Kb", "25 Kb", "50 Kb", "75 Kb", "100 Kb", "120 Kb")) +
+  scale_x_continuous(breaks = c(0, 10000000, 20000000, 30000000, 40000000, 50000000),
+                     labels = c("0 Mb", "10 Mb", "20 Mb", "30 Mb", "40 Mb", "50 Mb")) +
   theme_classic() +
-  theme(axis.title.y = element_text(margin = margin(t = 0,
-                                                    r = 1,
+  theme(axis.title = element_text(size = 18),
+        axis.title.y = element_text(margin = margin(t = 0,
+                                                    r = 13,
                                                     b = 0,
                                                     l = 0)),
+        axis.text = element_text(size = 14),
+        legend.text = element_text(size = 14),
         axis.title.x = element_blank()) +
   labs(x = NULL,
        y = latex2exp::TeX("$-log_{10}(q-value)$"),
        title = NULL) +
-  geom_hline(yintercept = 5,
+  geom_hline(yintercept = 1,
              color = "red",
-             size = 0.25)
+             size = 0.5)
 ```
 
 ```{r, fig.width=7, fig.height=7}
@@ -332,3 +344,61 @@ fixed9_snp1101 %>%
 ggsave(here::here("figures/breeds/chr_zoomin.p.png"), width = 7, height = 7)
 ```
 
+```{r, fig.width=5, fig.height=8}
+fixed9_snp1101 %>% 
+  filter(chr == 5 ) %>% 
+  filter(50000000 >= pos) %>% 
+  mutate(dataset = "full") %>% 
+  bind_rows(breeds_snp1101 %>% 
+              filter(chr == 5 ) %>% 
+              filter(50000000 >= pos)) %>%
+  arrange(dataset) %>% 
+  mutate(dataset = case_when(dataset == "full" ~ "Full",
+                             dataset == "an1" ~ "AN",
+                             dataset == "bg1" ~ "BG",
+                             dataset == "hfd1" ~ "HFD",
+                             dataset == "igs1" ~ "IGS"),
+         dataset = forcats::fct_relevel(as.factor(dataset), "Full", "AN", "BG", "HFD", "IGS"),
+         chr = if_else(chr == 5, "Chromosome 5", "Chromosome 23"),
+         chr = forcats::fct_inorder(chr)) %>% 
+  ggplot(aes(x = pos,
+             y = neglog10p,
+             color = dataset)) +
+  geom_point(alpha = 0.75) +
+  scale_color_manual(values = c("Full" = "#7e756d",
+                                "AN" = "#4f6980",
+                                "BG" = "#bfbb60",
+                                "HFD" = "#f47942",
+                                "IGS"= "#638b66"),
+                     guide = FALSE) +
+  scale_x_continuous(breaks = c(0, 10000000, 20000000, 30000000, 40000000, 50000000),
+                     labels = c("0 Mb", "10 Mb", "20 Mb", "30 Mb", "40 Mb", "50 Mb")) +
+  theme_classic() +
+  theme(axis.title.y = element_text(margin = margin(t = 0,
+                                                    r = 1,
+                                                    b = 0,
+                                                    l = 0)),
+        axis.title.x = element_blank()) +
+  labs(x = NULL,
+       y = latex2exp::TeX("$-log_{10}(p-value)$"),
+       title = NULL) +
+  geom_hline(yintercept = 5,
+             color = "red",
+             size = 0.5) +
+  facet_wrap(~ dataset, nrow = 5)
+
+ggsave(here::here("figures/breeds/chr5_superzoomin.p.png"), width = 5, height = 8)
+```
+
+# Panel figure
+
+```{r, fig.width=8, fig.height=6}
+
+
+full_q/full_q_chr5 + plot_annotation(tag_levels = c("a")) & 
+  theme(plot.tag = element_text(size = 24),
+        plot.margin = margin(t = 0, b = 0, l = 0.75, r = 1, unit = "mm"))
+
+ggsave(filename = here::here("figures/general_gwas/panel.q.png"), height = 6, width = 8) 
+
+```
