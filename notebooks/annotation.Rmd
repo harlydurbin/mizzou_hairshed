@@ -69,14 +69,14 @@ breeds_snp1101 <-
 ```{r}
 full_pass <-
   fixed9_snp1101 %>% 
-  filter(neglog10q >= 1) %>% 
+  filter(neglog10q > 1) %>% 
   select(CHR = chr, BP = pos)
 ```
 
 ```{r}
 breeds_pass <-
   breeds_snp1101 %>% 
-  filter(neglog10p >= 5) %>% 
+  filter(neglog10p > 5) %>% 
   select(dataset, CHR = chr, BP = pos)
 ```
 
@@ -499,9 +499,11 @@ all_go_results %>%
 
 ```{r}
 full_qtl_enrich10k %>% 
+  View()
   filter(0.05 >= adj.pval) %>% 
   arrange(adj.pval) %>% 
-  select(adj.pval, everything()) 
+  select(adj.pval, everything()) %>% 
+  View()
 ```
 
 ## Breed-specific datasets
@@ -511,8 +513,9 @@ breeds_qtl_enrich10k %>%
   filter(0.05 > adj.pval) %>% 
   select(dataset, adj.pval, everything()) %>% 
   arrange(dataset, adj.pval) %>% 
-  filter(N_QTLs > 1) %>% 
-  select(dataset:N_QTLs_db) 
+  #filter(N_QTLs > 1) %>% 
+  select(dataset:N_QTLs_db) %>% 
+  View()
 ```
 
 ## White spotting?
@@ -587,10 +590,20 @@ fixed9_snp1101 %>%
   filter(pos > 21000000) %>% 
   arrange(desc(neglog10q)) %>% 
   select(neglog10q, CHR = chr, BP = pos) %>% 
-  left_join(full_gene0) %>% 
+  left_join(full_gene10k) %>% 
   group_by(gene_id, gene_name) %>% 
   tally(sort = TRUE)
 
+```
+
+# Chromosome 23
+
+```{r}
+all_gene10k %>% 
+  filter(CHR == 23) %>% 
+  select(dataset, everything(), -strand, -width) %>% 
+  filter(gene_name == "PRL")
+  filter(BP>= start_pos & end_pos >= BP)
 ```
 
 # Chromosome 8 BG
@@ -800,7 +813,8 @@ transform_te(hs_te_gtex)
 # Supplementary file
 
 ```{r}
-all_gene10k %>% 
+supp1 <-
+  all_gene10k %>% 
   select(-CHR) %>% 
   rename(snp_pos = BP, gene_start = start_pos, gene_end = end_pos) %>% 
   left_join(fixed9_snp1101 %>% 
@@ -814,6 +828,13 @@ all_gene10k %>%
                           select(dataset, snp_pos = pos, chr, snp_p = p_value))) %>% 
   mutate(within_gene = case_when(snp_pos >= gene_start & gene_end >= snp_pos ~ TRUE,
                                  TRUE ~ FALSE)) %>% 
-  select(dataset, chr, snp_pos, snp_p, gene_start, gene_end, gene_id, gene_name, gene_biotype, within_gene) %>% 
-  write_csv(here::here("talks_articles/s1.genes10kb.csv"))
+  select(dataset, chr, snp_pos, snp_p, gene_start, gene_end, gene_id, gene_name, gene_biotype, within_gene)
 ```
+
+
+```{r}
+write_csv(supp1,
+          here::here("talks_articles/s1.genes10kb.csv"),
+          na = "")
+```
+

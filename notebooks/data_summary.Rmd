@@ -27,7 +27,7 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
 animal_table <- read_rds(here::here("data/raw_data/import_join_clean/animal_table.rds"))
 ```
 
-```{r}
+```{r, eval = FALSE}
 bvs <- 
   read_table2(here::here("data/derived_data/aireml_varcomp/fixed9/solutions"),
               skip = 1,
@@ -190,6 +190,10 @@ fescue_belt <-
   rename(long = lng)
 ```
 
+```{r}
+breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
+```
+
 ```{r, eval = FALSE}
 map_dat <-
   breed_key %>% 
@@ -254,13 +258,15 @@ https://jrnold.github.io/ggthemes/reference/tableau_color_pal.html
 * Brangus: Light greens
 
 ```{r, fig.width=5, fig.height=4, eval = FALSE}
-ggplot(fescue_belt,
-       aes(x = long, y = lat)) +
+# ggplot(fescue_belt,
+#        aes(x = long, y = lat)) +
+#   usa +
+#   # Fescue belt shape
+#   ggforce::geom_shape(expand = unit(0.1, 'mm'),
+#                       radius = unit(0.4, 'mm'),
+#                       alpha = 0.3) +
+ggplot() +
   usa +
-  # Fescue belt shape
-  ggforce::geom_shape(expand = unit(0.1, 'mm'),
-                      radius = unit(0.4, 'mm'),
-                      alpha = 0.3) +
   geom_point(data = map_dat,
              aes(x = long,
                  y = lat,

@@ -402,12 +402,14 @@ hair_manhattan(df = breeds_gcta %>%
 ```{r}
 overlap <-
   breeds_snp1101 %>% 
-  filter(neglog10p >= 5) %>% 
+  filter(neglog10p > 5) %>% 
   group_by(chr, pos) %>% 
   filter(n() > 1) %>% 
   summarise(n = n()) %>% 
   ungroup() %>% 
-  left_join(breeds_snp1101) %>% 
+  left_join(breeds_snp1101 %>% 
+              filter(neglog10p > 5) %>% 
+              select(chr, pos, dataset)) %>% 
   mutate(chr_color = "black")
 
 ```
