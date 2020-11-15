@@ -1,0 +1,197 @@
+---
+title: "Tissue enrichment"
+author: "Harly Durbin"
+date: "11/14/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(TissueEnrich)
+library(gprofiler2)
+
+```
+
+# `TissueEnrich`
+
+First, convert gene names from cattle to human and mouse using `gorth()`.
+
+```{r}
+orthologs <-
+  c("hsapiens", "mmusculus") %>% 
+  purrr::map_dfr(~ all_gene50k %>% 
+                   mutate(id = if_else(!is.na(gene_name),
+                                       gene_name,
+                                       gene_id)) %>%
+                   distinct(id) %>% 
+                   pull(id) %>% 
+                   gorth(query = .,
+                         source_organism = "btaurus",
+                         target_organism = .x,
+                         mthreshold = 1,
+                         filter_na = TRUE) %>% 
+                   mutate(species = .x)) %>% 
+  group_by(input, species) %>% 
+  arrange(ensg_number) %>% 
+  slice(1) %>% 
+  ungroup()
+  
+```
+
+```{r}
+
+mm_gs <-
+  orthologs %>% 
+  filter(species == "mmusculus") %>% 
+  distinct(ortholog_ensg) %>% 
+  pull(ortholog_ensg) %>% 
+  GeneSet(geneIds = .,
+          organism = "Mus Musculus",
+          geneIdType = ENSEMBLIdentifier())
+  
+```
+
+```{r}
+mm_te <- 
+  teEnrichment(inputGenes = mm_gs,
+               tissueSpecificGeneType = 3,
+               rnaSeqDataset = 3)
+```
+
+```{r}
+
+hs_gs <-
+  orthologs %>% 
+  filter(species == "hsapiens") %>% 
+  distinct(ortholog_ensg) %>% 
+  pull(ortholog_ensg) %>% 
+  GeneSet(geneIds = .,
+          organism = "Homo Sapiens",
+          geneIdType = ENSEMBLIdentifier())
+  
+```
+
+```{r}
+hs_te_hpa <- 
+  teEnrichment(inputGenes = hs_gs,
+               tissueSpecificGeneType = 3,
+               rnaSeqDataset = 1)
+```
+
+```{r}
+hs_te_gtex <- 
+  teEnrichment(inputGenes = hs_gs,
+               tissueSpecificGeneType = 3,
+               rnaSeqDataset = 2)
+```
+
+```{r}
+
+transform_te <- 
+  function(output){
+    seEnrichmentOutput <- output[[1]]
+  
+    enrichmentOutput <- setNames(data.frame(assay(seEnrichmentOutput),
+                                            row.names = rowData(seEnrichmentOutput)[,1]),
+                                 colData(seEnrichmentOutput)[,1])
+    
+    enrichmentOutput$Tissue <- row.names(enrichmentOutput)
+    
+    enrichmentOutput %<>%
+      tibble::remove_rownames() %>% 
+      select(Tissue, everything()) %>% 
+      arrange(desc(Log10PValue))
+    
+    return(enrichmentOutput)
+    }
+
+```
+
+```{r}
+transform_te(mm_te) 
+```
+
+```{r}
+transform_te(hs_te_hpa) 
+```
+
+```{r}
+transform_te(hs_te_gtex) 
+```
+
+# `EnrichmentMap`
+
+```{r}
+gostres <-
+  purrr::map(.x = c("full", "an1", "bg1", "hfd1", "igs1"),
+             ~ all_gene10k %>% 
+               filter(dataset == .x) %>% 
+               mutate(id = if_else(!is.na(gene_name), gene_name, gene_id)) %>%
+               distinct(id) %>% 
+               pull(id) %>% 
+               as.list() %>% 
+               purrr::set_names() %>% 
+               gost(organism = "btaurus",
+                    evcodes = TRUE, 
+                    multi_query = FALSE,
+                    sources = c("GO", "REAC", "MIRNA", "CORUM", "HP", "HPA", "WP")))
+
+```
+
+```{r}
+write_gem <-
+  function(x, y) {
+               gem <- gostres[[x]]$result[,c("term_id", "term_name", "p_value", "intersection")]
+               
+               colnames(gem) <- c("GO.ID", "Description", "p.Val", "Genes")
+               
+               gem$FDR <- gem$p.Val
+               
+               gem$Phenotype = "+1"
+               
+               gem <- gem[,c("GO.ID", "Description", "p.Val", "FDR", "Phenotype", "Genes")]
+               
+               write.table(gem,
+                           file = here::here(glue("data/derived_data/annotation/enrichment_map/{y}_gem.txt")),
+                           sep = "\t",
+                           quote = F,
+                           row.names = F)
+               }
+```
+
+```{r}
+purrr::walk2(.x = c(1:5), 
+             .y = c("full", "an1", "bg1", "hfd1", "igs1"),
+             ~ write_gem(x = .x, y = .y))
+```
+
+# String DB
+
+```{r}
+full_gene10k %>% 
+  mutate(id = if_else(!is.na(gene_name), gene_name, gene_id),
+         # Try ENSEMBL IDs for genes whose names returned no hits/might be parsing errors
+         id = case_when(id %in% c("5S_rRNA", "U6", "TAFA1", "TAFA4", "WFDC1", "SNORA50C", "SNORD104") ~ gene_id,
+                        TRUE ~ id)) %>% 
+  group_by(id) %>% 
+  tally(sort = TRUE) %>% 
+  select(id) %>% 
+  write_delim(here::here("data/derived_data/annotation/string_genes.txt"),
+              col_names = FALSE)
+```
+
+```{r}
+breeds_gene10k %>% 
+  filter(dataset == "an1") %>% 
+  mutate(id = if_else(!is.na(gene_name), gene_name, gene_id),
+         # Try ENSEMBL IDs for genes whose names returned no hits/might be parsing errors
+         id = case_when(id %in% c("5S_rRNA", "U6", "TAFA1", "TAFA4", "WFDC1", "SNORA50C", "SNORD104", "MUCL", "SCRT2") ~ gene_id,
+                        TRUE ~ id)) %>% 
+  group_by(id) %>% 
+  tally(sort = TRUE) %>% 
+  select(id) %>% 
+  write_delim(here::here("data/derived_data/annotation/string_genes.an1.txt"),
+              col_names = FALSE)
+```
+
+
