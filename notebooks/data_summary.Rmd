@@ -138,6 +138,23 @@ cleaned %>%
   rename(n_years = n) 
 ```
 
+### Brangus
+
+```{r}
+cleaned %>% 
+  filter(breed_code == "BG") %>% 
+  group_by(farm_id, temp_id) %>% 
+  summarise(n = n_distinct(year)) %>%
+  ungroup() %>% 
+  group_by(n) %>% 
+  summarise(n_animals = n()) %>% 
+  ungroup() %>% 
+  mutate(percent = scales::percent(n_animals/sum(n_animals)),
+         n_animals = scales::comma(n_animals)) %>% 
+  rename(n_years = n) 
+  
+```
+
 ## How many animals have multiple records per year?
 
 ```{r}

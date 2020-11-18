@@ -78,7 +78,7 @@ breeds_pass <-
   select(dataset, CHR = chr, BP = pos)
 ```
 
-## BIM, GFF, and GTF files
+## GFF and GTF files
 
 ```{r}
 gtf <-
@@ -392,6 +392,22 @@ fixed9_snp1101 %>%
   group_by(gene_name) %>% 
   tally(sort = TRUE)
 ```
+
+### Lead SNP
+
+```{r}
+fixed9_snp1101 %>% 
+  filter(neglog10q > 1) %>% 
+  filter(chr == 5) %>% 
+  filter(pos == 18767155) %>% 
+  select(CHR = chr, BP = pos) %>% 
+  find_genes_qtls_around_markers(db_file = gtf,
+                                 marker_file = .,
+                                 method = c("gene"),
+                                 marker = c("snp"),
+                                 interval = 415000) 
+```
+
 
 ## Second peak
 

@@ -101,7 +101,7 @@ fixed16_sol %>%
 ggsave(here::here("figures/misc_blues/fixed_16.ages.png"), width = 8, height = 5)
 ```
 
-# Calving season and fescue BLUEs from environmental models 
+# Calving season, fescue, and age group BLUEs from environmental models 
 
 ## Temperature only (`fixed6`)
 
@@ -114,7 +114,7 @@ c(1:4) %>%
                         skip = 1,
                         col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
               mutate(id_renamed = as.character(id_renamed))) %>% 
-  filter(effect %in% c(2, 3))
+  filter(effect %in% c(2, 3, 4))
 ```
 
 ## Day length only (`fixed5`)
@@ -129,7 +129,7 @@ c(1:4) %>%
                         skip = 1,
                         col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
               mutate(id_renamed = as.character(id_renamed))) %>% 
-  filter(effect %in% c(2, 3))
+  filter(effect %in% c(2, 3, 4))
 
 ```
 
@@ -144,7 +144,7 @@ c(1:4) %>%
                         skip = 1,
                         col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
               mutate(id_renamed = as.character(id_renamed))) %>% 
-  filter(effect %in% c(2, 3))
+  filter(effect %in% c(2, 3, 4))
 ```
 
 ## Most complicated model: temperature + day length + centered temperature*day length (`fixed13`)
@@ -158,5 +158,5 @@ c(1:4) %>%
                         skip = 1,
                         col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
               mutate(id_renamed = as.character(id_renamed))) %>% 
-  filter(effect %in% c(2, 3))
+  filter(effect %in% c(2, 3, 4))
 ```
