@@ -115,8 +115,8 @@ bvs %<>%
                                                se = .x,
                                                f = .y,
                                                option = "reliability")),
-         acc = if_else(0 > acc, 0, acc)) %>% 
-  filter(acc >= 0.4)
+         acc = if_else(0 > acc, 0, acc)) #%>% 
+  #filter(acc >= 0.4)
 
 ### Add breed codes for plotting
 
@@ -165,7 +165,8 @@ breeds_boxswarm <-
                      kernel = "rectangular") +
   geom_boxplot(aes(fill = map_breed),
                alpha = 0.4,
-               show.legend = FALSE) +
+               show.legend = FALSE,
+               lwd = 1.5) +
   scale_color_manual(values = c("Crossbred or other" = "#a2ceaa",
                                 "Angus" = "#4f6980",
                                 "Hereford" = "#f47942",
@@ -203,7 +204,7 @@ breeds_boxswarm <-
   labs(y = "EBV")
 
 
-ggsave(here::here("figures/breeds/fixed9.breeds_boxswarm.acc04.png"),
+ggsave(here::here("figures/breeds/fixed9.breeds_boxswarm.png"),
        plot = breeds_boxswarm, 
        width = 12,
        height = 8)

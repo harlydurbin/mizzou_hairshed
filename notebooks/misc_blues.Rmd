@@ -101,10 +101,62 @@ fixed16_sol %>%
 ggsave(here::here("figures/misc_blues/fixed_16.ages.png"), width = 8, height = 5)
 ```
 
-# Days from May 1
+# Calving season and fescue BLUEs from environmental models 
 
-```{r}
-fixed1 %>% 
-  distinct(effect)
+## Temperature only (`fixed6`)
+
+```{r, warning=FALSE, message=FALSE}
+c(1:4) %>% 
+  purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/aireml_varcomp/fixed6/renf90.tables"),
+                                     effect_num = .x,
+                                     effect_key = TRUE)) %>% 
+  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/fixed6/solutions"),
+                        skip = 1,
+                        col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+              mutate(id_renamed = as.character(id_renamed))) %>% 
+  filter(effect %in% c(2, 3))
 ```
 
+## Day length only (`fixed5`)
+
+```{r, warning=FALSE, message=FALSE}
+
+c(1:4) %>% 
+  purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/aireml_varcomp/fixed5/renf90.tables"),
+                                     effect_num = .x,
+                                     effect_key = TRUE)) %>% 
+  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/fixed5/solutions"),
+                        skip = 1,
+                        col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+              mutate(id_renamed = as.character(id_renamed))) %>% 
+  filter(effect %in% c(2, 3))
+
+```
+
+## Temperature + day length (`fixed3`)
+
+```{r, warning=FALSE, message=FALSE}
+c(1:4) %>% 
+  purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/aireml_varcomp/fixed3/renf90.tables"),
+                                     effect_num = .x,
+                                     effect_key = TRUE)) %>% 
+  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/fixed3/solutions"),
+                        skip = 1,
+                        col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+              mutate(id_renamed = as.character(id_renamed))) %>% 
+  filter(effect %in% c(2, 3))
+```
+
+## Most complicated model: temperature + day length + centered temperature*day length (`fixed13`)
+
+```{r, warning=FALSE, message=FALSE}
+c(1:4) %>% 
+  purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/aireml_varcomp/fixed13/renf90.tables"),
+                                     effect_num = .x,
+                                     effect_key = TRUE)) %>% 
+  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/fixed13/solutions"),
+                        skip = 1,
+                        col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+              mutate(id_renamed = as.character(id_renamed))) %>% 
+  filter(effect %in% c(2, 3))
+```
