@@ -77,8 +77,6 @@ breeds_snp1101 <-
                  .id = "dataset")
 ```
 
-
-
 ### GCTA
 
 ```{r, eval = FALSE}
@@ -445,9 +443,9 @@ practice <-
                                dataset == "igs1" & chr %in% c(seq(from = 2,
                                                                  to = 29,
                                                                  by = 2)) ~ "#a2ceaa"),
-         dataset = case_when(dataset == "an1" ~ "AN (n = 3,268)",
-                             dataset == "bg1" ~ "BG (n = 883)",
-                             dataset == "hfd1" ~ "HFD (n = 1,055)",
+         dataset = case_when(dataset == "an1" ~ "Angus (n = 3,268)",
+                             dataset == "bg1" ~ "Brangus (n = 883)",
+                             dataset == "hfd1" ~ "Hereford (n = 1,055)",
                              dataset == "igs1" ~ "IGS (n = 4,722)"))
 ```
 

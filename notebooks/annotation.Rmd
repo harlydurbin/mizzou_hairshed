@@ -322,13 +322,37 @@ all_go_results %>%
 
 ## Full dataset
 
+### How many SNPs within each QTL
+
 ```{r}
 full_qtl_enrich10k %>% 
-  View()
   filter(0.05 >= adj.pval) %>% 
+  filter(N_QTLs > 1) %>% 
   arrange(adj.pval) %>% 
-  select(adj.pval, everything()) %>% 
-  View()
+  left_join(full_qtl10k %>% 
+              select(CHR, BP, QTL = trait_ID, QTL_ID)) %>% 
+  group_by(QTL, N_QTLs, adj.pval) %>% 
+  summarise(n(), n_distinct(QTL_ID))
+```
+
+
+```{r}
+full_qtl_enrich10k %>% 
+  filter(0.05 >= adj.pval) %>% 
+  filter(N_QTLs > 1) %>% 
+  arrange(adj.pval) %>% 
+  left_join(full_qtl10k %>% 
+              select(CHR, BP, QTL = trait_ID, QTL_ID)) %>% 
+  group_by(QTL, N_QTLs, adj.pval) %>% 
+  tidyr::nest() %>% 
+  ungroup() %>% 
+  mutate(unique_chr = purrr::map_chr(.x = data, 
+                                 ~ .x %>% 
+                                   arrange(CHR, BP) %>% 
+                                   mutate(chr_bp = glue("{CHR}:{BP}")) %>% 
+                                   distinct(chr_bp) %>% 
+                                   pull(chr_bp) %>% 
+                                   glue_collapse(sep = ", ")))
 ```
 
 ## Breed-specific datasets
@@ -364,7 +388,6 @@ full_gene0 %>%
   filter(between(BP, start_pos, end_pos))
 ```
 
-
 ```{r}
 full_qtl10k %>% 
   filter(trait_ID == "Eye area pigmentation") %>% 
@@ -376,6 +399,25 @@ full_qtl10k %>%
   
   
 ```
+
+## Growth QTL
+
+```{r}
+full_qtl_enrich10k %>% 
+  filter(0.05 >= adj.pval) %>% 
+  filter(N_QTLs > 1) %>% 
+  filter(QTL_type == "Production") %>% 
+  left_join(full_qtl10k %>% 
+              select(CHR, BP, QTL = trait_ID, QTL_ID)) %>% 
+  left_join(full_gene10k %>% 
+              select(CHR, BP, gene_id, gene_name)) 
+```
+
+```{r}
+full_gene10k %>% 
+  filter(str_detect(gene_name, "GH"))
+```
+
 
 # Chromosome 5
 
@@ -407,7 +449,6 @@ fixed9_snp1101 %>%
                                  marker = c("snp"),
                                  interval = 415000) 
 ```
-
 
 ## Second peak
 

@@ -123,6 +123,18 @@ fixed9_snp1101 %>%
   arrange(desc(pos))
 ```
 
+# SNP effects
+
+```{r}
+fixed9_snp1101 %>% 
+  filter(neglog10q > 1) %>% 
+  hair_manhattan(y_var = abs_snp, 
+                 y_lab = "Absolute value of SNP effect",
+                 sigline = NULL,
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d") +
+  viridis::scale_color_viridis(aes(color = neglog10q))
+```
 
 # Genome-wide Manhattan and Q-Q plots
 
