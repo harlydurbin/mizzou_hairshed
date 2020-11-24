@@ -73,6 +73,23 @@ coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key
 
 # Data summary
 
+```{r}
+weather %>% 
+  ggplot(aes(x = day_length,
+             y = apparent_high)) + 
+  geom_hex(aes(fill = stat(count)), bins = 30) +
+  viridis::scale_fill_viridis(option = "inferno",
+                              direction = 1,
+                              begin = .2) +
+  geom_smooth(method = "lm",
+              color = "black") +
+  theme_classic() +
+  labs(x = "Day length",
+       y = "Apparent high temperature (C)",
+       fill = "Count")
+```
+
+
 ## Days from May 1
 
 ```{r, message=FALSE, warning=FALSE}

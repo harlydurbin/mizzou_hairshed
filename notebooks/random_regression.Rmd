@@ -27,6 +27,7 @@ source(here::here("source_functions/parse_renf90table.R"))
 source(here::here("source_functions/lrt_calc.R"))
 source(here::here("source_functions/parse_loglik.R"))
 source(here::here("source_functions/calculate_acc.R"))
+source(here::here("source_functions/hair_manhattan.R"))
 ```
 
 # Notes & questions
@@ -101,24 +102,6 @@ length1_snp1101 <-
 # Data summary
 
 ```{r}
-length2_sol %>% 
-  filter(effect %in% c("slope_add")) %>% 
-  mutate(acc = purrr::map_dbl(.x = se,
-                              ~ calculate_acc(e = 0.70788,
-                                              u = 0.14733,
-                                              se = .x,
-                                              option = "reliability"))) %>% 
-  bind_rows(length2 %>% 
-              filter(effect %in% c("intercept_add")) %>% 
-              mutate(acc = purrr::map_dbl(.x = se,
-                                          ~ calculate_acc(e = 0.70788,
-                                                          u = 0.48791,
-                                                          se = .x,
-                                                          option = "reliability")))) %>% 
-  arrange(desc(acc))
-```
-
-```{r}
 full_ped %>% 
   filter(sire_reg != "0") %>% 
   group_by(sire_reg) %>% 
@@ -126,7 +109,7 @@ full_ped %>%
   ungroup() %>% 
   top_n(15, n) %>% 
   select(full_reg = sire_reg) %>% 
-  left_join(length1) %>% 
+  left_join(length1_sol) %>% 
   filter(str_detect(effect, "add")) %>% 
   select(full_reg, effect, solution) %>% 
   pivot_wider(id_cols = full_reg,
@@ -140,9 +123,9 @@ full_ped %>%
                   slope = slope_add,
                   color = Breed)) +
   ylim(-3, 3) +
-  xlim(-3, 3) +
-  labs(x = "Centered day length",
-       y = "Centered day length")
+  xlim(1, 5) +
+  labs(x = "Hair score",
+       y = "Day length")
 ```
 
 ```{r}
@@ -166,18 +149,6 @@ hair_manhattan(df = length1_snp1101 %>%
                sigline = 1,
                color1 = "#b9aa97",
                color2 = "#7e756d")
-
-```
-
-```{r, fig.width = 11, fig.height = 6.16}
-
-hair_manhattan(df = fixed9_snp1101 %>% 
-                 filter(0.01 > p_value),
-               y_var = neglog10p, 
-               y_lab = "-log10(p-value)",
-               sigline = 5,
-               color1 = "#b9aa97",
-               color2 = "#7e756d") 
 
 ```
 
