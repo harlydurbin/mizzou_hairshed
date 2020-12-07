@@ -33,6 +33,10 @@ options(scipen = 0)
     + `A1` and `A2` are A/T/C/G base calls
 * COJO runs very slowly with `--cojo-gc` option + it calculated a very small inflation factor, took it out
 
+---
+
+
+
 # Setup
 
 ## SNP1101 raw GWAS results
@@ -173,6 +177,14 @@ all_gene10k <-
 ```
 
 ```{r}
+all_gene10k %>% 
+  mutate(id = if_else(is.na(gene_name), gene_id, gene_name)) %>% 
+  distinct(id) %>% 
+  write_delim(here::here("data/derived_data/annotation/all_gene10k.txt"), col_names = FALSE)
+```
+
+
+```{r}
 all_gene50k <-
   full_gene50k %>% 
   mutate(dataset = "full") %>% 
@@ -245,7 +257,7 @@ breeds_gene_enrich10k <-
 ```
 
 ```{r}
-shared_gene_enrich_10k <-
+shared_gene_enrich10k <-
   all_gene10k %>% 
   group_by(gene_id) %>% 
   filter(n_distinct(dataset) > 1) %>% 
@@ -258,6 +270,28 @@ shared_gene_enrich_10k <-
   gost(organism = "btaurus",
        significant = TRUE)
 
+```
+
+```{r}
+all_gene_enrich10k <- 
+  all_gene10k %>% 
+  mutate(id = if_else(!is.na(gene_name), gene_name, gene_id)) %>%
+  distinct(id) %>% 
+  pull(id) %>% 
+  gost(organism = "btaurus",
+       significant = TRUE)
+```
+
+```{r}
+all_gene_enrich50k <- 
+  all_gene50k %>% 
+  mutate(id = if_else(!is.na(gene_name), gene_name, gene_id)) %>%
+  distinct(id) %>% 
+  pull(id) %>% 
+  as.list() %>% 
+  purrr::set_names() %>% 
+  gost(organism = "btaurus",
+       significant = TRUE)
 ```
 
 ## QTLs
@@ -290,6 +324,16 @@ breeds_qtl_enrich10k <-
 
 # Gene ontology enrichment results
 
+* term_size - number of genes that are annotated to the term
+* query_size - number of genes that were included in the query. This might be different from the size of the original list if:
+    + any genes were mapped to multiple Ensembl gene IDs
+    + any genes failed to be mapped to Ensembl gene IDs
+    + the parameter ordered_query = TRUE and the optimal cutoff for the term was found before the end of the query
+    + the domain_scope was set to “annotated” or “custom”
+* intersection_size - the number of genes in the input query that are annotated to the corresponding term
+* precision - the proportion of genes in the input list that are annotated to the function (defined as intersection_size/query_size)
+    
+
 ```{r, eval = FALSE}
 gostplot(full_gene_enrich10k)
 ```
@@ -298,18 +342,37 @@ gostplot(full_gene_enrich10k)
 publish_gosttable(full_gene_enrich10k)
 ```
 
+129
+
+```{r}
+all_gene_enrich10k$result %>% 
+  select(term_name, query, everything()) %>% 
+  unnest(parents)
+
+```
+
+```{r}
+all_gene_enrich50k$result %>% 
+  select(term_name, query, everything()) %>% 
+  View()
+```
+
+```{r}
+listviewer::jsonedit(all_gene_enrich10k$meta)
+```
+
+
 # QTL enrichment results
 
 ## Full dataset
 
 ```{r}
 full_qtl_enrich10k %>%
-  filter(QTL_type == "Production") %>% 
-  filter(adj.pval > 0.05) %>% 
+  #filter(QTL_type == "Production") %>% 
+  filter(0.05 > adj.pval) %>% 
   arrange(adj.pval) %>% 
   select(adj.pval, everything())
 ```
-
 
 ## How many SNPs within each QTL?
 
@@ -487,8 +550,59 @@ fixed9_snp1101 %>%
 all_gene10k %>% 
   filter(CHR == 23) %>% 
   select(dataset, everything(), -strand, -width) %>% 
-  filter(gene_name == "PRL")
+  filter(gene_name == "PRL") %>% 
   filter(BP>= start_pos & end_pos >= BP)
+```
+
+```{r, eval = FALSE}
+all_gene50k %>% 
+  filter(CHR == 23) %>% 
+  select(dataset, gene_name, everything(), -strand, -width) %>% 
+  arrange(BP)
+```
+
+```{r}
+  fixed9_snp1101 %>% 
+  filter(chr == 23) %>%
+  filter(pos > 30000000) %>% 
+  filter(50000000 > pos) %>%
+  left_join(full_gene10k %>% 
+              select(gene_name, chr = CHR, pos = BP, start_pos, end_pos)) %>% 
+  mutate(clr = case_when(pos >= start_pos & end_pos >= pos & gene_name == "CDKAL1" ~ "black",
+                         TRUE ~ "#b9aa97")) %>% 
+  ggplot(aes(x = pos,
+             y = neglog10q,
+             color = clr)) +
+  geom_point(alpha = 0.75) +
+  scale_color_identity() +
+  scale_x_continuous(breaks = c(30000000, 35000000, 40000000, 45000000, 50000000),
+                     labels = c("30 Mb", "35 Mb", "40 Mb", "45 Mb", "50 Mb")) +
+  theme_classic() +
+  theme(axis.title = element_text(size = 18),
+        axis.title.y = element_text(margin = margin(t = 0,
+                                                    r = 13,
+                                                    b = 0,
+                                                    l = 0)),
+        axis.text = element_text(size = 14),
+        legend.text = element_text(size = 14),
+        axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "transparent",
+                                        colour = NA),
+        plot.background = element_rect(fill = "transparent",
+                                       colour = NA)) +
+  labs(x = NULL,
+       y = latex2exp::TeX("$-log_{10}(q-value)$"),
+       title = NULL) +
+  geom_hline(yintercept = 1,
+             color = "red",
+             size = 0.5)
+```
+
+```{r}
+ggsave(filename = here::here("figures/annotation/full_q_chr23.cdkal1.transparent.png"),
+       width = 5,
+       height = 3,
+       bg = "transparent")
 ```
 
 # Chromosome 8 BG

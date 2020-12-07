@@ -73,20 +73,41 @@ coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key
 
 # Data summary
 
-```{r}
+```{r, fig.height=5, fig.width=7}
 weather %>% 
   ggplot(aes(x = day_length,
              y = apparent_high)) + 
-  geom_hex(aes(fill = stat(count)), bins = 30) +
+  geom_hex(aes(fill = stat(count)), bins = 35) +
   viridis::scale_fill_viridis(option = "inferno",
                               direction = 1,
                               begin = .2) +
   geom_smooth(method = "lm",
-              color = "black") +
+              color = "black",
+              linetype = "dashed",
+              size = 1.5) +
   theme_classic() +
-  labs(x = "Day length",
-       y = "Apparent high temperature (C)",
+  theme(text = element_text(family = "Glacial Indifference"),
+        axis.text = element_text(size = 18),
+        legend.text = element_text(size = 18),
+        legend.title = element_text(size = 20),
+        axis.title.x = element_text(size = 22,
+                                    margin = margin(t = 15)),
+        axis.title.y = element_text(size = 22,
+                                    margin = margin(r = 15,
+                                                    t = 10)),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "transparent",
+                                        colour = NA),
+        plot.background = element_rect(fill = "transparent",
+                                       colour = NA),
+        legend.background = element_rect(fill = "transparent",
+                                       colour = NA)) +
+  labs(x = "Day length (hours)",
+       y = "Apparent high temperature (°C)",
        fill = "Count")
+
+ggsave(here::here("figures/environmental_data/daylength_vs_temp.hex.png"), height = 6, width = 8, bg = "transparent")
 ```
 
 
@@ -448,3 +469,17 @@ tibble(Model = c("fixed9", "fixed10", "fixed11", "fixed12")) %>%
 ## Manuscript graveyard
 
 The mean apparent high temperature was found to be highly correlated with the date a score was recorded (Pearson r = 0.82) but only moderately correlated with latitude (Pearson r = -0.21). For this reason, we chose to use latitude as the only proxy for day length and exclude score date from analyses dissecting the effects of temperature vs. photoperiod.
+
+```{r}
+read_table2(here::here("data/derived_data/aireml_varcomp/fixed13/renf90.dat"),
+            col_names = FALSE) %>% 
+  select(dl = X7, temp = X6, centered_interact = X8) %>% 
+  summarise_if(is.numeric, mean)
+```
+
+```{r}
+read_table2(here::here("data/derived_data/aireml_varcomp/fixed13/renf90.dat"),
+            col_names = FALSE) %>% 
+  select(dl = X7, temp = X6, centered_interact = X8) %>% 
+  summarise_if(is.numeric, sd)
+```

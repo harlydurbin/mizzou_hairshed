@@ -190,7 +190,8 @@ breeds_boxswarm <-
   guides(colour = FALSE,
          fill = FALSE) +
   theme_classic() +
-  theme(axis.text.y = element_text(size = 24),
+  theme(text = element_text(family = "Glacial Indifference"),
+        axis.text.y = element_text(size = 24),
         axis.text.x = element_text(size = 24,
                                    angle = 35,
                                    hjust = 1),
@@ -201,14 +202,10 @@ breeds_boxswarm <-
         axis.title.x = element_blank(),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank()) +
-  labs(y = "EBV")
+  labs(y = "Estimated breeding value")
 
 
-ggsave(here::here("figures/breeds/fixed9.breeds_boxswarm.png"),
+ggsave(here::here("figures/breeds/fixed9.breeds_boxswarm.defense.png"),
        plot = breeds_boxswarm, 
        width = 12,
        height = 8)
-
-bvs %>% 
-  arrange(solution) %>% 
-  View()

@@ -69,13 +69,19 @@ fixed16_sol %>%
   filter(effect == "age_group") %>% 
   mutate(id_original = if_else(id_original == "old", 14, as.numeric(id_original))) %>% 
   arrange(id_original) %>% 
-  mutate(id_original = forcats::fct_inorder(as.factor(id_original))) %>% 
+  mutate(id_original = forcats::fct_inorder(as.factor(id_original)),
+         rel_sol = solution + 0.20198118,
+         clr = case_when(rel_sol > 0 ~"#0070C0",
+                         TRUE ~ "lightgrey")) %>% 
   ggplot(aes(x = id_original,
-             y = solution)) +
+             #y = solution,
+             y = rel_sol,
+             fill = clr)) +
   geom_bar(stat = "identity",
            position = "identity") +
-  geom_errorbar(aes(ymin = solution - se,
-                    ymax = solution + se)) +
+  scale_fill_identity() +
+  geom_errorbar(aes(ymin = rel_sol - se,
+                    ymax = rel_sol + se)) +
   theme_classic() +
   scale_x_discrete(labels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14+")) +
   theme(plot.title = element_text(size = 22,
@@ -84,7 +90,7 @@ fixed16_sol %>%
                                                   r = 0,
                                                   b = 13,
                                                   l = 0)),
-        axis.title = element_text(size = 16),
+        axis.title = element_text(size = 22),
         axis.title.y = element_text(margin = margin(t = 0,
                                                     r = 10,
                                                     b = 0,
@@ -93,12 +99,21 @@ fixed16_sol %>%
                                                     r = 0,
                                                     b = 0,
                                                     l = 0)),
-        axis.text = element_text(size = 14),
-        legend.position = "none") +
+        axis.text = element_text(size = 16),
+        legend.position = "none",
+        panel.background = element_rect(fill = "transparent",
+                                        colour = NA),
+        plot.background = element_rect(fill = "transparent",
+                                       colour = NA),
+        legend.background = element_rect(fill = "transparent",
+                                       colour = NA)) +
   labs(x = "Age in years",
-       y = "BLUE")
+       y = "Effect estimate")
+```
 
-ggsave(here::here("figures/misc_blues/fixed_16.ages.png"), width = 8, height = 5)
+
+```{r}
+ggsave(here::here("figures/misc_blues/fixed_16.ages.transparent_relative.png"), width = 8, height = 5, bg = "transparent")
 ```
 
 # Calving season, fescue, and age group BLUEs from environmental models 

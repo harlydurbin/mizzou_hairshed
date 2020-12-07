@@ -2,6 +2,8 @@ library(readr)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(stringr)
+library(extrafont)
 
 usa <- 
   borders("state", regions = ".", fill = "white", colour = "black")
@@ -9,6 +11,8 @@ usa <-
 coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key.csv"))
 
 breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
+
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
 
 map_dat <-
   breed_key %>% 
@@ -97,7 +101,8 @@ ggplot() +
   labs(x = NULL,
        y = NULL,
        title = NULL) +
-  theme(axis.title.x = element_blank(),
+  theme(text = element_text(family = "Glacial Indifference"),
+        axis.title.x = element_blank(),
         axis.title.y = element_blank(),
         legend.position = "bottom",
         legend.direction = "horizontal",
@@ -116,6 +121,7 @@ ggplot() +
                              l = 0,
                              unit = "mm"))
 
-ggsave(here::here("figures/data_summary/breed_map.png"),
+ggsave(here::here("figures/data_summary/breed_map_transparent.png"),
        width = 7,
-       height = 4)
+       height = 4,
+       bg = "transparent")

@@ -214,3 +214,205 @@ read_excel(
   
 ```
 
+# 11/24/20 Pull out ASA breeding values for Jared
+
+```{r}
+breed_key <- read_rds(here::here("data/derived_data/breed_key/breed_key.rds"))
+```
+
+```{r}
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+```
+
+```{r}
+animal_table <- read_rds(here::here("data/raw_data/import_join_clean/animal_table.rds"))
+```
+
+```{r}
+cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
+```
+
+```{r}
+source(here::here("source_functions/calculate_acc.R"))
+```
+
+```{r}
+source(here::here("source_functions/three_gen.R"))
+```
+
+```{r}
+genotyped <- 
+  read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv")) %>% 
+  mutate(genotype_used = TRUE)
+```
+
+
+## Pedigree inbreeding
+
+```{r}
+
+pedinb <-
+  full_ped %>% 
+  select(full_reg, sire_reg, dam_reg) %>%
+  optiSel::prePed() %>%
+  optiSel::pedInbreeding() %>%
+  tibble::remove_rownames() %>%
+  rename(full_reg = Indiv,
+         f = Inbr)
+```
+
+
+## From full dataset
+
+```{r}
+full_bvs <-
+  read_table2(here::here("data/derived_data/aireml_varcomp/fixed9/solutions"),
+              skip = 1,
+              col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>% 
+  filter(effect == 2) %>% 
+  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/fixed9/renadd02.ped"),
+                        col_names = FALSE) %>% 
+              select(id_renamed = X1, full_reg = X10)) %>% 
+  select(-trait, -effect, -id_renamed) %>% 
+  left_join(pedinb) %>%
+  mutate(f = tidyr::replace_na(f, 0),
+         acc = purrr::map2_dbl(.x = se,
+                               .y = f,
+                               ~ calculate_acc(u = 0.33133,
+                                               se = .x,
+                                               f = .y,
+                                               option = "bif")),
+         acc = if_else(0 > acc, 0, acc))
+```
+
+```{r}
+full_pull <-
+  full_bvs %>% 
+  left_join(breed_key %>% 
+              select(Lab_ID:brd_source)) %>% 
+  filter(!farm_id %in% c("SAV", "BAT")) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, BC, breed_assoc, international_id)) %>% 
+  mutate(keep = case_when(str_detect(full_reg, "SIM") ~ TRUE,
+                          source == "American Simmental Association" ~ TRUE,
+                          brd_source == "American Simmental Association" ~ TRUE,
+                          breed_assoc == "American Simmental Association" ~ TRUE,
+                          str_detect(international_id, "SIM") ~ TRUE,
+                          TRUE ~ FALSE)) %>% 
+  filter(keep == TRUE) %>% 
+  left_join(full_ped %>% 
+              select(full_reg, sire_reg, dam_reg)) %>% 
+  select(full_reg, sire_reg, dam_reg) %>% 
+  three_gen(full_ped = full_ped)
+```
+
+```{r}
+full_out <-
+  full_pull %>% 
+  select(full_reg) %>% 
+  bind_rows(full_pull %>% 
+              select(full_reg = sire_reg)) %>% 
+  bind_rows(full_pull %>% 
+              select(full_reg = dam_reg)) %>% 
+  distinct() %>% 
+  left_join(full_bvs) %>% 
+  filter(!is.na(solution)) %>% 
+  left_join(breed_key %>% 
+              select(full_reg, farm_id, animal_id)) %>% 
+  left_join(genotyped %>% 
+              select(-diagonal)) %>% 
+  left_join(readxl::read_excel(here::here("data/raw_data/farm_numbers.xlsx")) %>% 
+              select(Farm, farm_id = Farm_ID, contact = Name) %>% 
+              filter(!is.na(farm_id))) %>% 
+  mutate(epd = solution/2,
+         genotype_used = if_else(is.na(genotype_used), FALSE, genotype_used),
+         contact = str_to_title(contact),
+         full_reg = str_replace(full_reg, "^RAN", "RAAA")) %>% 
+  filter(!str_detect(full_reg, "^BSH|^BRM|^HER|^CHA")) %>% 
+  mutate(full_reg = if_else(!str_detect(full_reg, "^RAAA|^SIM|^AAA|^CIA"), NA_character_, full_reg)) %>% 
+  select(farm_id = Farm, contact, registration_number = full_reg, animal_id, epd, bif_acc = acc, genotype_used) %>% 
+  arrange(farm_id, registration_number)
+
+
+```
+
+## From IGS dataset
+
+```{r}
+igs_bvs <-
+  read_table2(here::here("data/derived_data/aireml_varcomp/igs1/solutions"),
+              skip = 1,
+              col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>% 
+  filter(effect == 2) %>% 
+  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/igs1/renadd02.ped"),
+                        col_names = FALSE) %>% 
+              select(id_renamed = X1, full_reg = X10)) %>% 
+  select(-trait, -effect, -id_renamed) %>% 
+  left_join(pedinb) %>%
+  mutate(f = tidyr::replace_na(f, 0),
+         acc = purrr::map2_dbl(.x = se,
+                               .y = f,
+                               ~ calculate_acc(u = 0.39053,
+                                               se = .x,
+                                               f = .y,
+                                               option = "bif")),
+         acc = if_else(0 > acc, 0, acc))
+```
+
+```{r}
+igs_pull <-
+  igs_bvs %>% 
+  left_join(breed_key %>% 
+              select(Lab_ID:brd_source)) %>% 
+  filter(!farm_id %in% c("SAV", "BAT")) %>% 
+  left_join(animal_table %>% 
+              select(Lab_ID, BC, breed_assoc, international_id)) %>% 
+  mutate(keep = case_when(str_detect(full_reg, "SIM") ~ TRUE,
+                          source == "American Simmental Association" ~ TRUE,
+                          brd_source == "American Simmental Association" ~ TRUE,
+                          breed_assoc == "American Simmental Association" ~ TRUE,
+                          str_detect(international_id, "SIM") ~ TRUE,
+                          TRUE ~ FALSE)) %>% 
+  filter(keep == TRUE) %>% 
+  left_join(full_ped %>% 
+              select(full_reg, sire_reg, dam_reg)) %>% 
+  select(full_reg, sire_reg, dam_reg) %>% 
+  three_gen(full_ped = full_ped)
+```
+
+```{r}
+igs_out <-
+  igs_pull %>% 
+  select(full_reg) %>% 
+  bind_rows(igs_pull %>% 
+              select(full_reg = sire_reg)) %>% 
+  bind_rows(igs_pull %>% 
+              select(full_reg = dam_reg)) %>% 
+  distinct() %>% 
+  left_join(igs_bvs) %>% 
+  filter(!is.na(solution)) %>% 
+  left_join(breed_key %>% 
+              select(full_reg, farm_id, animal_id)) %>% 
+  left_join(genotyped %>% 
+              select(-diagonal)) %>% 
+  left_join(readxl::read_excel(here::here("data/raw_data/farm_numbers.xlsx")) %>% 
+              select(Farm, farm_id = Farm_ID, contact = Name) %>% 
+              filter(!is.na(farm_id))) %>% 
+  mutate(epd = solution/2,
+         genotype_used = if_else(is.na(genotype_used), FALSE, genotype_used),
+         contact = str_to_title(contact),
+         full_reg = str_replace(full_reg, "^RAN", "RAAA")) %>% 
+  filter(!str_detect(full_reg, "^BSH|^BRM|^HER|^CHA")) %>% 
+  mutate(full_reg = if_else(!str_detect(full_reg, "^RAAA|^SIM|^AAA|^CIA"), NA_character_, full_reg)) %>% 
+  select(farm_id = Farm, contact, registration_number = full_reg, animal_id, epd, bif_acc = acc, genotype_used) %>% 
+  arrange(farm_id, registration_number)
+
+
+```
+
+## Export
+
+```{r}
+writexl::write_xlsx(x = list("Full dataset" = full_out, "IGS only dataset" = igs_out), path = here::here("data/derived_data/201124.sim_epd.xlsx"))
+```
+
