@@ -1,0 +1,114 @@
+---
+title: "Years GWAS with GCTA"
+author: "Harly Durbin"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    df_print: paged
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(magrittr)
+library(stringr)
+library(tidylog)
+library(glue)
+
+source(here::here("source_functions/hair_manhattan.R"))
+source(here::here("source_functions/ggqq.R"))
+
+```
+
+# Notes & questions
+
+# Setup
+
+## Raw GWAS results
+
+```{r}
+years_gwas <-
+  c(2016:2019) %>%
+  purrr::set_names() %>% 
+  purrr::map_dfr(~ read_table2(here::here(glue("data/derived_data/gcta_gwas.years/{.x}/{.x}.mlma"))) %>% 
+                   mutate(neglog10q = -log10(qvalue::qvalue(p)$qvalues)),
+                 .id = "year") %>% 
+  janitor::clean_names() %>% 
+  mutate(neglog10p = -log10(p)) %>% 
+  rename(pos = bp)
+```
+
+# Manhattan plots
+
+```{r, fig.width=8, fig.height=9}
+
+years_gwas %>% 
+  filter(0.1 > p) %>% 
+  mutate(year = case_when(year == "2016" ~ "2016 (n = 5,156)",
+                          year == "2017" ~ "2017 (n = 4,989)",
+                          year == "2018" ~ "2018 (n = 6,896)",
+                          year == "2019" ~ "2019 (n = 5,292)")) %>% 
+  hair_manhattan(y_var = neglog10q,
+                 y_lab = "-log10(q)",
+                 sigline = 1,
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d") +
+  facet_wrap(~ year, 
+             nrow = 4,
+             scales = "fixed")
+
+ggsave(filename = here::here("figures/gcta_gwas.years/16-19.q.png"),
+       width = 8,
+       height = 9)
+
+```
+
+```{r, fig.width=8, fig.height=9}
+
+years_gwas %>% 
+  filter(0.1 > p) %>% 
+  mutate(year = case_when(year == "2016" ~ "2016 (n = 5,156)",
+                          year == "2017" ~ "2017 (n = 4,989)",
+                          year == "2018" ~ "2018 (n = 6,896)",
+                          year == "2019" ~ "2019 (n = 5,292)")) %>% 
+  hair_manhattan(y_var = neglog10p,
+                 y_lab = "-log10(p)",
+                 sigline = 5,
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d") +
+  facet_wrap(~ year, 
+             nrow = 4,
+             scales = "fixed")
+
+ggsave(filename = here::here("figures/gcta_gwas.years/16-19.p.png"),
+       width = 8,
+       height = 9)
+
+```
+
+```{r}
+years_gwas %>% 
+  filter(0.9 > p) %>% 
+  mutate(year = case_when(year == "2016" ~ "2016 (n = 5,156)",
+                          year == "2017" ~ "2017 (n = 4,989)",
+                          year == "2018" ~ "2018 (n = 6,896)",
+                          year == "2019" ~ "2019 (n = 5,292)"),
+         abs_b = abs(b)) %>% 
+  hair_manhattan(y_var = abs_b,
+                 y_lab = "Absolute value of beta",
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d") +
+  facet_wrap(~ year, 
+             nrow = 4,
+             scales = "fixed")
+
+ggsave(filename = here::here("figures/gcta_gwas.years/16-19.abs_b.png"),
+       width = 8,
+       height = 9)
+```
+

@@ -23,10 +23,13 @@ hair_manhattan <-
            plot_title = NULL,
            facet = FALSE,
            nfacets = 2,
+           desc = NULL,
            sigline = NULL,
            color1 = NULL,
            color2 = NULL) {
     y_var <- rlang::enquo(y_var)
+    
+    desc <- rlang::enquo(desc)
     
     axisdf <-
       df %>%
@@ -103,7 +106,7 @@ hair_manhattan <-
     gg <-
       if (facet == TRUE) {
         gg +
-          facet_wrap(~ desc, nrow = nfacets, scales = "free_x")
+          facet_wrap(~ !!desc, nrow = nfacets, scales = "free_x")
       } else {
         gg
       }
