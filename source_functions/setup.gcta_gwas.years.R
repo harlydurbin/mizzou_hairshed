@@ -24,7 +24,7 @@ library(readxl)
 ## ---- warning=FALSE, message=FALSE--------------------------------------------------------------------------------------------------
 cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
 
-score_year <- 2016
+score_year <- as.numeric(commandArgs(trailingOnly = TRUE)[1])
 
 #'
 ## ---- warning=FALSE, message=FALSE--------------------------------------------------------------------------------------------------
@@ -33,16 +33,13 @@ genotyped <- read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairsh
 
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
-
-
-
 #'
 #' # Score group
 
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------
 dat <-
-  cleaned %>% 
+  cleaned %>%
   left_join(bind_rows(read_excel(here::here("data/derived_data/ua_score_groups.xlsx")),
                       read_excel(here::here("data/derived_data/score_groups.xlsx"))) %>%
               select(farm_id, date_score_recorded, score_group) %>%
@@ -117,14 +114,14 @@ dat %<>%
 # Specified year only
 # Take score closest to May 1
 
-dat %<>% 
-  filter(year == score_year) %>% 
+dat %<>%
+  filter(year == score_year) %>%
   mutate(days_from = date_score_recorded - lubridate::ymd(glue("{score_year}-05-01")),
          days_from = as.numeric(days_from),
-         days_from = abs(days_from)) %>% 
-  group_by(farm_id, temp_id) %>% 
-  arrange(days_from) %>% 
-  slice(1) %>% 
+         days_from = abs(days_from)) %>%
+  group_by(farm_id, temp_id) %>%
+  arrange(days_from) %>%
+  slice(1) %>%
   ungroup()
 
 
@@ -151,28 +148,27 @@ matched <-
                                 is.na(registration_number) ~ glue("{farm_id}{animal_id}{temp_id}"),
                               TRUE ~ full_reg)) %>%
   assertr::verify(!is.na(full_reg)) %>%
-  assertr::verify(!is.na(hair_score)) 
+  assertr::verify(!is.na(hair_score))
 
 
-matched %<>% 
-  group_by(full_reg) %>% 
-  slice(1) %>% 
+matched %<>%
+  group_by(full_reg) %>%
+  slice(1) %>%
   ungroup()
 
-matched %<>% 
+matched %<>%
   left_join(read_table2(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.grm.id"),
-                        col_names = c("full_reg", "iid"))) %>% 
+                        col_names = c("full_reg", "iid"))) %>%
   filter(!is.na(iid))
 
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------
 matched %>%
   select(full_reg, iid, hair_score) %>%
-  write_delim(here::here(glue::glue("data/derived_data/gcta_gwas/{score_year}/pheno.txt")),
+  write_delim(here::here(glue::glue("data/derived_data/gcta_gwas.years/{score_year}/pheno.txt")),
               col_names = FALSE)
 
 matched %>%
   select(full_reg, iid, cg_num) %>%
-  write_delim(here::here(glue::glue("data/derived_data/gcta_gwas/{score_year}/covar.txt")),
+  write_delim(here::here(glue::glue("data/derived_data/gcta_gwas.years/{score_year}/covar.txt")),
               col_names = FALSE)
-
