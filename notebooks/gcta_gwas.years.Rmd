@@ -136,6 +136,13 @@ module load plink/plink-1.90b
 srun -c 12 plink --bfile data/raw_data/geno_dump/200924_HairShed.850K.qc --double-id --cow --threads 12 --keep data/derived_data/cojo/years/years.keep.txt --freq --missing --out data/derived_data/cojo/years/years
 ```
 
+* Subset animals to only year-by-year GWAS to try using them as LD ref rather than full dataset
+
+```
+module load plink/plink-1.90b
+srun -c 12 plink --bfile data/raw_data/geno_dump/200924_HairShed.850K.qc --double-id --cow --threads 12 --keep data/derived_data/cojo/years/years.keep.txt --freq --missing --make-bed --out data/derived_data/cojo/years/years_subset
+```
+
 ```{r}
 read_table2(here::here("data/derived_data/cojo/years/years.lmiss")) %>% 
   janitor::clean_names() %>% 
@@ -169,7 +176,13 @@ years_metasoft %>%
 srun --account animalsci -p BioCompute,htc4,hpc5 -t 12:00:00 --mem 48G -c 56 source_functions/gcta_1.93.2beta/gcta64 --bfile data/raw_data/geno_dump/200924_HairShed.850K.qc --cojo-file data/derived_data/cojo/years/years.ma --cojo-slct --out data/derived_data/cojo/years/years --threads 56
 ```
 
-## COJO output file
+* Run COJO again using only year-by-year GWAS animals as LD ref
+
+```
+srun --account animalsci -p BioCompute,htc4,hpc5 -t 12:00:00 --mem 48G -c 56 source_functions/gcta_1.93.2beta/gcta64 --bfile data/derived_data/cojo/years/years_subset --cojo-file data/derived_data/cojo/years/years.ma --cojo-slct --out data/derived_data/cojo/years/years_subset --threads 56
+```
+
+## COJO output files
 
 ```{r}
 years_jma <- 
