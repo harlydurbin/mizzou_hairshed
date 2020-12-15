@@ -23,9 +23,17 @@ library(glue)
 source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
 
+options(scipen = 999)
 ```
 
 # Notes & questions
+
+As an aside, some minor issues/confusions I ran into yesterday running COJO:
+* I gave COJO the p-values, SEs, and betas from the conventional random effects model because SEs and betas aren't provided for the Han and Eskin random effects model... that's what you had in mind right?
+* COJO needs the frequency of the effect allele, which is slightly different (based on eyeballing; I’m sure there probably a few places where it’s very different) between years. I calculated AFs in the full 11,560 genotypes and used that, should I have done something different?
+* I gave COJO 11,560 as the “N” for all SNPs, but that’s not the real N for various reasons (i.e., a SNP being monomorphic in one year but not the other + animals in the 11,560 not having a phenotype 2016-2019 etc.). Should I have given the number of unique individuals with a genotype across all years or something?
+ 
+I got 29 SNPs back from --cojo-slct. Here’s where the selected SNPs on chromosome 5 and 23 fall, projected onto my GWAS results from the SNP1101 GWAS
 
 # Setup
 
@@ -42,6 +50,140 @@ years_gwas <-
   mutate(neglog10p = -log10(p)) %>% 
   rename(pos = bp)
 ```
+
+```{r, warning = FALSE, message=FALSE}
+fixed9_snp1101 <-
+  read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs_p.txt"))  %>%
+  janitor::clean_names() %>%
+  mutate(neglog10p = -log10(p_value),
+         abs_snp = abs(b_value),
+         neglog10q = -log10(qvalue::qvalue(p_value)$qvalues)) %>%
+  left_join(read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs.txt"),
+                        skip = 12) %>%
+              select(chr = Chr, pos = Pos, fdr = FDR_GW, a))
+  
+```
+
+## `METASOFT` input file
+
+
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+purrr::map(.x = c("2016", "2017", "2018", "2019"),
+             ~ years_gwas %>% 
+               filter(year == .x) %>% 
+               filter(!is.na(b)) %>% 
+               mutate(id = glue("{chr}:{pos}"),
+                      b = round(b, digits = 7),
+                      se = round(se, digits = 7)) %>%
+               select(id, !!rlang::sym(glue("b_{.x}")) := b, !!rlang::sym(glue("se_{.x}")) := se)) %>% 
+  purrr::reduce(left_join) %>% 
+  mutate_if(is.numeric, as.character) %>% 
+  write_tsv(here::here("data/derived_data/metasoft/years/metasoft_in.years.var.txt"),
+            col_names = FALSE)
+```
+
+```{r}
+purrr::map(.x = c("2016", "2017", "2018", "2019"),
+             ~ years_gwas %>% 
+               filter(year == .x) %>% 
+               filter(!is.na(b)) %>% 
+               mutate(id = glue("{chr}:{pos}"),
+                      b = round(b, digits = 7),
+                      se = round(se, digits = 7)) %>%
+               select(id, !!rlang::sym(glue("b_{.x}")) := b, !!rlang::sym(glue("se_{.x}")) := se)) %>% 
+  purrr::reduce(left_join) %>% 
+  filter_at(vars(starts_with("b_")), any_vars(is.na(.)))
+```
+
+
+```
+srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/years/metasoft_in.years.txt -output data/derived_data/metasoft/years/metasoft_out.years.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/years/metasoft.years.log
+```
+
+## `METASOFT` output file
+
+```{r, eval=FALSE}
+years_metasoft <- 
+  read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years.txt"),
+              col_types = cols(.default = "d", RSID = "c")) %>% 
+  janitor::clean_names() %>% 
+  select(-pvalue_be, -contains("fe")) %>% 
+  left_join(read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years.txt"),
+                        skip = 1,
+                        col_types = "c---------------dddddddd", 
+                        col_names = c("rsid", "p16", "p17", "p18", "p19", "m16", "m17", "m18", "m19")))
+
+```
+
+## Calculate allele frequencies in full dataset for use in COJO
+
+```
+module load plink/plink-1.90b
+srun -c 12 plink --bfile data/raw_data/geno_dump/200924_HairShed.850K.qc --double-id --cow --threads 12 --freq --out data/raw_data/geno_dump/200924_HairShed.850K.qc
+```
+
+```{r}
+read_table2(here::here("data/raw_data/geno_dump/200924_HairShed.850K.qc.frq")) %>% 
+  janitor::clean_names() %>% 
+  left_join(years_gwas %>% 
+              filter(year == "2018") %>% 
+              select(snp, freq))
+```
+
+## COJO input file
+
+```{r}
+years_metasoft %>% 
+  filter(!is.na(beta_re)) %>% 
+  filter(!is.na(std_re)) %>% 
+  group_by(number_study) %>% 
+  tally()
+```
+
+
+```{r}
+years_metasoft %>% 
+  filter(!is.na(beta_re)) %>% 
+  filter(!is.na(std_re)) %>% 
+  group_by(number_study) %>% 
+  tally()
+  left_join(years_gwas %>% 
+              distinct(chr, pos, snp) %>% 
+              mutate(rsid = glue("{chr}:{pos}"))) %>% 
+  left_join(read_table2(here::here("data/raw_data/geno_dump/200924_HairShed.850K.qc.frq")) %>%
+              janitor::clean_names()) %>% 
+  mutate(N = 11560) %>% 
+  select(snp, a1, a2, freq = maf, b = beta_re, se = std_re, p = pvalue_re, N) %>% 
+  filter(freq != 0) %>% 
+  write_delim(here::here("data/derived_data/cojo/years/years.cojo"),
+              delim = " ")
+```
+
+```
+srun --account animalsci -p BioCompute,htc4,hpc5 -t 48:00:00 --mem 100G -c 56 source_functions/gcta_1.93.2beta/gcta64 --bfile data/raw_data/geno_dump/200924_HairShed.850K.qc --cojo-file data/derived_data/cojo/years/years.ma --cojo-slct --out data/derived_data/cojo/years/years --threads 56
+```
+
+## COJO output file
+
+```{r}
+years_jma <- 
+  read_table2(here::here("data/derived_data/cojo/years/years.jma.cojo")) %>% 
+  janitor::clean_names() %>% 
+  rename(pos = bp)
+```
+
+```{r}
+years_cma <- 
+  read_table2(here::here("data/derived_data/cojo/years/years.cma.cojo")) %>% 
+  janitor::clean_names() %>% 
+  rename(pos = bp)
+```
+
+```{r}
+
+```
+
 
 # Manhattan plots
 
@@ -91,9 +233,9 @@ ggsave(filename = here::here("figures/gcta_gwas.years/16-19.p.png"),
 
 ```
 
-```{r}
+```{r, fig.width=8, fig.height=9, eval=FALSE}
 years_gwas %>% 
-  filter(0.9 > p) %>% 
+  filter(0.5 > p) %>% 
   mutate(year = case_when(year == "2016" ~ "2016 (n = 5,156)",
                           year == "2017" ~ "2017 (n = 4,989)",
                           year == "2018" ~ "2018 (n = 6,896)",
@@ -105,10 +247,117 @@ years_gwas %>%
                  color2 = "#7e756d") +
   facet_wrap(~ year, 
              nrow = 4,
-             scales = "fixed")
+             scales = "free_y")
 
 ggsave(filename = here::here("figures/gcta_gwas.years/16-19.abs_b.png"),
        width = 8,
        height = 9)
 ```
 
+```{r}
+years_metasoft %>% 
+  filter(0.1 > pvalue_re2) %>% 
+  mutate(neglog0p = -log10(pvalue_re2), 
+         chr = str_extract(rsid, "[[:digit:]]{1,2}(?=:)"),
+         chr = as.numeric(chr),
+         pos = str_extract(rsid, "(?<=[[:digit:]]{1,2}:)[[:digit:]]+"),
+         pos = as.numeric(pos)) %>% 
+  hair_manhattan(y_var = neglog0p,
+                 y_lab = "Metasoft -log10(p)",
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d",
+                 sigline = 5)
+```
+
+# COJO SNPs
+
+
+
+## Chromosome 5
+
+```{r}
+fixed9_snp1101 %>% 
+  filter(chr == 5) %>%
+  filter(50000000 >= pos) %>% 
+  left_join(years_jma %>% 
+              select(chr, pos) %>% 
+              mutate(clr = "black")) %>% 
+  mutate(clr = if_else(is.na(clr), "#b9aa97", clr)) %>% 
+  ggplot(aes(x = pos,
+             y = neglog10q,
+             color = clr)) +
+  geom_point(alpha = 0.75) +
+  scale_color_identity() +
+  scale_x_continuous(breaks = c(0, 10000000, 20000000, 30000000, 40000000, 50000000),
+                     labels = c("0 Mb", "10 Mb", "20 Mb", "30 Mb", "40 Mb", "50 Mb")) +
+  theme_classic() +
+  theme(axis.title = element_text(size = 18),
+        axis.title.y = element_text(margin = margin(t = 0,
+                                                    r = 13,
+                                                    b = 0,
+                                                    l = 0)),
+        axis.text = element_text(size = 14),
+        legend.text = element_text(size = 14),
+        axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "transparent",
+                                        colour = NA),
+        plot.background = element_rect(fill = "transparent",
+                                       colour = NA)) +
+  labs(x = NULL,
+       y = latex2exp::TeX("$-log_{10}(q-value)$"),
+       title = NULL) +
+  geom_hline(yintercept = 1,
+             color = "red",
+             size = 0.5)
+```
+
+```{r}
+ggsave(filename = here::here("figures/cojo/cojo_chr5.png"),
+       width = 8,
+       height = 3)
+```
+
+## Chromosome 23
+
+```{r}
+fixed9_snp1101 %>% 
+  filter(chr == 23) %>%
+  filter(pos > 30000000) %>% 
+  filter(50000000 > pos) %>%
+  left_join(years_jma %>% 
+              select(chr, pos) %>% 
+              mutate(clr = "black")) %>% 
+  mutate(clr = if_else(is.na(clr), "#b9aa97", clr)) %>% 
+  ggplot(aes(x = pos,
+             y = neglog10q,
+             color = clr)) +
+  geom_point(alpha = 0.75) +
+  scale_color_identity() +
+  scale_x_continuous(breaks = c(30000000, 35000000, 40000000, 45000000, 50000000),
+                     labels = c("30 Mb", "35 Mb", "40 Mb", "45 Mb", "50 Mb")) +
+  theme_classic() +
+  theme(axis.title = element_text(size = 18),
+        axis.title.y = element_text(margin = margin(t = 0,
+                                                    r = 13,
+                                                    b = 0,
+                                                    l = 0)),
+        axis.text = element_text(size = 14),
+        legend.text = element_text(size = 14),
+        axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "transparent",
+                                        colour = NA),
+        plot.background = element_rect(fill = "transparent",
+                                       colour = NA)) +
+  labs(x = NULL,
+       y = latex2exp::TeX("$-log_{10}(q-value)$"),
+       title = NULL) +
+  geom_hline(yintercept = 1,
+             color = "red",
+             size = 0.5)
+```
+
+```{r}
+ggsave(filename = here::here("figures/cojo/cojo_chr23.png"),
+       width = 8,
+       height = 3)
+```
