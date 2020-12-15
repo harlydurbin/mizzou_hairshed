@@ -20,6 +20,7 @@ data/derived_data/3gen/*.csv
 data/derived_data/grm_inbreeding/*
 data/derived_data/mtg2_gwas/*
 data/derived_data/snp1101/*
+data/derived_data/cojo/*
 data/derived_data/annotation/*
 data/derived_data/breed_key/*.csv
 data/raw_data/*
@@ -43,7 +44,6 @@ scratch.Rmd
 *evec
 *mlma
 *ma
-*cojo
 data/derived_data/breed_key/rhfbrm.png
 *gwas_ssr*
 Icon?

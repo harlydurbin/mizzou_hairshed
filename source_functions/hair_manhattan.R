@@ -25,11 +25,15 @@ hair_manhattan <-
            nfacets = 2,
            desc = NULL,
            sigline = NULL,
+           highlight = FALSE,
+           highlight_col = NULL,
            color1 = NULL,
            color2 = NULL) {
     y_var <- rlang::enquo(y_var)
     
     desc <- rlang::enquo(desc)
+    
+    highlight_col <- rlang::enquo(highlight_col)
     
     axisdf <-
       df %>%
@@ -69,7 +73,23 @@ hair_manhattan <-
                  y = !!y_var)) +
       geom_point(aes(color = chrcolor),
                  alpha = 0.75) +
-      scale_color_identity() +
+      scale_color_identity()
+    
+    gg <- 
+      if(highlight == TRUE) {
+        gg +
+          geom_point(data = df %>% 
+                       filter(!!highlight_col == TRUE),
+                       aes(x = BPcum,
+                           y = !!y_var),
+                     color = "black",
+                     fill = "black")
+        } else {
+          gg
+          }
+    
+    gg <-
+      gg +
       # scale_color_manual(values = rep(colors, 29), guide = "none") +
       # Every 3 chromosomes gets a label
       scale_x_continuous(label = axisdf$chr[c(TRUE, FALSE)],
