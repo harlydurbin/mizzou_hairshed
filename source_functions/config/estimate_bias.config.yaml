@@ -1,4 +1,4 @@
-rules: ['setup_data', 'copy_par', 'renumf90', 'airemlf90', 'cleanup']
+rules: ['setup_data', 'pull_genotypes', 'copy_par', 'renumf90', 'airemlf90', 'cleanup']
 
 r_module: "r/r-3.6.2-python-2.7.14-tk"
 
@@ -11,3 +11,7 @@ aireml_path: "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_func
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
 model: ['fixed9', 'bg1', 'hfd1', 'igs1']
+
+pct_excl: "0.25"
+
+iter: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']

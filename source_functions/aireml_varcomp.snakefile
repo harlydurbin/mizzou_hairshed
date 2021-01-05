@@ -36,6 +36,7 @@ rule setup_data:
 		module load {params.r_module}
 		Rscript --vanilla {input.script}
 		"""
+
 rule copy_par:
 	input:
 		par = "source_functions/par/aireml_varcomp.{model}.par",

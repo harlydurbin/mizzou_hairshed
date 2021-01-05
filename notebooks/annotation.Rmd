@@ -342,8 +342,6 @@ gostplot(full_gene_enrich10k)
 publish_gosttable(full_gene_enrich10k)
 ```
 
-129
-
 ```{r}
 all_gene_enrich10k$result %>% 
   select(term_name, query, everything()) %>% 

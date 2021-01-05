@@ -33,6 +33,7 @@ log/import_join_clean/*.html
 html/*
 *.txt
 *.log
+*.psrecord
 *.out
 *renf90.tables
 *renf90.par
