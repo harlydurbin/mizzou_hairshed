@@ -21,6 +21,8 @@ in_path <- glue("data/derived_data/aireml_varcomp/{model}/data.txt")
 
 out_path <- glue("data/derived_data/estimate_bias/{model}/{iter}")
 
+print(glue("Model {model} iteration {iter}, excluding phenotypes from random {pct_excl} of animals"))
+
 ## List of animals with genotypes
 genotyped <- 
   read_csv(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.diagonal.full_reg.csv"))
@@ -65,8 +67,9 @@ subset_dat <-
   choose_validation_set(full_dat, pct_excl)
 
 subset_dat %>% 
-  write_tsv(here::here(glue("{out_path}/data.txt")),
-            col_names = FALSE)
+  write_delim(here::here(glue("{out_path}/data.txt")),
+              delim = " ",
+              col_names = FALSE)
 
 # Pedigree
 
@@ -78,8 +81,9 @@ ped <-
   three_gen(full_ped = full_ped) 
 
 ped %>% 
-  write_tsv(here::here(glue("{out_path}/ped.txt")),
-            col_names = FALSE)
+  write_delim(here::here(glue("{out_path}/ped.txt")),
+              delim = " ",
+              col_names = FALSE)
 
 # Genotype pull list
 
@@ -92,7 +96,9 @@ ped %>%
   distinct() %>% 
   filter(full_reg %in% genotyped$full_reg) %>% 
   select(full_reg) %>% 
-  write_tsv(here::here(glue("{out_path}/pull_list.txt")))
+  write_delim(here::here(glue("{out_path}/pull_list.txt")),
+              delim = " ",
+              col_names = FALSE)
 
 
 
