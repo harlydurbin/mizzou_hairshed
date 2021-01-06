@@ -8,7 +8,8 @@ output:
     code_folding: hide
 params:
   model: "hfd1"
-title: "`r glue::glue('Estimation of bias ({params$model}) model')`"
+  keyword: "Hereford"
+title: "`r glue::glue('Estimation of bias ({params$keyword} dataset)')`"
 ---
 
 ```{r setup, include=FALSE}
@@ -33,6 +34,8 @@ library(tidylog)
 
 ```{r}
 model <- params$model
+
+keyword <- params$keyword
 ```
 
 ```{r}
@@ -113,15 +116,21 @@ bias %>%
         axis.text = element_text(size = 18),
         axis.text.x = element_text(angle = 45,
                                    hjust = 1),
-        strip.text = element_text(size = 18)) +
+        strip.text = element_text(size = 18),
+        plot.title = element_text(size = 28,
+                                  margin = margin(t = 0,
+                                                  r = 0,
+                                                  b = 16,
+                                                  l = 0))) +
   labs(x = "Full breeding value - reduced breeding value",
        y = "Kernel density",
-       fill = NULL) +
+       fill = NULL,
+       title = glue("{keyword} dataset")) +
   facet_wrap(~ iter,
              nrow = 2)
 ```
 
-## Reference animals ($d^r_{w,p}$)
+## Within reference animals only ($d^r_{w,p}$)
 
 > Within iterations
 
@@ -131,10 +140,10 @@ bias %>%
   mutate(difference = solution_reduced - solution_full) %>%
   filter(group == "kept") %>%
   group_by(iter) %>%
-  summarise(`Median abs. difference` = median(abs(difference)),
-            `Mean abs. difference` = mean(abs(difference)),
-            min = min(abs(difference)),
-            max = max(abs(difference))) %>%
+  summarise(`Median abs. difference` = median(abs(difference), na.rm = TRUE),
+            `Mean abs. difference` = mean(abs(difference), na.rm = TRUE),
+            min = min(abs(difference), na.rm = TRUE),
+            max = max(abs(difference), na.rm = TRUE)) %>%
   mutate(`Range abs. difference` = max - min) %>%
   select(-min, -max) %>%
   rename(Iteration = iter) 
@@ -148,15 +157,15 @@ bias %>%
 bias %>%
   mutate(difference = solution_reduced - solution_full) %>%
   filter(group == "kept") %>%
-  summarise(`Median abs. difference` = median(abs(difference)),
-            `Mean abs. difference` = mean(abs(difference)),
-            min = min(abs(difference)),
-            max = max(abs(difference))) %>%
+  summarise(`Median abs. difference` = median(abs(difference), na.rm = TRUE),
+            `Mean abs. difference` = mean(abs(difference), na.rm = TRUE),
+            min = min(abs(difference), na.rm = TRUE),
+            max = max(abs(difference), na.rm = TRUE)) %>%
   mutate(`Range abs. difference` = max - min) %>%
   select(-min, -max) 
 ```
 
-## Validation animals (phenotype set to null; $d^v_{w,p}$)
+## Within validation animals only (those with phenotypes set to null; $d^v_{w,p}$)
 
 > Within iterations
 
@@ -166,10 +175,10 @@ bias %>%
   mutate(difference = solution_reduced - solution_full) %>%
   filter(group == "dropped") %>%
   group_by(iter) %>%
-  summarise(`Median abs. difference` = median(abs(difference)),
-            `Mean abs. difference` = mean(abs(difference)),
-            min = min(abs(difference)),
-            max = max(abs(difference))) %>%
+  summarise(`Median abs. difference` = median(abs(difference), na.rm = TRUE),
+            `Mean abs. difference` = mean(abs(difference), na.rm = TRUE),
+            min = min(abs(difference), na.rm = TRUE),
+            max = max(abs(difference), na.rm = TRUE)) %>%
   mutate(`Range abs. difference` = max - min) %>%
   select(-min, -max) %>%
   rename(Iteration = iter) 
@@ -183,10 +192,10 @@ bias %>%
 bias %>%
   mutate(difference = solution_reduced - solution_full) %>%
   filter(group == "dropped") %>%
-  summarise(`Median abs. difference` = median(abs(difference)),
-            `Mean abs. difference` = mean(abs(difference)),
-            min = min(abs(difference)),
-            max = max(abs(difference))) %>%
+  summarise(`Median abs. difference` = median(abs(difference), na.rm = TRUE),
+            `Mean abs. difference` = mean(abs(difference), na.rm = TRUE),
+            min = min(abs(difference), na.rm = TRUE),
+            max = max(abs(difference), na.rm = TRUE)) %>%
   mutate(`Range abs. difference` = max - min) 
 ```
 
@@ -239,7 +248,33 @@ for (i in 1:length(reflm)){
 
 # Distribution of breeding values (only validation animals; $b^v_{w,p}$) 
 
-```{r, fig.width=10, fig.height=16, eval=FALSE}
+* Regression of whole on partial breeding values ($b^v_{w,p}$) is interpreted as degree of dispersion
+    + Expectation is 1 absence of dispersion
+* $\rho^v_{w,p}$ is interpreted as prediction accuracy
+
+```{r}
+bias %>%
+  filter(group == "dropped") %>%
+  # Run lm and pull out slope/intercept for plotting
+  nest(-iter) %>%
+  mutate(lm = purrr::map(data, ~ lm(solution_full ~ solution_reduced, data = .x)),
+         tidied = purrr::map(lm, ~ broom::tidy(.x)),
+         modintercept = purrr::map_dbl(tidied,
+                                       ~ .[.$term == "(Intercept)", "estimate"] %>%
+                                         pull(estimate)),
+         modslope = purrr::map_dbl(tidied,
+                                   ~ .[.$term == "solution_reduced", "estimate"] %>%
+                                     pull(estimate)),
+         rho_pw = purrr::map_dbl(data,
+                                 ~ cor(.x$solution_full,
+                                       .x$solution_reduced,
+                                       use = "pairwise.complete.obs"))) %>%
+  select(Iteration = iter,
+         Slope = modslope,
+         `Prediction accuracy` = rho_pw)
+```
+
+```{r, fig.width=10, fig.height=16}
 bias %>%
   filter(group == "dropped") %>%
   # Run lm and pull out slope/intercept for plotting
@@ -256,8 +291,8 @@ bias %>%
                                  ~ cor(.x$solution_full,
                                        .x$solution_reduced,
                                        use = "pairwise.complete.obs")),
-    rholab = paste0("rho^v[pw]==", "'", sprintf("%.2f", signif(rho_pw, digits = 2)), "'"),
-    slopelab = paste0("b^v[pw]==", "'", sprintf("%.2f", signif(modslope, digits = 2)), "'")) %>%
+         rholab = paste0("rho^v[w,p]==", "'", sprintf("%.2f", signif(rho_pw, digits = 2)), "'"),
+         slopelab = paste0("b^v[w,p]==", "'", sprintf("%.2f", signif(modslope, digits = 2)), "'")) %>%
   select(-lm,-tidied) %>%
   unnest(data) %>%
   ggplot(aes(x = solution_reduced,
@@ -285,12 +320,17 @@ bias %>%
                                                     r = 13,
                                                     b = 0,
                                                     l = 0)),
-    axis.title.x = element_text(margin = margin(t = 13,
-                                                r = 0,
-                                                b = 0,
-                                                l = 0)),
-    axis.text = element_text(size = 16),
-    strip.text.x = element_text(size = 16)) +
+        axis.title.x = element_text(margin = margin(t = 13,
+                                                    r = 0,
+                                                    b = 0,
+                                                    l = 0)),
+        axis.text = element_text(size = 16),
+        strip.text.x = element_text(size = 16),
+        plot.title = element_text(size = 26,
+                                  margin = margin(t = 0,
+                                                  r = 0,
+                                                  b = 16,
+                                                  l = 0))) +
   # https://stackoverflow.com/questions/43104021/stop-parsing-out-zeros-after-decimals-in-ggplot2s-annotate
   # https://stackoverflow.com/questions/15397789/keeping-trailing-zeroes-with-plotmath
   geom_text(x = -1.4,
@@ -305,7 +345,8 @@ bias %>%
             parse = TRUE) +
   labs(x = latex2exp::TeX("Whole breeding value ($\\hat{\\mu_w}$)"),
        y = latex2exp::TeX("Partial breeding value ($\\hat{\\mu_p}$)"),
-       fill = "Count") +
+       fill = "Count",
+       title = glue("{keyword} dataset")) +
   facet_wrap( ~ iter,
               nrow = 5,
               ncol = 2)
@@ -328,7 +369,7 @@ $$\rho_{p,w} = \frac{cov(\hat{\mu_p}, \hat{\mu_w})}{\sqrt{var(\hat{\mu_p})var(\h
 bias %>% 
   filter(group == "dropped") %>% 
   group_by(iter) %>% 
-  summarise(cor = cor(solution_full, solution_reduced)) %>% 
+  summarise(cor = cor(solution_full, solution_reduced, use = "pairwise.complete.obs")) %>% 
   ungroup() %>% 
   arrange(cor) %>% 
   rename(`$\\rho^{v}_{w, p}$` = cor) %>% 
@@ -340,7 +381,8 @@ bias %>%
 ```{r}
 bias %>% 
   group_by(iter) %>% 
-  summarise(cor = cor(solution_full, solution_reduced)) %>% 
+  
+  summarise(cor = cor(solution_full, solution_reduced, use = "pairwise.complete.obs")) %>% 
   ungroup() %>% 
   arrange(cor) %>% 
   rename(`$\\rho^{v}_{w, p}$` = cor) %>% 
