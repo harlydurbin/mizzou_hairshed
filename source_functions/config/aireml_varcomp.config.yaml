@@ -12,6 +12,6 @@ geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
 # model: ['fixed1', 'fixed2', 'fixed3', 'fixed4', 'fixed5', 'fixed6', 'fixed7', 'fixed8', 'fixed9', 'fixed10', 'fixed11', 'fixed12', 'fixed13', 'an1', 'bg1', 'hfd1', 'igs1']
 
-# grep -Fwf data/derived_data/aireml_varcomp/igs1/pull_list.txt data/raw_data/geno_dump/200924_HairShed.850K.fwf.txt | awk '{printf "%-25s %s\n", $1, $2}' > data/derived_data/aireml_varcomp/igs1/genotypes.igs1.txt
+# grep -Fwf data/derived_data/aireml_varcomp/hfd1/pull_list.txt data/raw_data/geno_dump/200924_HairShed.850K.fwf.txt | awk '{printf "%-25s %s\n", $1, $2}' > data/derived_data/aireml_varcomp/acctest/genotypes.hfd1.txt
 
-model: ['fixed9', 'an1', 'bg1', 'hfd1', 'igs1', '2016an', '2017an', '2018an', '2019an', 'fixed14', 'fixed15', 'fixed16']
+model: ['hfd1']

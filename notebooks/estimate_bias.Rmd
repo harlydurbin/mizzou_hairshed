@@ -381,7 +381,6 @@ bias %>%
 ```{r}
 bias %>% 
   group_by(iter) %>% 
-  
   summarise(cor = cor(solution_full, solution_reduced, use = "pairwise.complete.obs")) %>% 
   ungroup() %>% 
   arrange(cor) %>% 

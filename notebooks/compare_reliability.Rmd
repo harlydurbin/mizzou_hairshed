@@ -1,0 +1,144 @@
+---
+title: "Compare reliability calculations"
+author: "Harly Durbin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(glue)
+library(purrr)
+library(DRP)
+library(magrittr)
+library(stringr)
+library(tidylog)
+
+source(here::here("source_functions/calculate_acc.R"))
+```
+
+# Notes & questions
+
+Recently realized that BLUPF90 can calculate reliability using `OPTION store_accuracy`, compare to my own calculations within the Hereford dataset to decide if it's worth re-running models
+
+# Setup
+
+```{r}
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+```
+
+```{r}
+genotyped <- 
+  read_table2(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.grm.id"),
+              col_names = c("full_reg", "iid")) %>% 
+  mutate(genotyped = TRUE) %>% 
+  select(full_reg, genotyped)
+```
+
+
+## Accuracy calculated externally
+
+```{r}
+dir <- "data/derived_data/aireml_varcomp/hfd1"
+
+animal_effect <- 2
+
+gen_var <- 0.21463
+
+h2 <- 0.320991
+
+model <- str_extract(dir, "(?<=/)[[:alnum:]]+$")
+
+
+```
+
+```{r}
+
+renaddped <-
+  read_table2(here::here(glue("{dir}/renadd0{animal_effect}.ped")),
+            col_names = FALSE) %>%
+  select(id_new = X1, sire_id = X2, dam_id = X3, full_reg = X10)
+
+renaddped %<>%
+  left_join(renaddped %>%
+              select(sire_id = id_new,
+                     sire_reg = full_reg)) %>%
+  left_join(renaddped %>%
+              select(dam_id = id_new,
+                     dam_reg = full_reg)) %>%
+  select(id_new, full_reg, sire_reg, dam_reg) %>%
+  filter(!is.na(full_reg)) %>%
+  mutate_at(vars(contains("reg")), ~ replace_na(., "0")) %>% 
+  filter(full_reg != "0")
+
+renaddped %<>%
+  left_join(full_ped %>%
+              select(full_reg, sex)) %>%
+  mutate(sex = case_when(full_reg %in% renaddped$sire_reg ~ "M",
+                         full_reg %in% renaddped$dam_reg ~ "F",
+                         TRUE ~ sex),
+         sex = replace_na(sex, "F"))
+
+pedinb <-
+  renaddped %>%
+  select(full_reg, sire_reg, dam_reg) %>%
+  optiSel::prePed() %>%
+  optiSel::pedInbreeding() %>%
+  tibble::remove_rownames() %>%
+  rename(full_reg = Indiv,
+         f = Inbr)
+```
+
+```{r}
+trait <-
+  read_table2(here::here(glue("{dir}/solutions")),
+              col_names = c("trait", "effect", "id_new", "solution", "se"),
+              skip = 1) %>%
+  # limit to animal effect
+  filter(effect == animal_effect) %>%
+  select(id_new, solution, se) %>%
+  # Re-attach original IDs
+  left_join(renaddped) %>%
+  left_join(pedinb) %>%
+  mutate(f = tidyr::replace_na(f, 0),
+         acc = purrr::map2_dbl(.x = se,
+                               .y = f,
+                              ~ calculate_acc(u = gen_var,
+                                              se = .x,
+                                              f = .y,
+                                              option = "reliability")))
+```
+
+## Accuracy calculated by BLUPF90 
+
+```{r}
+
+trait %<>% 
+  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/acctest/acc_bf90"),
+                        col_names = FALSE) %>% 
+              select(id_new = X3, bf90_acc = X5) %>% 
+              left_join(read_table2(here::here("data/derived_data/aireml_varcomp/acctest/renadd02.ped"),
+                                    col_names = FALSE) %>%
+                          select(id_new = X1, full_reg = X10)) %>% 
+              select(full_reg, bf90_acc)) %>% 
+  mutate(diff = acc-bf90_acc,
+         abs_diff = abs(diff)) %>% 
+  left_join(genotyped) %>% 
+  select(full_reg, sire_reg, dam_reg, sex, f, acc, bf90_acc, diff, abs_diff, genotyped, solution, se)
+```
+
+# Compare
+
+```{r}
+trait %>% 
+  summarise(Correlation = cor(acc, bf90_acc),
+            `Mean abs. of difference` = mean(abs_diff),
+            `Max abs. of difference` = max(abs_diff))
+```
+
+```{r}
+trait %>% 
+  arrange(desc(abs_diff))
+```
+
