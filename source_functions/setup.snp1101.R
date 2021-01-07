@@ -109,21 +109,23 @@ drp <-
           damr2 = "dam_acc",
           c = 0.1,
           h2 = h2) %>%
-  mutate(DRP_Trait_r2 = if_else(0 > DRP_Trait_r2, 0, DRP_Trait_r2),
+  # 1/6/21: Stop removing parent averages
+  mutate(Anim_DRP_Trait_r2 = if_else(0 > Anim_DRP_Trait_r2, 0, Anim_DRP_Trait_r2),
          Group = 1,
-         Rel = DRP_Trait_r2*100) 
+         Rel = Anim_DRP_Trait_r2*100) 
 
 
 drp %>%
-  filter(!is.na(DRP_Trait)) %>% 
+  filter(!is.na(Anim_DRP_Trait)) %>% 
   # Remove infinite values, otherwise will fail with "Matrix is singular"
-  filter(!is.infinite(DRP_Trait)) %>% 
+  filter(!is.infinite(Anim_DRP_Trait)) %>% 
   assertr::verify(Rel >= 0) %>% 
   # limit to only animals with genotypes
   # left_join(read_table2(here::here("data/derived_data/grm_inbreeding/mizzou_hairshed.grm.id"),
   #                       col_names = c("full_reg", "iid"))) %>%
   # filter(!is.na(iid)) %>% 
-  select(ID = full_reg, Group, Obs = DRP_Trait, Rel) %>%
+  # 1/6/21: Stop removing parent averages
+  select(ID = full_reg, Group, Obs = Anim_DRP_Trait, Rel) %>%
   write_tsv(here::here(glue("data/derived_data/snp1101/{model}/trait.txt")))
 
 renaddped %>%

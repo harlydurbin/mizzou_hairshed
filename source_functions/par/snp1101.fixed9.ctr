@@ -24,10 +24,9 @@ qc
        //matrix
        //name "hair_grm"
        //method vanraden;
-       //save_text gmtx;
 
 gwas ssr
-       kinship file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/fixed9/gmtx_hair_grm.bin"
+       kinship file "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/data/derived_data/snp1101/gmtx_hair_grm.bin"
        wt rel
        maf_range 0.0 0.5
        mca gwise fdr
