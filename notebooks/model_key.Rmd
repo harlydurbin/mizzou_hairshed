@@ -69,7 +69,7 @@ Organized by goal/motivation
 
 ## `fixed14`
 
-* Exact same as `fixed9` model, but use phenotyeps for genotyped animals
+* Exact same as `fixed9` model, but use phenotypes for genotyped animals only
 
 ## `fixed15`
 
