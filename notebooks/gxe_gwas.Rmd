@@ -16,48 +16,17 @@ library(tidyr)
 library(stringr)
 library(dplyr)
 library(glue)
+library(magrittr)
+library(lubridate)
 ```
 
 # Notes & questions
 
+* Fit fixed effects directly in GEMMA, dummy coded
+    + Column of 1s for mean
+    + Calving season, age group, fescue
+* Need to have phenotype file and genotype file in same order
+    + Phenotype in fam file - make fam manually then use `--keep` to subset genotypes?
+
 # Setup
-
-```{r, warning=FALSE, message=FALSE}
-cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
-```
-
-```{r, message=FALSE, warning=FALSE}
-weather <- 
-  read_rds(here::here("data/derived_data/environmental_data/weather.rds")) %>%  
-  # Pull daily data from the `data` column and save it to its own column 
-  mutate(daily = purrr::map(data, "daily", .default = NA),
-         # Extract daily high from daily column
-         daily_high = purrr::map_dbl(daily,
-                              ~ .x %>% 
-                                dplyr::pull(temperatureHigh)),
-         daily_high = measurements::conv_unit(daily_high, from = "F", to = "C"),
-         apparent_high = purrr::map_dbl(daily,
-                              ~ .x %>% 
-                                dplyr::pull(apparentTemperatureHigh)),
-         apparent_high = measurements::conv_unit(apparent_high, from = "F", to = "C"),
-         sunrise = purrr::map_chr(daily,
-                                  ~.x %>% 
-                                    dplyr::pull(sunriseTime) %>% 
-                                    as.character(.)),
-         sunset = purrr::map_chr(daily,
-                                  ~.x %>% 
-                                    dplyr::pull(sunsetTime) %>% 
-                                    as.character(.)),
-         sunrise = lubridate::as_datetime(sunrise),
-         sunset = lubridate::as_datetime(sunset),
-         day_length = as.numeric(sunset - sunrise)) %>% 
-  # Remove the data column
-  select(-data) 
-
-
-```
-
-```{r, message=FALSE, warning=FALSE}
-coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key.csv"))
-```
 
