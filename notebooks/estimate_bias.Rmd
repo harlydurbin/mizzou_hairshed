@@ -203,6 +203,39 @@ bias %>%
 
 ## Only validation animals (phenotype set to null; $b^v_{w,p}$) {.tabset}
 
+> Within iterations
+
+```{r}
+purrr::map_dfr(.x = c(1:10),
+               ~ bias %>%
+                 filter(group == "dropped", iter == .x) %>%
+                 lm(solution_full ~ solution_reduced,
+                    data = .) %>% 
+                 broom::tidy(),
+               .id = "Iteration") %>% 
+  filter(term == "solution_reduced") %>% 
+  select(Iteration, Slope = estimate, SE = std.error) %>% 
+  arrange(Slope)
+```
+
+> Across all iterations
+
+```{r}
+purrr::map_dfr(.x = c(1:10),
+               ~ bias %>%
+                 filter(group == "dropped", iter == .x) %>%
+                 lm(solution_full ~ solution_reduced,
+                    data = .) %>% 
+                 broom::tidy(),
+               .id = "Iteration") %>% 
+  filter(term == "solution_reduced") %>% 
+  summarise(`Min. slope` = min(estimate),
+            `Mean slope` = mean(estimate),
+            `Max. slope` = max(estimate),
+            `SD slope` = sd(estimate)) %>% 
+  knitr::kable(escape = FALSE)
+```
+
 ```{r}
 
 vallm <-
@@ -225,7 +258,42 @@ for (i in 1:length(vallm)){
 
 ## All animals in pedigree ($b_{w,p}$) {.tabset}
 
-> Expectation is one
+Expectation is one
+
+> Within iterations
+
+```{r}
+purrr::map_dfr(.x = c(1:10),
+               ~ bias %>%
+                 filter(iter == .x) %>%
+                 lm(solution_full ~ solution_reduced,
+                    data = .) %>% 
+                 broom::tidy(),
+               .id = "Iteration") %>% 
+  filter(term == "solution_reduced") %>% 
+  select(Iteration, Slope = estimate, SE = std.error) %>% 
+  arrange(Slope)
+
+
+```
+
+> Across all iterations
+
+```{r}
+purrr::map_dfr(.x = c(1:10),
+               ~ bias %>%
+                 filter(iter == .x) %>%
+                 lm(solution_full ~ solution_reduced,
+                    data = .) %>% 
+                 broom::tidy(),
+               .id = "Iteration") %>% 
+  filter(term == "solution_reduced") %>% 
+  summarise(`Min. slope` = min(estimate),
+            `Mean slope` = mean(estimate),
+            `Max. slope` = max(estimate),
+            `SD slope` = sd(estimate)) %>% 
+  knitr::kable(escape = FALSE)
+```
 
 ```{r}
 reflm <-
@@ -252,7 +320,7 @@ for (i in 1:length(reflm)){
     + Expectation is 1 absence of dispersion
 * $\rho^v_{w,p}$ is interpreted as prediction accuracy
 
-```{r}
+```{r, eval=FALSE}
 bias %>%
   filter(group == "dropped") %>%
   # Run lm and pull out slope/intercept for plotting
@@ -269,12 +337,13 @@ bias %>%
                                  ~ cor(.x$solution_full,
                                        .x$solution_reduced,
                                        use = "pairwise.complete.obs"))) %>%
+  arrange(rho_pw) %>% 
   select(Iteration = iter,
          Slope = modslope,
-         `Prediction accuracy` = rho_pw)
+         `Prediction accuracy` = rho_pw) 
 ```
 
-```{r, fig.width=10, fig.height=16}
+```{r, fig.width=10, fig.height=16, eval=FALSE}
 bias %>%
   filter(group == "dropped") %>%
   # Run lm and pull out slope/intercept for plotting
@@ -365,6 +434,8 @@ $$\rho_{p,w} = \frac{cov(\hat{\mu_p}, \hat{\mu_w})}{\sqrt{var(\hat{\mu_p})var(\h
 
 ## Only validation animals (phenotype set to null) ($\rho^{v}_{w, p}$) 
 
+> Within iterations
+
 ```{r}
 bias %>% 
   filter(group == "dropped") %>% 
@@ -376,7 +447,24 @@ bias %>%
   knitr::kable(escape = FALSE)
 ```
 
+> Across all iterations
+
+```{r}
+bias %>% 
+  filter(group == "dropped") %>% 
+  group_by(iter) %>% 
+  summarise(cor = cor(solution_full, solution_reduced, use = "pairwise.complete.obs")) %>% 
+  ungroup() %>% 
+  summarise(`Min. $\\rho^v_{w, p}$` = min(cor),
+            `Mean $\\rho^v_{w, p}$` = mean(cor),
+            `Max. $\\rho^v_{w, p}$` = max(cor),
+            `SD $\\rho^v_{w, p}$` = sd(cor)) %>% 
+  knitr::kable(escape = FALSE)
+```
+
 ## All animals in pedigree ($\rho_{w,p}$)
+
+> Within iterations
 
 ```{r}
 bias %>% 
@@ -384,8 +472,23 @@ bias %>%
   summarise(cor = cor(solution_full, solution_reduced, use = "pairwise.complete.obs")) %>% 
   ungroup() %>% 
   arrange(cor) %>% 
-  rename(`$\\rho^{v}_{w, p}$` = cor) %>% 
+  rename(`$\\rho_{w, p}$` = cor) %>% 
+  knitr::kable(escape = FALSE)
+```
+
+> Across all iterations
+
+```{r}
+bias %>% 
+  group_by(iter) %>% 
+  summarise(cor = cor(solution_full, solution_reduced, use = "pairwise.complete.obs")) %>% 
+  ungroup() %>% 
+  summarise(`Min. $\\rho_{w, p}$` = min(cor),
+            `Mean $\\rho_{w, p}$` = mean(cor),
+            `Max. $\\rho_{w, p}$` = max(cor),
+            `SD $\\rho_{w, p}$` = sd(cor)) %>% 
   knitr::kable(escape = FALSE)
 ```
 
 # Commentary
+

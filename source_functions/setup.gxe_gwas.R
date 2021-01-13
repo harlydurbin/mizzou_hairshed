@@ -8,7 +8,7 @@
 #'     df_print: paged
 #'     code_folding: hide
 #' ---
-#' 
+#'
 ## ----setup, include=FALSE-------------------------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
 library(readr)
@@ -19,43 +19,43 @@ library(glue)
 library(magrittr)
 library(lubridate)
 
-#' 
+#'
 #' # Notes & questions
-#' 
+#'
 #' * Fit fixed effects directly in GEMMA, dummy coded
 #'     + Column of 1s for mean
 #'     + Calving season, age group, fescue
 #' * Need to have phenotype file and genotype file in same order
 #'     + Phenotype in fam file - make fam manually then use `--keep` to subset genotypes?
-#' 
+#'
 #' # Setup
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 geno_prefix <- as.character(commandArgs(trailingOnly = TRUE)[1])
 
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 score_year <- as.numeric(commandArgs(trailingOnly = TRUE)[2])
 
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 var <- as.character(commandArgs(trailingOnly = TRUE)[3])
 
-#' 
+#'
 ## ---- warning=FALSE, message=FALSE----------------------------------------------------------------
 cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"))
 
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
-full_fam <- 
-  read_table2(here::here(glue("{geno_prefix}.fam")),
+full_fam <-
+  read_table2(here::here(glue("{geno_prefix}.qc.fam")),
               col_names = FALSE)
 
-#' 
+#'
 ## ---- message=FALSE, warning=FALSE----------------------------------------------------------------
 weather <-
   read_rds(here::here("data/derived_data/environmental_data/weather.rds")) %>%
@@ -87,23 +87,23 @@ weather <-
 
 
 
-#' 
+#'
 ## ---- message=FALSE, warning=FALSE----------------------------------------------------------------
 coord_key <- read_csv(here::here("data/derived_data/environmental_data/coord_key.csv"))
 
-#' 
+#'
 #' # Filtering & joining
-#' 
+#'
 #' ## Remove males
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 dat <-
-  cleaned %>% 
+  cleaned %>%
   filter(sex == "F")
 
-#' 
+#'
 #' ## Add coordinates
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 
 dat %<>%
@@ -113,9 +113,9 @@ dat %<>%
   assertr::verify(!is.na(long))
 
 
-#' 
+#'
 #' ## Mean apparent high temperature, mean day length
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 dat %<>%
   filter(!is.na(date_score_recorded)) %>%
@@ -123,9 +123,9 @@ dat %<>%
   assertr::verify(!is.na(mean_apparent_high)) %>%
   assertr::verify(!is.na(mean_day_length))
 
-#' 
+#'
 #' ## Calving season
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 dat %<>%
   # If calving season missing, impute using most recent calving season
@@ -148,9 +148,9 @@ dat %<>%
   filter(!is.na(calving_season)) %>%
   assertr::verify(!is.na(calving_season))
 
-#' 
+#'
 #' ## Toxic fescue
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 dat %<>%
   mutate(toxic_fescue = if_else(farm_id %in% c("BAT", "CRC"),
@@ -159,9 +159,9 @@ dat %<>%
   filter(!is.na(toxic_fescue)) %>%
   assertr::verify(!is.na(toxic_fescue))
 
-#' 
+#'
 #' ## Age group
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 dat %<>%
   mutate(age_group = case_when(age == 1 ~ "yearling",
@@ -171,19 +171,19 @@ dat %<>%
                                is.na(age) ~ "mature")) %>%
   assertr::verify(!is.na(age_group))
 
-#' 
+#'
 #' ## Specified year only, take random record for animals with multiple records within a year
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 dat %<>%
   filter(year == score_year) %>%
   group_by(farm_id, temp_id) %>%
-  sample_n(1) %>% 
-  ungroup() 
+  sample_n(1) %>%
+  ungroup()
 
-#' 
+#'
 #' ## ID matching
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 dat %<>%
   left_join(full_ped %>%
@@ -201,78 +201,78 @@ dat %<>%
   assertr::verify(!is.na(full_reg)) %>%
   assertr::verify(!is.na(hair_score))
 
-#' 
-#' # Export 
-#' 
+#'
+#' # Export
+#'
 #' ## Phenotypes in new `.fam` file
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 matched <-
-  full_fam %>% 
-  left_join(dat %>% 
-              select(X1 = full_reg, hair_score)) %>% 
-  filter(!is.na(hair_score)) %>% 
+  full_fam %>%
+  left_join(dat %>%
+              select(X1 = full_reg, hair_score)) %>%
+  filter(!is.na(hair_score)) %>%
   select(X1:X5, hair_score)
 
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
-matched %>% 
+matched %>%
   write_tsv(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/manual_fam.fam")),
             col_names = FALSE)
 
-#' 
+#'
 #' ## PLINK `--keep`/`--indiv-sort` file
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
-matched %>% 
-  select(X1, X2) %>% 
+matched %>%
+  select(X1, X2) %>%
   write_tsv(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/keep_sort.txt")),
             col_names = FALSE)
 
-#' 
+#'
 #' ## Design matrix for fixed effects
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 # Left join to `matched` to get correct sample order
-matched %>% 
-  select(full_reg = X1) %>% 
-  left_join(dat %>% 
-              select(full_reg, calving_season, age_group, toxic_fescue)) %>% 
-  fastDummies::dummy_cols(select_columns = c("calving_season", "age_group", "toxic_fescue")) %>% 
-  mutate(mean = 1) %>% 
-  select(mean, calving_season_FALL, age_group_twothree, age_group_mature, age_group_old, toxic_fescue_YES) %>% 
+matched %>%
+  select(full_reg = X1) %>%
+  left_join(dat %>%
+              select(full_reg, calving_season, age_group, toxic_fescue)) %>%
+  fastDummies::dummy_cols(select_columns = c("calving_season", "age_group", "toxic_fescue")) %>%
+  mutate(mean = 1) %>%
+  select(mean, calving_season_FALL, age_group_twothree, age_group_mature, age_group_old, toxic_fescue_YES) %>%
   write_tsv(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/design_matrix.txt")),
             col_names = FALSE)
 
 
-#' 
+#'
 #' ## GxE file
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
 
 if(var == "day_length") {
-  matched %>% 
-    select(full_reg = X1) %>% 
-    left_join(dat %>% 
-              select(full_reg, mean_day_length)) %>% 
-    select(mean_day_length) %>% 
+  matched %>%
+    select(full_reg = X1) %>%
+    left_join(dat %>%
+              select(full_reg, mean_day_length)) %>%
+    select(mean_day_length) %>%
     write_tsv(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/gxe.txt")),
               col_names = FALSE)
   } else if(var == "temp") {
-    matched %>% 
-      select(full_reg = X1) %>% 
-      left_join(dat %>% 
-              select(full_reg, mean_apparent_high)) %>% 
-      select(mean_apparent_high) %>% 
+    matched %>%
+      select(full_reg = X1) %>%
+      left_join(dat %>%
+              select(full_reg, mean_apparent_high)) %>%
+      select(mean_apparent_high) %>%
       write_tsv(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/gxe.txt")),
                 col_names = FALSE)
     }
 
-#' 
+#'
 #' # Range summary
-#' 
+#'
 ## -------------------------------------------------------------------------------------------------
-dat %>% 
+dat %>%
   summarise_at(vars(c("mean_apparent_high", "mean_day_length")), ~ range(.))
 
-#' 
+#'
