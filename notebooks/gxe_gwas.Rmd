@@ -7,9 +7,11 @@ output:
     toc_depth: 2
     df_print: paged
     code_folding: hide
+    self_contained: yes
+    mode: selfcontained
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(tidyr)
@@ -18,6 +20,10 @@ library(dplyr)
 library(glue)
 library(magrittr)
 library(lubridate)
+library(ggplot2)
+
+source(here::here("source_functions/hair_manhattan.R"))
+source(here::here("source_functions/ggqq.R"))
 ```
 
 # Notes & questions
@@ -29,4 +35,246 @@ library(lubridate)
     + Phenotype in fam file - make fam manually then use `--keep` to subset genotypes?
 
 # Setup
+
+```{r}
+
+gcif <- 
+  function(df, adjust_p = FALSE){
+    gci <- median(qchisq(df$p_wald, 1, lower.tail=FALSE))/qchisq(0.5, 1)
+    
+      if(adjust_p == TRUE){
+        new_p <- pchisq(qchisq(df$p_wald, 1, lower.tail=FALSE)/gci, df = 1, lower.tail = FALSE)
+        return(new_p)
+      } else {
+        return(gci)
+        }
+  }
+
+```
+
+## Raw output from GEMMA GxE GWAS
+
+```{r}
+
+gxe_gwas <-
+  purrr::map2_dfr(.x = rep(c("temp", "day_length"), each = 4),
+                 .y = rep(c(2016, 2017, 2018, 2019), times = 2),
+                 ~ read_table2(here::here(glue("data/derived_data/gxe_gwas/{.x}/{.y}/result.assoc.txt"))) %>% 
+                                 rename(pos = ps) %>% 
+                                 mutate(var = .x,
+                                        year = .y,
+                                        adj_p = gcif(., adjust_p = TRUE),
+                                        neglog10q = -log10(qvalue::qvalue(adj_p)$qvalues),
+                                        fdr_5 = qvalue::qvalue(adj_p, fdr.level = 0.05)$significant, 
+                                        fdr_1 = qvalue::qvalue(adj_p, fdr.level = 0.01)$significant))
+```
+
+## `METASOFT` input files
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+purrr::map(.x = c(2016, 2017, 2018, 2019),
+             ~ gxe_gwas %>% 
+             filter(var == "day_length") %>% 
+             filter(year == .x) %>% 
+             filter(!is.na(beta)) %>% 
+             mutate(b = round(beta, digits = 7),
+                    se = round(se, digits = 7)) %>%
+             select(rs, !!rlang::sym(glue("b_{.x}")) := b, !!rlang::sym(glue("se_{.x}")) := se)) %>% 
+  purrr::reduce(left_join) %>% 
+  mutate_if(is.numeric, as.character) %>% 
+  write_tsv(here::here("data/derived_data/metasoft/day_length/metasoft_in.day_length.txt"),
+            col_names = FALSE)
+```
+
+```
+srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/day_length/metasoft_in.day_length.txt -output data/derived_data/metasoft/day_length/metasoft_out.day_length.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/day_length/metasoft.day_length.log
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+purrr::map(.x = c(2016, 2017, 2018, 2019),
+           ~ gxe_gwas %>%
+             filter(var == "temp") %>% 
+             filter(year == .x) %>% 
+             filter(!is.na(beta)) %>% 
+             mutate(b = round(beta, digits = 7),
+                    se = round(se, digits = 7)) %>%
+             select(rs, !!rlang::sym(glue("b_{.x}")) := b, !!rlang::sym(glue("se_{.x}")) := se)) %>% 
+  purrr::reduce(left_join) %>% 
+  mutate_if(is.numeric, as.character) %>% 
+  write_tsv(here::here("data/derived_data/metasoft/temp/metasoft_in.temp.txt"),
+            col_names = FALSE)
+```
+
+```
+srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/temp/metasoft_in.temp.txt -output data/derived_data/metasoft/temp/metasoft_out.temp.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/temp/metasoft.temp.log
+```
+
+# Diagnostic
+
+## P-value histograms & Q-Q plots prior to genomic control {.tabset}
+
+```{r}
+hists <-
+  gxe_gwas %>% 
+  select(var, year, p_wald) %>% 
+  nest(p_wald) %>% 
+  mutate(hist = purrr::pmap(list(x = data, y = year, z = var),
+                            .f = function(x, y, z) {
+                              x %>% 
+                                ggplot(aes(x = p_wald)) +
+                                geom_histogram() +
+                                theme_classic() +
+                                labs(title = glue("Wald p-values: {y} {z}"))
+                              }),
+         qq = purrr::map(.x = data, 
+                         ~ ggqq(pvector = .x$p_wald))) %>% 
+  select(-data)
+```
+
+### 2016 temperature
+
+```{r}
+hists %>% 
+  filter(year == 2016 & var == "temp") %>% 
+  pull(hist)
+```
+
+```{r, cache=TRUE}
+hists %>% 
+  filter(year == 2016 & var == "temp") %>% 
+  pull(qq)
+```
+
+### 2016 day length
+
+```{r}
+hists %>% 
+  filter(year == 2016 & var == "day_length") %>% 
+  pull(hist)
+```
+
+```{r, cache=TRUE}
+hists %>% 
+  filter(year == 2016 & var == "day_length") %>% 
+  pull(qq)
+```
+
+### 2017 temperature
+
+```{r}
+hists %>% 
+  filter(year == 2017 & var == "temp") %>% 
+  pull(hist)
+```
+
+```{r, cache=TRUE}
+hists %>% 
+  filter(year == 2017 & var == "temp") %>% 
+  pull(qq)
+```
+
+### 2017 day length
+
+```{r}
+hists %>% 
+  filter(year == 2017 & var == "day_length") %>% 
+  pull(hist)
+```
+
+```{r, cache=TRUE}
+hists %>% 
+  filter(year == 2017 & var == "day_length") %>% 
+  pull(qq)
+```
+
+### 2018 temperature
+
+```{r}
+hists %>% 
+  filter(year == 2018 & var == "temp") %>% 
+  pull(hist)
+```
+
+```{r, cache=TRUE}
+hists %>% 
+  filter(year == 2018 & var == "temp") %>% 
+  pull(qq)
+```
+
+### 2018 day length
+
+```{r}
+hists %>% 
+  filter(year == 2018 & var == "day_length") %>% 
+  pull(hist)
+```
+
+```{r, cache=TRUE}
+hists %>% 
+  filter(year == 2018 & var == "day_length") %>% 
+  pull(qq)
+```
+
+### 2019 temperature
+
+```{r}
+hists %>% 
+  filter(year == 2019 & var == "temp") %>% 
+  pull(hist)
+```
+
+```{r, cache=TRUE}
+hists %>% 
+  filter(year == 2019 & var == "temp") %>% 
+  pull(qq)
+```
+
+### 2019 day length
+
+```{r}
+hists %>% 
+  filter(year == 2019 & var == "day_length") %>% 
+  pull(hist)
+```
+
+```{r, cache=TRUE}
+hists %>% 
+  filter(year == 2019 & var == "day_length") %>% 
+  pull(qq)
+```
+
+## Inflation factors prior to genomic control
+
+```{r}
+gxe_gwas %>% 
+  select(var, year, p_wald) %>% 
+  group_by(var, year) %>% 
+  nest() %>% 
+  mutate(`Inflation factor` = purrr::map_dbl(.x = data,
+                                              ~ .x %>% 
+                                                gcif())) %>% 
+  rename(`Variable` = var,
+         Year = year) %>% 
+  select(-data) %>% 
+  arrange(Year)
+```
+
+## FDR cutoffst post-genomic control
+
+```{r}
+gxe_gwas %>% 
+  filter(fdr_5 == TRUE)
+```
+
+# Manhattan plots post-genomic control
+
+```{r}
+gxe_gwas %>% 
+  filter(var == "day_length" & year == "2018") %>% 
+  filter(0.5 > adj_p) %>% 
+  mutate(neglog10p = -log10(adj_p)) %>% 
+  hair_manhattan(y_var = neglog10p,
+                 color1 = "#b9aa97",
+               color2 = "#7e756d") 
+```
 

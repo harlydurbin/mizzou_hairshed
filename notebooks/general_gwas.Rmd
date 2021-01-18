@@ -172,7 +172,6 @@ fixed9_snp1101 %>%
        title = NULL)
 ```
 
-
 # Genome-wide Manhattan and Q-Q plots
 
 ## Without PC correction

@@ -25,6 +25,7 @@ data/derived_data/annotation/*
 data/derived_data/breed_key/*.csv
 data/raw_data/*
 management/*.xlsx
+*/gxe_gwas_cache/*
 *.gdoc
 *.pptx
 talks_articles/2017_sare/*
