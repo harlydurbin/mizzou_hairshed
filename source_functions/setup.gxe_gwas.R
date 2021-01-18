@@ -211,23 +211,15 @@ matched <-
   full_fam %>%
   left_join(dat %>%
               select(X1 = full_reg, hair_score)) %>%
-  filter(!is.na(hair_score)) %>%
   select(X1:X5, hair_score)
 
 #'
 ## -------------------------------------------------------------------------------------------------
 matched %>%
-  write_tsv(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/manual_fam.fam")),
-            col_names = FALSE)
+  write_delim(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/gxe_gwas.{var}.{score_year}.fam")),
+            col_names = FALSE,
+            delim = " ")
 
-#'
-#' ## PLINK `--keep`/`--indiv-sort` file
-#'
-## -------------------------------------------------------------------------------------------------
-matched %>%
-  select(X1, X2) %>%
-  write_tsv(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/keep_sort.txt")),
-            col_names = FALSE)
 
 #'
 #' ## Design matrix for fixed effects
@@ -238,7 +230,8 @@ matched %>%
   select(full_reg = X1) %>%
   left_join(dat %>%
               select(full_reg, calving_season, age_group, toxic_fescue)) %>%
-  fastDummies::dummy_cols(select_columns = c("calving_season", "age_group", "toxic_fescue")) %>%
+  fastDummies::dummy_cols(select_columns = c("calving_season", "age_group", "toxic_fescue"),
+                          ignore_na = TRUE) %>%
   mutate(mean = 1) %>%
   select(mean, calving_season_FALL, age_group_twothree, age_group_mature, age_group_old, toxic_fescue_YES) %>%
   write_tsv(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/design_matrix.txt")),

@@ -1,4 +1,4 @@
-rules: ['gemma_grm', 'setup_data', 'plink_keep_sort', 'replace_fam', 'gemma']
+rules: ['gemma_grm', 'setup_data', 'copy_plink', 'gemma']
 
 r_module: "r/r-3.6.2-python-2.7.14-tk"
 

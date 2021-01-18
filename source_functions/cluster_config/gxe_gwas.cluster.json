@@ -22,21 +22,14 @@
         "mem": 6G,
         "p": "General,Lewis,BioCompute,htc4,hpc5"
     },
-    "plink_keep_sort":
-    {
-        "t": "01:00:00",
-        "p": "General,Lewis,BioCompute,htc4,hpc5",
-        "c": 12,
-        "mem": 12G
-    },
-    "replace_fam":
+    "copy_plink":
     {
         "t": "01:00:00",
         "p" : "General,Lewis,BioCompute,htc4,hpc5"
     },
     "gemma":
     {
-        "t": "24:00:00",
+        "t": "48:00:00",
         "mem" : 100G,
         "mail-type" : "END"
     }
