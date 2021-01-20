@@ -1,4 +1,4 @@
-# snakemake -s source_functions/gxe_gwas.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/gxe_gwas.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/gxe_gwas/210113.gxe_gwas.log
+# snakemake -s source_functions/gxe_gwas.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/gxe_gwas.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/gxe_gwas/210120.gxe_gwas.log
 
 import os
 
@@ -40,7 +40,9 @@ rule setup_data:
 		full_ped = "data/derived_data/3gen/full_ped.rds",
 		weather_data = "data/derived_data/environmental_data/weather.rds",
 		coord_key = "data/derived_data/environmental_data/coord_key.csv",
-		full_fam = config['geno_prefix'] + ".qc.fam"
+		full_fam = config['geno_prefix'] + ".qc.fam",
+		fixed13_solutions = "data/derived_data/aireml_varcomp/fixed13/solutions",
+		fixed13_renf90 = "data/derived_data/aireml_varcomp/fixed13/renf90.tables"
 	params:
 		r_module = config['r_module'],
 		geno_prefix = config['geno_prefix'],

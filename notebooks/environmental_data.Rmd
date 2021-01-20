@@ -429,6 +429,7 @@ read_table2(here::here("data/derived_data/aireml_varcomp/fixed12/solutions"),
                             effect == 2 ~ "Mean apparent high temperature")) %>% 
   select(Effect = effect, Solution = solution, SE = se)
 ```
+
 > Is the model with contemporary gproup, temperature, and day length a better fit than the model with just contemporary group and temperature (`fixed10`)? $-log_{10}(p-value)$ from the a likelihood ratio test comparing the two models:
 
 ```{r}

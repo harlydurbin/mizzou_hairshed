@@ -19,6 +19,8 @@ library(glue)
 library(magrittr)
 library(lubridate)
 
+source(here::here("source_functions/parse_renf90table.R"))
+
 #'
 #' # Notes & questions
 #'
@@ -54,6 +56,27 @@ full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 full_fam <-
   read_table2(here::here(glue("{geno_prefix}.qc.fam")),
               col_names = FALSE)
+
+fixed13_blues <- 
+  c(2, 3, 4) %>% 
+  purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/aireml_varcomp/fixed13/renf90.tables"),
+                                     effect_num = .x,
+                                     effect_key = TRUE)) %>% 
+  mutate(effect = case_when(effect == 2 ~ "calving_season",
+                            effect == 3 ~ "toxic_fescue",
+                            effect == 4 ~ "age_group")) %>% 
+  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/fixed13/solutions"),
+                         skip = 1,
+                         col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
+               select(-trait) %>% 
+               filter(effect %in% c(2, 3, 4)) %>% 
+               mutate_at(vars("effect", "id_renamed"), ~ as.character(.)) %>% 
+               mutate(effect = case_when(effect == 2 ~ "calving_season",
+                                         effect == 3 ~ "toxic_fescue",
+                                         effect == 4 ~ "age_group"))) %>% 
+  select(id_original, effect, solution) %>% 
+  tidyr::pivot_wider(names_from = "effect",
+                     values_from = c("id_original"))
 
 #'
 ## ---- message=FALSE, warning=FALSE----------------------------------------------------------------
@@ -201,6 +224,18 @@ dat %<>%
   assertr::verify(!is.na(full_reg)) %>%
   assertr::verify(!is.na(hair_score))
 
+## Subtract off BLUEs
+
+dat %<>% 
+  left_join(fixed13_blues %>% 
+              select(calving_season, cs_sol = solution)) %>% 
+  left_join(fixed13_blues %>% 
+              select(toxic_fescue, tf_sol = solution)) %>% 
+  left_join(fixed13_blues %>% 
+              select(age_group, age_sol = solution)) %>% 
+  mutate(adj_hs = (hair_score - cs_sol - tf_sol - age_sol)) 
+
+
 #'
 #' # Export
 #'
@@ -210,8 +245,8 @@ dat %<>%
 matched <-
   full_fam %>%
   left_join(dat %>%
-              select(X1 = full_reg, hair_score)) %>%
-  select(X1:X5, hair_score)
+              select(X1 = full_reg, adj_hs)) %>%
+  select(X1:X5, adj_hs)
 
 #'
 ## -------------------------------------------------------------------------------------------------
@@ -228,12 +263,8 @@ matched %>%
 # Left join to `matched` to get correct sample order
 matched %>%
   select(full_reg = X1) %>%
-  left_join(dat %>%
-              select(full_reg, calving_season, age_group, toxic_fescue)) %>%
-  fastDummies::dummy_cols(select_columns = c("calving_season", "age_group", "toxic_fescue"),
-                          ignore_na = TRUE) %>%
   mutate(mean = 1) %>%
-  select(mean, calving_season_FALL, age_group_twothree, age_group_mature, age_group_old, toxic_fescue_YES) %>%
+  select(mean) %>%
   write_tsv(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/design_matrix.txt")),
             col_names = FALSE)
 

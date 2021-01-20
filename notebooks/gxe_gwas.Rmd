@@ -103,9 +103,10 @@ srun --account animalsci java -jar source_functions/Metasoft/Metasoft.jar -pvalu
 
 ## `METASOFT` output files
 
-```{r, eval=TRUE}
+```{r, eval=TRUE, warning=FALSE, message=FALSE}
 gxe_metasoft <- 
   c("temp", "day_length") %>% 
+  purrr::set_names() %>% 
   purrr::map_dfr(~ read_table2(here::here(glue("data/derived_data/metasoft/{.x}/metasoft_out.{.x}.txt")),
                                col_types = cols(.default = "d", RSID = "c")) %>% 
                    janitor::clean_names() %>% 
@@ -114,7 +115,10 @@ gxe_metasoft <-
                                          skip = 1,
                                          col_types = "c---------------dddddddd", 
                                          col_names = c("rsid", "p16", "p17", "p18", "p19", "m16", "m17", "m18", "m19"))) %>% 
-                   mutate(neglog10q_re = -log10(qvalue::qvalue(pvalue_re2)$qvalues)),
+                   mutate(neglog10q_re2 = -log10(qvalue::qvalue(pvalue_re2)$qvalues),
+                          neglog10q_re = -log10(qvalue::qvalue(pvalue_re)$qvalues),
+                          chr = as.numeric(str_extract(rsid, "^[[:digit:]]{1,2}(?=:)")),
+                          pos = as.numeric(str_extract(rsid, "(?<=[[:digit:]]{1,2}:)[[:digit:]]+(?=:)"))),
                  .id = "var")
   
 
@@ -272,17 +276,17 @@ gxe_gwas %>%
 
 # `METASOFT` results
 
-```{r, eval = FALSE}
+```{r}
+gxe_metasoft %>% 
+  filter(var == "day_length") %>% 
+  filter(0.5 > pvalue_re) %>% 
+  hair_manhattan(y_var = neglog10q_re,
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d",
+                 sigline = 1)
 ```
 
+```{r}
 
-```{r, eval = FALSE}
-gxe_gwas %>% 
-  filter(var == "day_length" & year == "2018") %>% 
-  filter(0.5 > adj_p) %>% 
-  mutate(neglog10p = -log10(adj_p)) %>% 
-  hair_manhattan(y_var = neglog10p,
-                 color1 = "#b9aa97",
-               color2 = "#7e756d") 
 ```
 
