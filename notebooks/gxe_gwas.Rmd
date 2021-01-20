@@ -7,8 +7,6 @@ output:
     toc_depth: 2
     df_print: paged
     code_folding: hide
-    self_contained: yes
-    mode: selfcontained
 ---
 
 ```{r setup, include=FALSE, warning=FALSE, message=FALSE}
@@ -24,6 +22,7 @@ library(ggplot2)
 
 source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
+source(here::here("source_functions/gemma_gcif.R"))
 ```
 
 # Notes & questions
@@ -32,25 +31,10 @@ source(here::here("source_functions/ggqq.R"))
     + Column of 1s for mean
     + Calving season, age group, fescue
 * Need to have phenotype file and genotype file in same order
-    + Phenotype in fam file - make fam manually then use `--keep` to subset genotypes?
+    + ~~Phenotype in fam file - make fam manually then use `--keep` to subset genotypes?~~
+    + Set animals in GRM but no phenotypes as NA
 
 # Setup
-
-```{r}
-
-gcif <- 
-  function(df, adjust_p = FALSE){
-    gci <- median(qchisq(df$p_wald, 1, lower.tail=FALSE))/qchisq(0.5, 1)
-    
-      if(adjust_p == TRUE){
-        new_p <- pchisq(qchisq(df$p_wald, 1, lower.tail=FALSE)/gci, df = 1, lower.tail = FALSE)
-        return(new_p)
-      } else {
-        return(gci)
-        }
-  }
-
-```
 
 ## Raw output from GEMMA GxE GWAS
 
@@ -64,10 +48,18 @@ gxe_gwas <-
                                  mutate(var = .x,
                                         year = .y,
                                         adj_p = gcif(., adjust_p = TRUE),
-                                        neglog10q = -log10(qvalue::qvalue(adj_p)$qvalues),
-                                        fdr_5 = qvalue::qvalue(adj_p, fdr.level = 0.05)$significant, 
-                                        fdr_1 = qvalue::qvalue(adj_p, fdr.level = 0.01)$significant))
+                                        q = qvalue::qvalue(adj_p)$qvalues,
+                                        neglog10q = -log10(q)))
 ```
+
+
+```{r}
+gxe_gwas %>% 
+  mutate(neglog10q = -log10(q)) %>% 
+  summarise(max(neglog10q),
+            mean(neglog10q))
+```
+
 
 ## `METASOFT` input files
 
@@ -106,7 +98,26 @@ purrr::map(.x = c(2016, 2017, 2018, 2019),
 ```
 
 ```
-srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/temp/metasoft_in.temp.txt -output data/derived_data/metasoft/temp/metasoft_out.temp.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/temp/metasoft.temp.log
+srun --account animalsci java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/temp/metasoft_in.temp.txt -output data/derived_data/metasoft/temp/metasoft_out.temp.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/temp/metasoft.temp.log
+```
+
+## `METASOFT` output files
+
+```{r, eval=TRUE}
+gxe_metasoft <- 
+  c("temp", "day_length") %>% 
+  purrr::map_dfr(~ read_table2(here::here(glue("data/derived_data/metasoft/{.x}/metasoft_out.{.x}.txt")),
+                               col_types = cols(.default = "d", RSID = "c")) %>% 
+                   janitor::clean_names() %>% 
+                   select(-pvalue_be, -contains("fe")) %>%
+                   left_join(read_table2(here::here(glue("data/derived_data/metasoft/{.x}/metasoft_out.{.x}.txt")),
+                                         skip = 1,
+                                         col_types = "c---------------dddddddd", 
+                                         col_names = c("rsid", "p16", "p17", "p18", "p19", "m16", "m17", "m18", "m19"))) %>% 
+                   mutate(neglog10q_re = -log10(qvalue::qvalue(pvalue_re2)$qvalues)),
+                 .id = "var")
+  
+
 ```
 
 # Diagnostic
@@ -259,16 +270,13 @@ gxe_gwas %>%
   arrange(Year)
 ```
 
-## FDR cutoffst post-genomic control
+# `METASOFT` results
 
-```{r}
-gxe_gwas %>% 
-  filter(fdr_5 == TRUE)
+```{r, eval = FALSE}
 ```
 
-# Manhattan plots post-genomic control
 
-```{r}
+```{r, eval = FALSE}
 gxe_gwas %>% 
   filter(var == "day_length" & year == "2018") %>% 
   filter(0.5 > adj_p) %>% 
