@@ -55,11 +55,11 @@ gxe_gwas <-
 
 ```{r}
 gxe_gwas %>% 
-  mutate(neglog10q = -log10(q)) %>% 
+  mutate(neglog10p = -log10(adj_p)) %>% 
   summarise(max(neglog10q),
+            max(neglog10p),
             mean(neglog10q))
 ```
-
 
 ## `METASOFT` input files
 
@@ -125,6 +125,7 @@ gxe_metasoft <-
 ```
 
 # Diagnostic
+
 
 ## P-value histograms & Q-Q plots prior to genomic control {.tabset}
 
@@ -274,6 +275,40 @@ gxe_gwas %>%
   arrange(Year)
 ```
 
+# `METASOFT` Q-Q plots
+
+> Temperature
+
+```{r}
+ggqq(pvector = gxe_metasoft %>% 
+       filter(var == "temp") %>% 
+       pull(pvalue_re))
+```
+
+```{r}
+gxe_metasoft %>% 
+  filter(var == "temp") %>% 
+  filter(!is.na(pvalue_re)) %>% 
+  select(p_wald = pvalue_re) %>% 
+  gcif()
+```
+
+> Day length
+
+```{r}
+gxe_metasoft %>% 
+  filter(var == "day_length") %>% 
+  filter(!is.na(pvalue_re)) %>% 
+  select(p_wald = pvalue_re) %>% 
+  gcif()
+```
+
+```{r}
+ggqq(pvector = gxe_metasoft %>% 
+       filter(var == "day_length") %>% 
+       pull(pvalue_re))
+```
+
 # `METASOFT` results
 
 ```{r}
@@ -287,6 +322,13 @@ gxe_metasoft %>%
 ```
 
 ```{r}
-
+gxe_gwas %>% 
+  filter(0.1 > adj_p) %>% 
+  filter(var == "day_length" & year == "2019") %>% 
+  mutate(neglog10p = -log10(adj_p)) %>% 
+  hair_manhattan(y_var = neglog10p,
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d",
+                 sigline = 5)
 ```
 

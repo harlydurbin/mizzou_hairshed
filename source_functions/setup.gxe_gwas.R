@@ -37,7 +37,7 @@ geno_prefix <- as.character(commandArgs(trailingOnly = TRUE)[1])
 
 #'
 ## -------------------------------------------------------------------------------------------------
-score_year <- as.numeric(commandArgs(trailingOnly = TRUE)[2])
+score_year <- as.character(commandArgs(trailingOnly = TRUE)[2])
 
 #'
 ## -------------------------------------------------------------------------------------------------
@@ -58,25 +58,28 @@ full_fam <-
               col_names = FALSE)
 
 fixed13_blues <- 
-  c(2, 3, 4) %>% 
+  c(1, 2, 3, 4) %>% 
   purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/aireml_varcomp/fixed13/renf90.tables"),
                                      effect_num = .x,
                                      effect_key = TRUE)) %>% 
-  mutate(effect = case_when(effect == 2 ~ "calving_season",
+  mutate(effect = case_when(effect == 1 ~ "year",
+                            effect == 2 ~ "calving_season",
                             effect == 3 ~ "toxic_fescue",
                             effect == 4 ~ "age_group")) %>% 
   left_join(read_table2(here::here("data/derived_data/aireml_varcomp/fixed13/solutions"),
                          skip = 1,
                          col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
                select(-trait) %>% 
-               filter(effect %in% c(2, 3, 4)) %>% 
+               filter(effect %in% c(1, 2, 3, 4)) %>% 
                mutate_at(vars("effect", "id_renamed"), ~ as.character(.)) %>% 
-               mutate(effect = case_when(effect == 2 ~ "calving_season",
+               mutate(effect = case_when(effect == 1 ~ "year",
+                                         effect == 2 ~ "calving_season",
                                          effect == 3 ~ "toxic_fescue",
                                          effect == 4 ~ "age_group"))) %>% 
   select(id_original, effect, solution) %>% 
   tidyr::pivot_wider(names_from = "effect",
-                     values_from = c("id_original"))
+                     values_from = c("id_original")) %>% 
+  mutate(year = as.numeric(year))
 
 #'
 ## ---- message=FALSE, warning=FALSE----------------------------------------------------------------
@@ -198,11 +201,20 @@ dat %<>%
 #' ## Specified year only, take random record for animals with multiple records within a year
 #'
 ## -------------------------------------------------------------------------------------------------
-dat %<>%
-  filter(year == score_year) %>%
-  group_by(farm_id, temp_id) %>%
-  sample_n(1) %>%
-  ungroup()
+
+dat <-
+  if(score_year == "random") {
+    dat %>% 
+      group_by(farm_id, temp_id) %>% 
+      sample_n(1) %>% 
+      ungroup()
+  } else {
+    dat %>%
+      filter(year == as.numeric(score_year)) %>%
+      group_by(farm_id, temp_id) %>%
+      sample_n(1) %>%
+      ungroup()
+  }
 
 #'
 #' ## ID matching
@@ -233,8 +245,9 @@ dat %<>%
               select(toxic_fescue, tf_sol = solution)) %>% 
   left_join(fixed13_blues %>% 
               select(age_group, age_sol = solution)) %>% 
-  mutate(adj_hs = (hair_score - cs_sol - tf_sol - age_sol)) 
-
+  left_join(fixed13_blues %>% 
+              select(year, year_sol = solution)) %>%
+  mutate(adj_hs = (hair_score - cs_sol - tf_sol - age_sol - year_sol)) 
 
 #'
 #' # Export

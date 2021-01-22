@@ -12,6 +12,8 @@ plink_nt: 12
 
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
-year: ['2016', '2017', '2018', '2019', '2020']
+#year: ['2016', '2017', '2018', '2019', '2020']
+
+year: ['random']
 
 var: ['day_length', 'temp']
