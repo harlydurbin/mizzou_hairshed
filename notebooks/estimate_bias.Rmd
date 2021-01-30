@@ -47,9 +47,10 @@ bias <-
   mutate(iter = forcats::fct_inorder(as.factor(iter)))
 ```
 
-# Difference between full and reduced breeding values ($\mu_w - \mu_p$; $d_{w,p}$) {.tabset}
+# Bias: difference between reduced and full breeding values ($\mu_p - \mu_w$; $d_{p,w}$) {.tabset}
 
-> Expectation is 0
+* Expectation is 0
+* Should be calculated within all animals in pedigree
 
 ## Summarized within iteration
 
@@ -91,26 +92,13 @@ bias %>%
 ```{r}
 
 bias %>%
-  filter(group == "kept") %>%
-  mutate(difference = solution_reduced - solution_full) %>%
+  mutate(difference = abs(solution_reduced - solution_full)) %>%
   group_by(iter) %>%
-  summarise(`Median abs. difference` = median(abs(difference), na.rm = TRUE),
-            `Mean abs. difference` = mean(abs(difference), na.rm = TRUE),
-            min = min(abs(difference), na.rm = TRUE),
-            max = max(abs(difference), na.rm = TRUE)) %>%
-  mutate(`Range abs. difference` = max - min,
-         Group = "Reference") %>%
-  bind_rows(bias %>%
-              mutate(difference = solution_reduced - solution_full) %>%
-              filter(group == "dropped") %>%
-              group_by(iter) %>%
-              summarise(`Median abs. difference` = median(abs(difference), na.rm = TRUE),
-                        `Mean abs. difference` = mean(abs(difference), na.rm = TRUE),
-                        min = min(abs(difference), na.rm = TRUE),
-                        max = max(abs(difference), na.rm = TRUE)) %>%
-              mutate(`Range abs. difference` = max - min,
-                     Group = "Validation")) %>% 
-  select(Iteration = iter, Group, everything(), -min, -max) 
+  summarise(`Min. abs. difference` = min(difference, na.rm = TRUE),
+            `Mean abs. difference` = mean(difference, na.rm = TRUE),
+            `Max. abs. difference` = max(difference, na.rm = TRUE),
+            `SD abs. difference` = sd(difference, na.rm = TRUE)) %>% 
+  select(Iteration = iter, everything()) 
   
 ```
 
@@ -119,23 +107,11 @@ bias %>%
 ```{r}
 
 bias %>%
-  filter(group == "kept") %>%
-  mutate(difference = solution_reduced - solution_full) %>%
-  summarise(`Median abs. difference` = median(abs(difference), na.rm = TRUE),
-            `Mean abs. difference` = mean(abs(difference), na.rm = TRUE),
-            min = min(abs(difference), na.rm = TRUE),
-            max = max(abs(difference), na.rm = TRUE)) %>%
-  mutate(Group = "Reference") %>% 
-  bind_rows(bias %>%
-              filter(group == "dropped") %>%
-              mutate(difference = solution_reduced - solution_full) %>%
-              summarise(`Median abs. difference` = median(abs(difference), na.rm = TRUE),
-                        `Mean abs. difference` = mean(abs(difference), na.rm = TRUE),
-                        min = min(abs(difference), na.rm = TRUE),
-                        max = max(abs(difference), na.rm = TRUE)) %>% 
-              mutate(Group = "Validation")) %>% 
-  mutate(`Range abs. difference` = max - min) %>%
-  select(Group, everything(), -min, -max) 
+  mutate(difference = abs(solution_reduced - solution_full)) %>%
+  summarise(`Min. abs. difference` = min(difference, na.rm = TRUE),
+            `Mean abs. difference` = mean(difference, na.rm = TRUE),
+            `Max. abs. difference` = max(difference, na.rm = TRUE),
+            `SD abs. difference` = sd(difference, na.rm = TRUE))
 ```
 
 # Regress breeding values from full on breeding values from reduced

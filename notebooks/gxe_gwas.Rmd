@@ -22,7 +22,7 @@ library(ggplot2)
 
 source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
-source(here::here("source_functions/gemma_gcif.R"))
+source(here::here("source_functions/gcif.R"))
 ```
 
 # Notes & questions
@@ -330,5 +330,12 @@ gxe_gwas %>%
                  color1 = "#b9aa97",
                  color2 = "#7e756d",
                  sigline = 5)
+```
+
+```{r}
+read_table2(here::here("data/derived_data/aireml_varcomp/fixed9/solutions"),
+                         skip = 1,
+                         col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>% 
+  filter(effect == 1)
 ```
 
