@@ -1,5 +1,5 @@
 ---
-title: "Years GWAS with GCTA"
+title: "COJO using year-by-year GWAS meta-analysis results"
 author: "Harly Durbin"
 output:
   html_document:
@@ -22,24 +22,20 @@ library(glue)
 
 source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
+source(here::here("source_functions/gcif.R"))
 
 options(scipen = 0)
 ```
 
 # Notes & questions
 
-As an aside, some minor issues/confusions I ran into yesterday running COJO:
-* I gave COJO the p-values, SEs, and betas from the conventional random effects model because SEs and betas aren't provided for the Han and Eskin random effects model... that's what you had in mind right?
-* COJO needs the frequency of the effect allele, which is slightly different (based on eyeballing; I’m sure there probably a few places where it’s very different) between years. I calculated AFs in the full 11,560 genotypes and used that, should I have done something different?
-* I gave COJO 11,560 as the “N” for all SNPs, but that’s not the real N for various reasons (i.e., a SNP being monomorphic in one year but not the other + animals in the 11,560 not having a phenotype 2016-2019 etc.). Should I have given the number of unique individuals with a genotype across all years or something?
- 
-I got 29 SNPs back from --cojo-slct. Here’s where the selected SNPs on chromosome 5 and 23 fall, projected onto my GWAS results from the SNP1101 GWAS. Working on looking at the COJO p-values for non-selected SNPs (only 743,290 so about 4,000 fewer than the input - not sure why).
-
 # Setup
 
 ## Raw GWAS results
 
-```{r}
+### Year-by-year in GCTA
+
+```{r, eval=FALSE}
 years_gwas <-
   c(2016:2019) %>%
   purrr::set_names() %>% 
@@ -51,33 +47,24 @@ years_gwas <-
   rename(pos = bp)
 ```
 
+### Using de-regressed EBVs in SNP1101
+
 ```{r, warning = FALSE, message=FALSE}
 fixed9_snp1101 <-
   read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs_p.txt"))  %>%
   janitor::clean_names() %>%
-  mutate(neglog10p = -log10(p_value),
-         neglog10q = -log10(qvalue::qvalue(p_value)$qvalues),
-         fdr_5 = qvalue::qvalue(p_value, fdr.level = 0.05)$significant, 
-         fdr_1 = qvalue::qvalue(p_value, fdr.level = 0.01)$significant)
+  mutate(adj_p = gcif(df = .,
+                      adjust_p = TRUE,
+                      p_col = p_value),
+         q = qvalue::qvalue(adj_p)$qvalues,
+         neglog10q = -log10(q))
   
 ```
 
 ```{r}
-q_fdr5 <-
-  fixed9_snp1101 %>% 
-  filter(fdr_5 == TRUE) %>% 
-  arrange(neglog10q) %>% 
-  slice(1) %>% 
-  pull(neglog10q)
-```
-
-```{r}
-q_fdr1 <-
-  fixed9_snp1101 %>% 
-  filter(fdr_1 == TRUE) %>% 
-  arrange(neglog10q) %>% 
-  slice(1) %>% 
-  pull(neglog10q)
+# I can't remember numbers and have to re-calculate this every time so
+q_fdr5 <- -log10(.05)
+q_fdr1 <- -log10(.01)
 ```
 
 ## `METASOFT` input file
@@ -114,23 +101,31 @@ purrr::map(.x = c("2016", "2017", "2018", "2019"),
 srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/years/metasoft_in.years.txt -output data/derived_data/metasoft/years/metasoft_out.years.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/years/metasoft.years.log
 ```
 
+* Re-run with lambda value calculated in previous run to correct p-values:
+    + `-lambda_mean 1.661412`
+    + `-lambda_hetero 0.110889`
+
+```
+srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/years/metasoft_in.years.txt -output data/derived_data/metasoft/years/metasoft_out.years_adj.txt -mvalue -mvalue_p_thres 0.01 -lambda_mean 1.661412 -lambda_hetero 0.110889 -log data/derived_data/metasoft/years/metasoft.years.log
+```
+
 ## `METASOFT` output file
 
 ```{r, eval=TRUE}
 years_metasoft <- 
-  read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years.txt"),
+  read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years_adj.txt"),
               col_types = cols(.default = "d", RSID = "c")) %>% 
   janitor::clean_names() %>% 
   select(-pvalue_be, -contains("fe")) %>% 
-  left_join(read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years.txt"),
+  left_join(read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years_adj.txt"),
                         skip = 1,
                         col_types = "c---------------dddddddd", 
                         col_names = c("rsid", "p16", "p17", "p18", "p19", "m16", "m17", "m18", "m19"))) %>% 
-  mutate(neglog10q_re = -log10(qvalue::qvalue(pvalue_re2)$qvalues))
+  mutate(neglog10q_re = -log10(qvalue::qvalue(pvalue_re)$qvalues))
 
 ```
 
-## Calculate allele frequencies and missingness in `METASOFT animals` for use in COJO
+## Calculate allele frequencies and missingness for use in COJO
 
 * List of animals in at least one of the 2016-2019 GWAS
 
@@ -234,58 +229,39 @@ ggsave(filename = here::here("figures/gcta_gwas.years/16-19.q.png"),
 
 ```
 
-## SNP effects
-
-```{r, fig.width=8, fig.height=9, eval=FALSE}
-years_gwas %>% 
-  filter(0.5 > p) %>% 
-  mutate(year = case_when(year == "2016" ~ "2016 (n = 5,156)",
-                          year == "2017" ~ "2017 (n = 4,989)",
-                          year == "2018" ~ "2018 (n = 6,896)",
-                          year == "2019" ~ "2019 (n = 5,292)"),
-         abs_b = abs(b)) %>% 
-  hair_manhattan(y_var = abs_b,
-                 y_lab = "Absolute value of beta",
-                 color1 = "#b9aa97",
-                 color2 = "#7e756d") +
-  facet_wrap(~ year, 
-             nrow = 4,
-             scales = "free_y")
-
-ggsave(filename = here::here("figures/gcta_gwas.years/16-19.abs_b.png"),
-       width = 8,
-       height = 9)
-```
-
 # Meta-analysis GWAS results
+
+```{r, eval = FALSE}
+years_metasoft %>% 
+  filter(0.1 > pvalue_re) %>% 
+  mutate(chr = as.numeric(str_extract(rsid, "[[:digit:]]{1,2}(?=:)")),
+         pos = as.numeric(str_extract(rsid, "(?<=[[:digit:]]{1,2}:)[[:digit:]]+"))) %>% 
+  hair_manhattan(y_var = neglog10q_re,
+                 y_lab = "Metasoft -log10(q)",
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d",
+                 sigline = q_fdr5)
+```
 
 ```{r}
 years_metasoft %>% 
-  filter(0.1 > pvalue_re2) %>% 
-  mutate(neglog0p = -log10(pvalue_re2), 
-         chr = str_extract(rsid, "[[:digit:]]{1,2}(?=:)"),
-         chr = as.numeric(chr),
-         pos = str_extract(rsid, "(?<=[[:digit:]]{1,2}:)[[:digit:]]+"),
-         pos = as.numeric(pos)) %>% 
-  hair_manhattan(y_var = neglog0p,
-                 y_lab = "Metasoft -log10(p)",
-                 color1 = "#b9aa97",
-                 color2 = "#7e756d",
-                 sigline = 5)
+  gcif(p_col = pvalue_re)
 ```
+
 
 # COJO selected SNPs
 
 ## Whole-genome
 
 ```{r, fig.width=8, fig.height=3}
-fixed9_snp1101 %>% 
-  filter(0.1 > p_value) %>% 
+slct_wg <-
+  fixed9_snp1101 %>% 
+  filter(0.9 > p_value) %>% 
   left_join(years_jma %>% 
               select(chr, pos) %>% 
               mutate(clr = TRUE)) %>% 
   hair_manhattan(y_var = neglog10q,
-                 y_lab = "-log10(q)",
+                 y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
                  sigline = q_fdr1,
                  color1 = "#b9aa97",
                  color2 = "#7e756d",
@@ -296,12 +272,30 @@ fixed9_snp1101 %>%
              size = 0.5)
 ```
 
+```{r, fig.width=8, fig.height=3}
+slct_wg
+```
+
+```{r}
+years_cma %>% 
+  filter(0.5 > p_c) %>% 
+  hair_manhattan(y_var = neglog10q, 
+                 y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
+                 sigline = q_fdr1,
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d") +
+  geom_hline(yintercept = q_fdr5, color = "blue")
+```
+
+
 ## Chromosome 5
 
 ```{r, fig.width=8, fig.height=3}
-fixed9_snp1101 %>% 
+slct_5 <-
+  fixed9_snp1101 %>% 
   filter(chr == 5) %>%
-  filter(50000000 >= pos) %>% 
+  filter(30000000 >= pos) %>% 
+  filter(pos >= 10000000) %>% 
   mutate(clr = "#b9aa97") %>% 
   ggplot(aes(x = pos,
              y = neglog10q,
@@ -317,8 +311,8 @@ fixed9_snp1101 %>%
                  y = neglog10q),
              color = "black",
              fill = "black") +
-  scale_x_continuous(breaks = c(0, 10000000, 20000000, 30000000, 40000000, 50000000),
-                     labels = c("0 Mb", "10 Mb", "20 Mb", "30 Mb", "40 Mb", "50 Mb")) +
+  scale_x_continuous(breaks = c(10000000, 15000000, 20000000, 25000000, 30000000),
+                     labels = c("10 Mb", "15 Mb", "20 Mb", "25 Mb", "30 Mb")) +
   theme_classic() +
   theme(axis.title = element_text(size = 18),
         axis.title.y = element_text(margin = margin(t = 0,
@@ -349,10 +343,15 @@ fixed9_snp1101 %>%
              size = 0.5)
 ```
 
+```{r, fig.width=8, fig.height=3}
+slct_5
+```
+
 ## Chromosome 23
 
 ```{r, fig.width=8, fig.height=3}
-fixed9_snp1101 %>% 
+slct_23 <-
+  fixed9_snp1101 %>% 
   filter(chr == 23) %>%
   filter(pos > 20000000) %>% 
   filter(50000000 > pos) %>%
@@ -401,4 +400,21 @@ fixed9_snp1101 %>%
   geom_hline(yintercept = q_fdr5,
              color = "blue",
              size = 0.5)
+```
+
+```{r, fig.width=8, fig.height=3}
+slct_23
+```
+
+## Panel figure
+
+```{r, fig.width=8, fig.height=9, eval = FALSE}
+
+
+slct_wg/slct_5/slct_23 + plot_annotation(tag_levels = c("a")) & 
+  theme(plot.tag = element_text(size = 24),
+        plot.margin = margin(t = 0, b = 0, l = 0.75, r = 1, unit = "mm"))
+
+ggsave(filename = here::here("figures/cojo/fixed9snp1101.q.cojo_panel.png"), height = 9, width = 8) 
+
 ```
