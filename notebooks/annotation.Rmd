@@ -22,16 +22,14 @@ library(tidylog)
 library(GALLO)
 library(gprofiler2)
 
+source(here::here("source_functions/gcif.R"))
+
 options(scipen = 0)
 ```
 
 # Notes & questions
 
 * SNP1101 `freq` column is allele frequency not genotype frequency: $\frac{g_2+\frac{1}{2}g_1}{g_0+g_1+g_2}$ or $\frac{2g_{2}+g_{1}}{2(g_0+g_1+g_2)}$
-* GCTA COJO requirements:
-    + "`A1` needs to be the effect allele with `A2` being the other allele and `freq` should be the frequency of `A1`
-    + `A1` and `A2` are A/T/C/G base calls
-* COJO runs very slowly with `--cojo-gc` option + it calculated a very small inflation factor, took it out
 
 ---
 
@@ -44,9 +42,10 @@ fixed9_snp1101 <-
   read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs_p.txt"))  %>%
   janitor::clean_names() %>%
   mutate(neglog10p = -log10(p_value),
-         neglog10q = -log10(qvalue::qvalue(p_value)$qvalues),
-         fdr_5 = qvalue::qvalue(p_value, fdr.level = 0.05)$significant, 
-         fdr_1 = qvalue::qvalue(p_value, fdr.level = 0.01)$significant)
+         adj_p = gcif(df = ., adjust_p = TRUE, p_col = p_value),
+         neglog10q = -log10(qvalue::qvalue(adj_p)$qvalues),
+         fdr_5 = qvalue::qvalue(adj_p, fdr.level = 0.05)$significant, 
+         fdr_1 = qvalue::qvalue(adj_p, fdr.level = 0.01)$significant)
   
 ```
 
@@ -73,7 +72,7 @@ q_fdr1 <-
 ```{r}
 full_pass <-
   fixed9_snp1101 %>% 
-  filter(fdr_1 == TRUE) %>% 
+  filter(fdr_5 == TRUE) %>% 
   select(CHR = chr, BP = pos)
 ```
 
@@ -197,7 +196,19 @@ full_gene_enrich10k <-
   distinct(gene_id) %>% 
   pull(gene_id) %>% 
   gost(organism = "btaurus",
-       significant = TRUE)
+       significant = TRUE,
+       correction_method = "fdr")
+```
+
+```{r}
+
+full_gene_enrich50k <-
+  full_gene50k %>% 
+  distinct(gene_id) %>% 
+  pull(gene_id) %>% 
+  gost(organism = "btaurus",
+       significant = TRUE,
+       correction_method = "fdr")
 ```
 
 ```{r}
@@ -245,6 +256,10 @@ full_qtl_enrich10k <-
 
 ```{r}
 full_gene_enrich10k$result
+```
+
+```{r}
+full_gene_enrich50k$result
 ```
 
 # QTL enrichment results

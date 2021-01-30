@@ -25,17 +25,24 @@ source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
 source(here::here("source_functions/parse_loglik.R"))
 source(here::here("source_functions/lrt_calc.R"))
+source(here::here("source_functions/gcif.R"))
 ```
 
 # Notes & questions
 
+SNP1101 output:
+
 * Column names in *_bvs.txt file: `SNPID, Chr, Pos, freq, g0, g1, g2, a, b, Var, F, p-value, FDR_GW`
 * Column names in *_bvs_p.txt file: `Chr, Pos, freq, b-value, Var, p-value`
 * `b` and `b-value` are beta/regression coefficient?
-* Guessing g0, g1, g2 are number of individuals with genotypes 0, 1, 2
+* Guessing `g0`, `g1`, `g2` are number of individuals with genotypes 0, 1, 2
 * "`F` is F-test/F-ratio for variance comparison"
 * "`a` is intercept"
 * "`Var` is variance explained by the SNP. I don't remember exactly how I calculated it but I am sure the calculation is done SNP by SNP so if you sum them up the total variance should be much higher than observed variance. The proper variance can be calculated by direct inverse of LHS when all SNP fit together (computationally is not easy)."
+
+---
+
+Jerry pointed out that removing parent average during EBV de-regression removes the genetic trend. However, doing this results in inflated p-values. After some experimentation and comparing Q-Q plots, decided to use results WITHOUT parent average removed but to use genomic control to adjust the p-values. 
 
 # Setup
 
@@ -45,25 +52,31 @@ source(here::here("source_functions/lrt_calc.R"))
 fixed9_snp1101 <-
   read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs_p.txt"))  %>%
   janitor::clean_names() %>%
-  mutate(neglog10p = -log10(p_value),
-         neglog10q = -log10(qvalue::qvalue(p_value)$qvalues),
-         fdr_5 = qvalue::qvalue(p_value, fdr.level = 0.05)$significant, 
-         fdr_1 = qvalue::qvalue(p_value, fdr.level = 0.01)$significant)
+  mutate(adj_p = gcif(df = .,
+                      adjust_p = TRUE,
+                      p_col = p_value),
+         q = qvalue::qvalue(adj_p)$qvalues,
+         neglog10q = -log10(q))
   
 ```
 
-```{r, warning = FALSE, message=FALSE}
-fixed15_snp1101 <-
-  read_table2(here::here("data/derived_data/snp1101/fixed15/out/gwas_ssr_fixed15_bvs_p.txt"))  %>%
-  janitor::clean_names() %>%
-  mutate(neglog10p = -log10(p_value),
-         neglog10q = -log10(qvalue::qvalue(p_value)$qvalues),
-         fdr_5 = qvalue::qvalue(p_value, fdr.level = 0.05)$significant, 
-         fdr_1 = qvalue::qvalue(p_value, fdr.level = 0.01)$significant)
-  
+```{r}
+# I can't remember numbers and have to re-calculate this every time so
+q_fdr5 <- -log10(.05)
+q_fdr1 <- -log10(.01)
 ```
 
 # Diagnostics
+
+## Correlation, adjusted and un-adjusted p-values
+
+```{r}
+fixed9_snp1101 %>% 
+  select(chr, pos, adj_p) %>% 
+  left_join(fixed9_no_pa %>% 
+              select(chr, pos, p_value)) %>% 
+  summarise(cor(adj_p, p_value))
+```
 
 ## P-values histogram
 
@@ -71,38 +84,6 @@ fixed15_snp1101 <-
 
 ```{r}
 hist(fixed9_snp1101$p_value)
-```
-
-## Summary of q-values 
-
-```{r}
-summary(qvalue::qvalue(fixed9_snp1101$p_value))
-```
-
-## FDR cutoffs
-
-```{r}
-fixed9_snp1101 %>% 
-  group_by(fdr_5, fdr_1) %>% 
-  summarise(min(neglog10q), max(neglog10q))
-```
-
-```{r}
-q_fdr5 <-
-  fixed9_snp1101 %>% 
-  filter(fdr_5 == TRUE) %>% 
-  arrange(neglog10q) %>% 
-  slice(1) %>% 
-  pull(neglog10q)
-```
-
-```{r}
-q_fdr1 <-
-  fixed9_snp1101 %>% 
-  filter(fdr_1 == TRUE) %>% 
-  arrange(neglog10q) %>% 
-  slice(1) %>% 
-  pull(neglog10q)
 ```
 
 # Does including first two PCs as fixed effect in the ssGBLUP model provide a better fit?
@@ -118,11 +99,16 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varc
 
 # Summary/exploratory
 
-## Passing SNPs per chromosome
+## Passing SNPs per chromosome at FDR = 5%
 
 ```{r}
 fixed9_snp1101 %>% 
-  filter(neglog10q > q_fdr1) %>% 
+  filter(neglog10q >= q_fdr5) 
+```
+
+```{r}
+fixed9_snp1101 %>% 
+  filter(neglog10q >= q_fdr5) %>% 
   mutate(all = n()) %>% 
   group_by(chr) %>% 
   summarise(n = n(),
@@ -131,122 +117,34 @@ fixed9_snp1101 %>%
   arrange(desc(pct))
 ```
 
-# SNP effects
-
-```{r}
-axisdf <-
-  fixed9_snp1101 %>%
-  # Add chromosome length for plotting
-  chr_len() %>%
-  group_by(chr) %>%
-  summarize(center = (max(BPcum) + min(BPcum)) / 2)
-```
-
-```{r, fig.width = 11, fig.height = 6.16}
-fixed9_snp1101 %>% 
-  filter(0.1 > p_value) %>% 
-  mutate(abs_snp = abs(b_value)) %>% 
-  chr_len() %>% 
-  arrange(neglog10q) %>% 
-  ggplot(aes(x = BPcum,
-             y = abs_snp)) +
-  geom_point(aes(color = neglog10q),
-             alpha = 0.75) +
-  viridis::scale_color_viridis() +
-  scale_x_continuous(label = axisdf$chr[c(TRUE, FALSE)],
-                     breaks = axisdf$center[c(TRUE, FALSE)]) +
-  theme_classic() +
-  theme(axis.title = element_text(size = 18),
-        axis.title.y = element_text(margin = margin(t = 0,
-                                                    r = 13,
-                                                    b = 0,
-                                                    l = 0)),
-        axis.title.x = element_text(margin = margin(t = 13,
-                                                    r = 0,
-                                                    b = 0,
-                                                    l = 0)),
-        axis.text = element_text(size = 14),
-        legend.text = element_text(size = 14)) +
-  labs(x = NULL,
-       y = "Absolute value of SNP effect",
-       title = NULL)
-```
-
 # Genome-wide Manhattan and Q-Q plots
 
-## Without PC correction
-
-```{r, fig.width = 11, fig.height = 6.16}
-hair_manhattan(df = fixed9_snp1101 %>% 
-                 filter(0.5 > p_value),
-               y_var = neglog10q, 
-               y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
-               sigline = q_fdr1,
-               color1 = "#b9aa97",
-               color2 = "#7e756d") +
+```{r, fig.width = 8, fig.height = 3}
+full_q <-
+  fixed9_snp1101 %>% 
+  hair_manhattan(y_var = neglog10q, 
+                 y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
+                 sigline = q_fdr1,
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d") +
   geom_hline(yintercept = q_fdr5, color = "blue")
 ```
 
+```{r}
+full_q
+```
+
 ```{r, fig.width = 11, fig.height = 6.1, eval=FALSE}
-ggsave(filename = here::here("figures/general_gwas/fixed9_snp1101.q_fdr.unkparents.png"),
+ggsave(plot = full_q,
+       filename = here::here("figures/general_gwas/fixed9_snp1101.q_fdr.unkparents.png"),
        height = 3,
        width = 8)
 ```
 
-### Q-Q plot, all SNPs
-
 ```{r}
-ggqq(pvector = fixed9_snp1101$p_value)
+ggqq(pvector = fixed9_snp1101$adj_p)
 
-#ggsave(here::here("figures/general_gwas/fixed9_snp1101.Q-Q.png"))
-```
-
-### Q-Q plot, non-significant SNPs
-
-```{r}
-ggqq(pvector = fixed9_snp1101[fixed9_snp1101$fdr == -1, "p_value"][[1]])
-
-#ggsave(here::here("figures/general_gwas/fixed9_snp1101.Q-Q.nonsig.png"))
-```
-
-## With PC correction
-
-```{r, fig.width = 11, fig.height = 6.16, eval=FALSE}
-
-hair_manhattan(df = fixed15_snp1101 %>% 
-                 filter(0.01 > p_value),
-               y_var = neglog10q, 
-               y_lab = "-log10(q-value)",
-               sigline = 1,
-               color1 = "#b9aa97",
-               color2 = "#7e756d") +
-  ylim(0, 15)
-
-
-ggsave(filename = here::here("figures/general_gwas/fixed15_snp1101.q.png"), height = 6.16, width = 11)
-```
-
-```{r, fig.width = 11, fig.height = 6.16, eval=FALSE}
-
-hair_manhattan(df = fixed15_snp1101 %>% 
-                 filter(0.01 > p_value),
-               y_var = neglog10p, 
-               y_lab = "-log10(p-value)",
-               sigline = 5,
-               color1 = "#b9aa97",
-               color2 = "#7e756d") +
-  ylim(0, 20)
-
-
-ggsave(filename = here::here("figures/general_gwas/fixed15_snp1101.p.png"), height = 6.16, width = 11)
-```
-
-### Q-Q plot, all SNPs
-
-```{r, eval = FALSE}
-ggqq(pvector = fixed15_snp1101$p_value)
-
-ggsave(here::here("figures/general_gwas/fixed15_snp1101.Q-Q.png"))
+ggsave(here::here("figures/general_gwas/fixed9_snp1101.with_pa.adj_p.Q-Q.png"))
 ```
 
 # Chromosme 5 zoom-in
