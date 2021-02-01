@@ -19,6 +19,7 @@ library(magrittr)
 library(stringr)
 library(tidylog)
 library(glue)
+library(patchwork)
 
 source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
@@ -100,7 +101,9 @@ years_metasoft <-
                         col_names = c("rsid", "p16", "p17", "p18", "p19", "m16", "m17", "m18", "m19"))) %>% 
   # Metasoft won't adjust RE1 p-values, do it manually
   mutate(adj_p_re = gcif(., p_col = pvalue_re, adjust_p = TRUE),
-         neglog10q_re = -log10(qvalue::qvalue(adj_p_re)$qvalues))
+         neglog10q = -log10(qvalue::qvalue(adj_p_re)$qvalues),
+         chr = as.numeric(str_extract(rsid, "[[:digit:]]{1,2}(?=:)")),
+         pos = as.numeric(str_extract(rsid, "(?<=[[:digit:]]{1,2}:)[[:digit:]]+")))
 ```
 
 ## COJO
@@ -212,14 +215,24 @@ ggqq(years_metasoft$adj_p_re) +
   ggplot2::ggtitle("Metasoft RE model p-values (post-GC)")
 ```
 
+### Should I use meta-analysis results or p-values from SNP1101 using DEBVs? 
+
+* What's the correlation between their p-values?
+
+```{r}
+years_metasoft %>% 
+  select(chr, pos, meta = neglog10q) %>% 
+  left_join(fixed9_snp1101 %>% 
+              select(chr, pos, neglog10q)) %>% 
+  summarise(`Corr. between p-values` = cor(neglog10q, meta))
+```
+
 ## Results
 
 ```{r, fig.width=8, fig.height=3}
 years_metasoft %>% 
   filter(0.1 > pvalue_re) %>% 
-  mutate(chr = as.numeric(str_extract(rsid, "[[:digit:]]{1,2}(?=:)")),
-         pos = as.numeric(str_extract(rsid, "(?<=[[:digit:]]{1,2}:)[[:digit:]]+"))) %>% 
-  hair_manhattan(y_var = neglog10q_re,
+  hair_manhattan(y_var = neglog10q,
                  y_lab = "Adjusted RE -log10(q)",
                  color1 = "#b9aa97",
                  color2 = "#7e756d",
@@ -266,12 +279,14 @@ srun --account animalsci -p BioCompute,htc4,hpc5 -t 12:00:00 --mem 48G -c 56 sou
 
 ## Selected SNPs
 
+All results below projected on Metasoft results, not results from SNP1101 using DEBVs
+
 ### Whole-genome
 
 ```{r, fig.width=8, fig.height=3}
 slct_wg <-
-  fixed9_snp1101 %>% 
-  filter(0.9 > p_value) %>% 
+  years_metasoft %>% 
+  filter(0.1 > adj_p_re) %>% 
   left_join(years_jma %>% 
               select(chr, pos) %>% 
               mutate(clr = TRUE)) %>% 
@@ -291,23 +306,11 @@ slct_wg <-
 slct_wg
 ```
 
-```{r}
-years_cma %>% 
-  filter(0.5 > p_c) %>% 
-  hair_manhattan(y_var = neglog10q, 
-                 y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
-                 sigline = q_fdr1,
-                 color1 = "#b9aa97",
-                 color2 = "#7e756d") +
-  geom_hline(yintercept = q_fdr5, color = "blue")
-```
-
-
 ### Chromosome 5
 
 ```{r, fig.width=8, fig.height=3}
 slct_5 <-
-  fixed9_snp1101 %>% 
+  years_metasoft %>% 
   filter(chr == 5) %>%
   filter(30000000 >= pos) %>% 
   filter(pos >= 10000000) %>% 
@@ -320,7 +323,7 @@ slct_5 <-
   geom_point(data = years_jma %>% 
                filter(chr == 5) %>% 
                select(chr, pos) %>% 
-               left_join(fixed9_snp1101 %>% 
+               left_join(years_metasoft %>% 
                            select(chr, pos, neglog10q)),
              aes(x = pos,
                  y = neglog10q),
@@ -366,9 +369,9 @@ slct_5
 
 ```{r, fig.width=8, fig.height=3}
 slct_23 <-
-  fixed9_snp1101 %>% 
+  years_metasoft %>% 
   filter(chr == 23) %>%
-  filter(pos > 20000000) %>% 
+  filter(pos > 20000000) %>%
   filter(50000000 > pos) %>%
   mutate(clr = "#b9aa97") %>% 
   ggplot(aes(x = pos,
@@ -379,7 +382,7 @@ slct_23 <-
   geom_point(data = years_jma %>% 
                filter(chr == 23) %>% 
                select(chr, pos) %>% 
-               left_join(fixed9_snp1101 %>% 
+               left_join(years_metasoft %>% 
                            select(chr, pos, neglog10q)),
              aes(x = pos,
                  y = neglog10q),
@@ -423,13 +426,13 @@ slct_23
 
 ### Panel figure
 
-```{r, fig.width=8, fig.height=9, eval = FALSE}
+```{r, fig.width=8, fig.height=9, eval = TRUE}
 
 
 slct_wg/slct_5/slct_23 + plot_annotation(tag_levels = c("a")) & 
   theme(plot.tag = element_text(size = 24),
         plot.margin = margin(t = 0, b = 0, l = 0.75, r = 1, unit = "mm"))
 
-ggsave(filename = here::here("figures/cojo/fixed9snp1101.q.cojo_panel.png"), height = 9, width = 8) 
+ggsave(filename = here::here("figures/cojo/metasoft.q.cojo_panel.png"), height = 9, width = 8) 
 
 ```

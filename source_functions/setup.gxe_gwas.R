@@ -57,29 +57,19 @@ full_fam <-
   read_table2(here::here(glue("{geno_prefix}.qc.fam")),
               col_names = FALSE)
 
-fixed13_blues <- 
-  c(1, 2, 3, 4) %>% 
-  purrr::map_dfr(~ parse_renf90table(here::here("data/derived_data/aireml_varcomp/fixed13/renf90.tables"),
-                                     effect_num = .x,
-                                     effect_key = TRUE)) %>% 
-  mutate(effect = case_when(effect == 1 ~ "year",
-                            effect == 2 ~ "calving_season",
-                            effect == 3 ~ "toxic_fescue",
-                            effect == 4 ~ "age_group")) %>% 
-  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/fixed13/solutions"),
-                         skip = 1,
-                         col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>%
-               select(-trait) %>% 
-               filter(effect %in% c(1, 2, 3, 4)) %>% 
-               mutate_at(vars("effect", "id_renamed"), ~ as.character(.)) %>% 
-               mutate(effect = case_when(effect == 1 ~ "year",
-                                         effect == 2 ~ "calving_season",
-                                         effect == 3 ~ "toxic_fescue",
-                                         effect == 4 ~ "age_group"))) %>% 
-  select(id_original, effect, solution) %>% 
-  tidyr::pivot_wider(names_from = "effect",
-                     values_from = c("id_original")) %>% 
-  mutate(year = as.numeric(year))
+cg_blues <-
+  parse_renf90table(here::here("data/derived_data/aireml_varcomp/gxe_gwas/renf90.tables"),
+                    effect_num = 1,
+                    effect_key = TRUE) %>% 
+  mutate_at(vars(contains("id")), ~ as.numeric(.)) %>% 
+  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/gxe_gwas/solutions"),
+                        skip = 1,
+                        col_names = c("trait", "effect", "id_renamed", "solution", "se"))) %>% 
+  select(cg_num = id_original, solution) %>% 
+  assertr::verify(!is.na(solution)) %>% 
+  left_join(read_table2(here::here("data/derived_data/aireml_varcomp/gxe_gwas/data.txt"),
+                        col_names = c("full_reg", "cg_num", "hair_score", "year", "date_score_recorded")))
+  
 
 #'
 ## ---- message=FALSE, warning=FALSE----------------------------------------------------------------
@@ -150,54 +140,6 @@ dat %<>%
   assertr::verify(!is.na(mean_day_length))
 
 #'
-#' ## Calving season
-#'
-## -------------------------------------------------------------------------------------------------
-dat %<>%
-  # If calving season missing, impute using most recent calving season
-  group_by(farm_id, temp_id) %>%
-  arrange(date_score_recorded) %>%
-  fill(calving_season, .direction = "downup") %>%
-  ungroup() %>%
-  # If calving season still missing, impute using DOB
-  mutate(calving_season = case_when(farm_id == "UMCT" ~ "SPRING",
-                                    farm_id == "UMF" ~ "FALL",
-                                    is.na(calving_season) &
-                                      between(lubridate::month(dob),
-                                              left = 1,
-                                              right = 6) ~ "SPRING",
-                                    is.na(calving_season) &
-                                      between(lubridate::month(dob),
-                                              left = 7,
-                                              right = 12) ~ "FALL",
-                                    TRUE ~ calving_season)) %>%
-  filter(!is.na(calving_season)) %>%
-  assertr::verify(!is.na(calving_season))
-
-#'
-#' ## Toxic fescue
-#'
-## -------------------------------------------------------------------------------------------------
-dat %<>%
-  mutate(toxic_fescue = if_else(farm_id %in% c("BAT", "CRC"),
-                                "YES",
-                                toxic_fescue)) %>%
-  filter(!is.na(toxic_fescue)) %>%
-  assertr::verify(!is.na(toxic_fescue))
-
-#'
-#' ## Age group
-#'
-## -------------------------------------------------------------------------------------------------
-dat %<>%
-  mutate(age_group = case_when(age == 1 ~ "yearling",
-                               age %in% c(2, 3) ~ "twothree",
-                               between(age, 4, 7) ~ "mature",
-                               age >= 8 ~ "old",
-                               is.na(age) ~ "mature")) %>%
-  assertr::verify(!is.na(age_group))
-
-#'
 #' ## Specified year only, take random record for animals with multiple records within a year
 #'
 ## -------------------------------------------------------------------------------------------------
@@ -236,18 +178,14 @@ dat %<>%
   assertr::verify(!is.na(full_reg)) %>%
   assertr::verify(!is.na(hair_score))
 
-## Subtract off BLUEs
+## Subtract off CG BLUE
 
 dat %<>% 
-  left_join(fixed13_blues %>% 
-              select(calving_season, cs_sol = solution)) %>% 
-  left_join(fixed13_blues %>% 
-              select(toxic_fescue, tf_sol = solution)) %>% 
-  left_join(fixed13_blues %>% 
-              select(age_group, age_sol = solution)) %>% 
-  left_join(fixed13_blues %>% 
-              select(year, year_sol = solution)) %>%
-  mutate(adj_hs = (hair_score - cs_sol - tf_sol - age_sol - year_sol)) 
+  left_join(cg_blues) %>% 
+  filter(!is.na(solution)) %>% 
+  mutate(adj_hs = hair_score-solution) %>% 
+  # Make sure no duplicate rows made by join
+  assertr::verify(length(dat$hair_score) >= length(.$hair_score))
 
 #'
 #' # Export
@@ -310,6 +248,6 @@ if(var == "day_length") {
 #'
 ## -------------------------------------------------------------------------------------------------
 dat %>%
-  summarise_at(vars(c("mean_apparent_high", "mean_day_length")), ~ range(.))
+  summarise_at(vars(c("mean_apparent_high", "mean_day_length", "adj_hs")), ~ range(.))
 
 #'

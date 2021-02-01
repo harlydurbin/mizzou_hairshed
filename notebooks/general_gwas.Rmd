@@ -19,7 +19,7 @@ library(patchwork)
 library(magrittr)
 library(stringr)
 library(tidylog)
-library(patchwork)
+library(tidyr)
 
 source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
@@ -46,8 +46,6 @@ Jerry pointed out that removing parent average during EBV de-regression removes 
 
 # Setup
 
-## Import raw results
-
 ```{r, warning = FALSE, message=FALSE}
 fixed9_snp1101 <-
   read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs_p.txt"))  %>%
@@ -66,27 +64,35 @@ q_fdr5 <- -log10(.05)
 q_fdr1 <- -log10(.01)
 ```
 
-# Diagnostics
+# Diagnostic
 
-## Correlation, adjusted and un-adjusted p-values
+## Genomic control
+
+* Pre-GC inflation factor of `r fixed9_snp1101 %>% gcif(., p_col = p_value)`
+
+```{r}
+ggqq(pvector = fixed9_snp1101$p_value) +
+  ggtitle("PA NOT removed p-values (pre-GC)")
+```
+
+* Post-GC inflation factor of `r fixed9_snp1101 %>% gcif(., p_col = adj_p)`
+
+```{r}
+ggqq(pvector = fixed9_snp1101$adj_p) +
+  ggtitle("PA NOT removed p-values (post-GC)")
+```
+
+## Compare using DEBVs with and without parent average removed
 
 ```{r}
 fixed9_snp1101 %>% 
   select(chr, pos, adj_p) %>% 
-  left_join(fixed9_no_pa %>% 
-              select(chr, pos, p_value)) %>% 
-  summarise(cor(adj_p, p_value))
+  left_join(read_table2(here::here("data/derived_data/snp1101/fixed9_PAremoved/out/gwas_ssr_fixed9_bvs_p.txt")) %>% 
+              select(chr = Chr, pos = Pos, p_value = `p-value`)) %>% 
+  summarise(`Correlation between p-values` = cor(adj_p, p_value))
 ```
 
-## P-values histogram
-
-* Doesn't appear to be problematic
-
-```{r}
-hist(fixed9_snp1101$p_value)
-```
-
-# Does including first two PCs as fixed effect in the ssGBLUP model provide a better fit?
+## Does including first two PCs as fixed effect in the ssGBLUP model provide a better fit?
 
 * Issue: only included phenotypes for genotyped animals in `fixed15` model (can't have missing covariates in BLUPF90), so it isn't really an equal comparison to `fixed9` model. Compare instead to `fixed14` model, which only includes phenotypes for genotyped animals
 
@@ -103,7 +109,8 @@ lrt_calc(ll_null = parse_loglik(path = here::here("data/derived_data/aireml_varc
 
 ```{r}
 fixed9_snp1101 %>% 
-  filter(neglog10q >= q_fdr5) 
+  filter(neglog10q >= q_fdr5) %>% 
+  arrange(adj_p)
 ```
 
 ```{r}
@@ -117,7 +124,7 @@ fixed9_snp1101 %>%
   arrange(desc(pct))
 ```
 
-# Genome-wide Manhattan and Q-Q plots
+# Genome-wide results
 
 ```{r, fig.width = 8, fig.height = 3}
 full_q <-
@@ -130,7 +137,7 @@ full_q <-
   geom_hline(yintercept = q_fdr5, color = "blue")
 ```
 
-```{r}
+```{r, fig.width=8, fig.height=3}
 full_q
 ```
 
@@ -139,12 +146,6 @@ ggsave(plot = full_q,
        filename = here::here("figures/general_gwas/fixed9_snp1101.q_fdr.unkparents.png"),
        height = 3,
        width = 8)
-```
-
-```{r}
-ggqq(pvector = fixed9_snp1101$adj_p)
-
-ggsave(here::here("figures/general_gwas/fixed9_snp1101.with_pa.adj_p.Q-Q.png"))
 ```
 
 # Chromosme 5 zoom-in
@@ -180,11 +181,11 @@ full_q_chr5 <-
              size = 0.5)
 ```
 
-```{r}
+```{r, fig.width=3, fig.height=3}
 full_q_chr5
 ```
 
-```{r}
+```{r, eval=FALSE}
 ggsave(filename = here::here("figures/general_gwas/full_q_chr5.unkparents.png"),
        plot = full_q_chr5, 
        width = 8,

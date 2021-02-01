@@ -142,6 +142,6 @@ matched %>%
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------
 matched %>%
-  select(full_reg, cg_num, hair_score) %>%
+  select(full_reg, cg_num, hair_score, year, date_score_recorded) %>%
   write_delim(here::here("data/derived_data/aireml_varcomp/gxe_gwas/data.txt"),
               col_names = FALSE)
