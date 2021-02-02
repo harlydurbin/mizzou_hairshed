@@ -32,6 +32,7 @@ options(scipen = 0)
 
 * Metasoft `-lambda_*` flags only adjust RE2 p-values. Will need to manually adjust RE1 p-values
     + Don't think I need to do anything to the betas and standard errors right???? they're used to calculate the inflation factor
+    + Can't use RE2 p-values because their associated betas and SEs aren't reported
 
 # Setup
 
@@ -145,7 +146,6 @@ years_cma <-
          neglog10q_c = -log10(qvalue::qvalue(p_c)$qvalues))
 ```
 
-
 # Step 1. Year-by-year GWAS
 
 ## Diagnostic
@@ -217,14 +217,23 @@ ggqq(years_metasoft$adj_p_re) +
 
 ### Should I use meta-analysis results or p-values from SNP1101 using DEBVs? 
 
-* What's the correlation between their p-values?
+* What's the correlation between adjusted RE and adjusted SNP1101 p-values? Between RE2 and adjusted SNP1101 p-values? Between RE2 and adjusted RE p-values?
 
 ```{r}
 years_metasoft %>% 
-  select(chr, pos, meta = neglog10q) %>% 
+  select(chr, pos, RE2 = pvalue_re2, `Adj. RE` = adj_p_re) %>% 
   left_join(fixed9_snp1101 %>% 
-              select(chr, pos, neglog10q)) %>% 
-  summarise(`Corr. between p-values` = cor(neglog10q, meta))
+              select(chr, pos, `Adj. SNP1101` = adj_p)) %>% 
+  select(-chr, -pos) %>% 
+  corrr::correlate(diagonal = 1) %>% 
+  rename(`P-value` = rowname)
+```
+
+* Correlation between RE and RE2 p-values
+
+```{r}
+years_metasoft %>% 
+  summarise(Correlation = cor(pvalue_re, pvalue_re2))
 ```
 
 ## Results
@@ -240,6 +249,27 @@ years_metasoft %>%
   geom_hline(yintercept = q_fdr5, 
              color = "blue")
 ```
+
+## Cochran's Q
+
+```{r}
+years_metasoft %>% 
+  mutate(neglog10q_cq = -log10(qvalue::qvalue(pvalue_q)$qvalues)) %>% 
+  filter(neglog10q_cq >= q_fdr5)
+```
+
+```{r}
+years_metasoft %>% 
+  mutate(neglog10p_cq = -log10(pvalue_q)) %>% 
+  filter(neglog10p_cq >= 5)
+```
+
+```{r}
+years_metasoft %>% 
+  mutate(neglog10p_cq = -log10(pvalue_q)) %>% 
+  summarise(min(neglog10p_cq), max(neglog10p_cq))
+```
+
 
 # Step 2b. Calculate allele frequencies and missingness
 
@@ -279,7 +309,7 @@ srun --account animalsci -p BioCompute,htc4,hpc5 -t 12:00:00 --mem 48G -c 56 sou
 
 ## Selected SNPs
 
-All results below projected on Metasoft results, not results from SNP1101 using DEBVs
+> All manhattan plots below projected on Metasoft results, not results from SNP1101 using DEBVs
 
 ### Whole-genome
 
@@ -304,6 +334,34 @@ slct_wg <-
 
 ```{r, fig.width=8, fig.height=3}
 slct_wg
+```
+
+* How many COJO SNPs also significant at FDR = 5% in the meta-analysis?
+
+```{r}
+years_jma %>% 
+  select(chr, pos) %>% 
+  left_join(years_metasoft %>% 
+              filter(neglog10q >= q_fdr5) %>% 
+              select(chr, pos, neglog10q)) %>% 
+  summarise(`Passing @ FDR = 5%` = sum(!is.na(neglog10q)),
+            `New association` = sum(is.na(neglog10q)))
+  
+  
+```
+
+* How many COJO SNPs also significant at FDR = 5% in the SNP1101 analysis?
+
+```{r}
+years_jma %>% 
+  select(chr, pos) %>% 
+  left_join(fixed9_snp1101 %>% 
+              filter(neglog10q >= q_fdr5) %>% 
+              select(chr, pos, neglog10q)) %>% 
+  summarise(`Passing @ FDR = 5%` = sum(!is.na(neglog10q)),
+            `New association` = sum(is.na(neglog10q)))
+  
+  
 ```
 
 ### Chromosome 5

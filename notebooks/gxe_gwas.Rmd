@@ -27,16 +27,23 @@ source(here::here("source_functions/gcif.R"))
 
 # Notes & questions
 
-* Fit fixed effects directly in GEMMA, dummy coded
-    + Column of 1s for mean
-    + Calving season, age group, fescue
+* ~~Fit fixed effects directly in GEMMA, dummy coded~~ Calculate breeding values using AIREML, subtract estimated CG BLUE from phenotype --> use that adjusted phenotype in GEMMA
+    + Column of 1s for mean in GEMMA
+    + ~~Calving season, age group, fescue~~
+* Okay that I calculated CG effect in one go with all years data rather than 4 separate analyses? Figured it would be more accurate as more information included
 * Need to have phenotype file and genotype file in same order
     + ~~Phenotype in fam file - make fam manually then use `--keep` to subset genotypes?~~
     + Set animals in GRM but no phenotypes as NA
 
 # Setup
 
-## Raw output from GEMMA GxE GWAS
+```{r}
+# I can't remember numbers and have to re-calculate this every time so
+q_fdr5 <- -log10(.05)
+q_fdr1 <- -log10(.01)
+```
+
+## GEMMA GxE GWAS
 
 ```{r}
 
@@ -47,21 +54,15 @@ gxe_gwas <-
                                  rename(pos = ps) %>% 
                                  mutate(var = .x,
                                         year = .y,
-                                        adj_p = gcif(., adjust_p = TRUE),
+                                        adj_p = gcif(.,
+                                                     adjust_p = TRUE),
                                         q = qvalue::qvalue(adj_p)$qvalues,
                                         neglog10q = -log10(q)))
 ```
 
+## Metasoft
 
-```{r}
-gxe_gwas %>% 
-  mutate(neglog10p = -log10(adj_p)) %>% 
-  summarise(max(neglog10q),
-            max(neglog10p),
-            mean(neglog10q))
-```
-
-## `METASOFT` input files
+* Input files
 
 ```{r, warning=FALSE, message=FALSE, eval=FALSE}
 purrr::map(.x = c(2016, 2017, 2018, 2019),
@@ -101,9 +102,9 @@ purrr::map(.x = c(2016, 2017, 2018, 2019),
 srun --account animalsci java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/temp/metasoft_in.temp.txt -output data/derived_data/metasoft/temp/metasoft_out.temp.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/temp/metasoft.temp.log
 ```
 
-## `METASOFT` output files
+* Output files
 
-```{r, eval=TRUE, warning=FALSE, message=FALSE}
+```{r, eval=FALSE, warning=FALSE, message=FALSE}
 gxe_metasoft <- 
   c("temp", "day_length") %>% 
   purrr::set_names() %>% 
@@ -124,168 +125,202 @@ gxe_metasoft <-
 
 ```
 
-# Diagnostic
+# Step 1. Calculate contemporary group BLUEs to pre-adjust hair shedding scores
 
+* One single evaluation using all data 2012-2020
+* Fit single contemporary group effect: `{farm_id + year + calving_season + age_group + toxic_fescue}` (include `farm_id` but no `score_group`)
+    + This ends up meaning that animals with multiple records in the same year have multiple records in a single contemporary group - should I limit to one record per year by randomly choosing a record? Or, add `score_group` back in?
 
-## P-value histograms & Q-Q plots prior to genomic control {.tabset}
+# Step 1. Fit four year-specific GxE GWAS for each day length and temperature using GEMMA
+
+* Using results from in step 1, subtract associated CG BLUE from hair score
+* For animals with multiple records in the same year, randomly choose one record
+
+## Diagnostic
+
+### Q-Q plots pre- and post-genomic control {.tabset}
 
 ```{r}
-hists <-
+qq <-
   gxe_gwas %>% 
-  select(var, year, p_wald) %>% 
-  nest(p_wald) %>% 
-  mutate(hist = purrr::pmap(list(x = data, y = year, z = var),
+  select(var, year, p_wald, adj_p) %>% 
+  nest(-var, -year) %>% 
+  mutate(pre = purrr::pmap(list(x = data, y = year, z = var),
                             .f = function(x, y, z) {
                               x %>% 
-                                ggplot(aes(x = p_wald)) +
-                                geom_histogram() +
-                                theme_classic() +
-                                labs(title = glue("Wald p-values: {y} {z}"))
+                                pull(p_wald) %>% 
+                                ggqq() +
+                                labs(title = glue("{y} {z} pre-GC"))
                               }),
-         qq = purrr::map(.x = data, 
-                         ~ ggqq(pvector = .x$p_wald))) %>% 
+         post = purrr::pmap(list(x = data, y = year, z = var),
+                            .f = function(x, y, z) {
+                              x %>% 
+                                pull(adj_p) %>% 
+                                ggqq() +
+                                labs(title = glue("{y} {z} post-GC"))
+                              })) %>% 
   select(-data)
 ```
 
-### 2016 temperature
+#### 2016 temperature
 
-```{r}
-hists %>% 
+```{r, cache=TRUE}
+qq %>% 
   filter(year == 2016 & var == "temp") %>% 
-  pull(hist)
+  pull(pre)
 ```
 
 ```{r, cache=TRUE}
-hists %>% 
+qq %>% 
   filter(year == 2016 & var == "temp") %>% 
-  pull(qq)
+  pull(post)
 ```
 
-### 2016 day length
+#### 2016 day length
 
-```{r}
-hists %>% 
+```{r, cache=TRUE}
+qq %>% 
   filter(year == 2016 & var == "day_length") %>% 
-  pull(hist)
+  pull(pre)
 ```
 
 ```{r, cache=TRUE}
-hists %>% 
+qq %>% 
   filter(year == 2016 & var == "day_length") %>% 
-  pull(qq)
+  pull(post)
 ```
 
-### 2017 temperature
+#### 2017 temperature
 
-```{r}
-hists %>% 
+```{r, cache=TRUE}
+qq %>% 
   filter(year == 2017 & var == "temp") %>% 
-  pull(hist)
+  pull(pre)
 ```
 
 ```{r, cache=TRUE}
-hists %>% 
+qq %>% 
   filter(year == 2017 & var == "temp") %>% 
-  pull(qq)
+  pull(post)
 ```
 
-### 2017 day length
+#### 2017 day length
 
-```{r}
-hists %>% 
+```{r, cache=TRUE}
+qq %>% 
   filter(year == 2017 & var == "day_length") %>% 
-  pull(hist)
+  pull(pre)
 ```
 
 ```{r, cache=TRUE}
-hists %>% 
+qq %>% 
   filter(year == 2017 & var == "day_length") %>% 
-  pull(qq)
+  pull(post)
 ```
 
-### 2018 temperature
+#### 2018 temperature
 
-```{r}
-hists %>% 
+```{r, cache=TRUE}
+qq %>% 
   filter(year == 2018 & var == "temp") %>% 
-  pull(hist)
+  pull(pre)
 ```
 
 ```{r, cache=TRUE}
-hists %>% 
+qq %>% 
   filter(year == 2018 & var == "temp") %>% 
-  pull(qq)
+  pull(post)
 ```
 
-### 2018 day length
+#### 2018 day length
 
-```{r}
-hists %>% 
+```{r, cache=TRUE}
+qq %>% 
   filter(year == 2018 & var == "day_length") %>% 
-  pull(hist)
+  pull(pre)
 ```
 
 ```{r, cache=TRUE}
-hists %>% 
+qq %>% 
   filter(year == 2018 & var == "day_length") %>% 
-  pull(qq)
+  pull(post)
 ```
 
-### 2019 temperature
+#### 2019 temperature
 
-```{r}
-hists %>% 
+```{r, cache=TRUE}
+qq %>% 
   filter(year == 2019 & var == "temp") %>% 
-  pull(hist)
+  pull(pre)
 ```
 
 ```{r, cache=TRUE}
-hists %>% 
+qq %>% 
   filter(year == 2019 & var == "temp") %>% 
-  pull(qq)
+  pull(post)
 ```
 
-### 2019 day length
+#### 2019 day length
 
-```{r}
-hists %>% 
+```{r, cache=TRUE}
+qq %>% 
   filter(year == 2019 & var == "day_length") %>% 
-  pull(hist)
+  pull(pre)
 ```
 
 ```{r, cache=TRUE}
-hists %>% 
+qq %>% 
   filter(year == 2019 & var == "day_length") %>% 
-  pull(qq)
+  pull(post)
 ```
 
-## Inflation factors prior to genomic control
+### Inflation factors pre- and post-genomic control
 
 ```{r}
 gxe_gwas %>% 
-  select(var, year, p_wald) %>% 
+  select(var, year, p_wald, adj_p) %>% 
   group_by(var, year) %>% 
   nest() %>% 
-  mutate(`Inflation factor` = purrr::map_dbl(.x = data,
+  mutate(`Pre-GC inflation factor` = purrr::map_dbl(.x = data,
                                               ~ .x %>% 
-                                                gcif())) %>% 
+                                                gcif()),
+         `Post-GC inflation factor` = purrr::map_dbl(.x = data,
+                                              ~ .x %>% 
+                                                gcif(p_col = adj_p))) %>% 
   rename(`Variable` = var,
          Year = year) %>% 
   select(-data) %>% 
   arrange(Year)
 ```
 
-# `METASOFT` Q-Q plots
+## Results
+
+```{r}
+gxe_gwas %>% 
+  filter(year == "2016" & var == "day_length") %>% 
+  filter(0.1 > adj_p) %>% 
+  mutate(neglog10p = -log10(adj_p)) %>% 
+  hair_manhattan(y_var = neglog10q, 
+                 y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
+                 sigline = q_fdr1,
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d") +
+  geom_hline(yintercept = q_fdr5, color = "blue")
+```
+
+# Step 2. Meta-analysis of year-specific GxE GWAS using Metasoft
+
+## Diagnostic 
 
 > Temperature
 
-```{r}
+```{r, eval = FALSE}
 ggqq(pvector = gxe_metasoft %>% 
        filter(var == "temp") %>% 
        pull(pvalue_re))
 ```
 
-```{r}
+```{r, eval = FALSE}
 gxe_metasoft %>% 
   filter(var == "temp") %>% 
   filter(!is.na(pvalue_re)) %>% 
@@ -295,7 +330,7 @@ gxe_metasoft %>%
 
 > Day length
 
-```{r}
+```{r, eval = FALSE}
 gxe_metasoft %>% 
   filter(var == "day_length") %>% 
   filter(!is.na(pvalue_re)) %>% 
@@ -303,15 +338,15 @@ gxe_metasoft %>%
   gcif()
 ```
 
-```{r}
+```{r, eval=FALSE}
 ggqq(pvector = gxe_metasoft %>% 
        filter(var == "day_length") %>% 
        pull(pvalue_re))
 ```
 
-# `METASOFT` results
+## Results
 
-```{r}
+```{r, eval=FALSE}
 gxe_metasoft %>% 
   filter(var == "day_length") %>% 
   filter(0.5 > pvalue_re) %>% 
@@ -321,7 +356,7 @@ gxe_metasoft %>%
                  sigline = 1)
 ```
 
-```{r}
+```{r, eval=FALSE}
 gxe_gwas %>% 
   filter(0.1 > adj_p) %>% 
   filter(var == "day_length" & year == "2019") %>% 
@@ -331,11 +366,3 @@ gxe_gwas %>%
                  color2 = "#7e756d",
                  sigline = 5)
 ```
-
-```{r}
-read_table2(here::here("data/derived_data/aireml_varcomp/fixed9/solutions"),
-                         skip = 1,
-                         col_names = c("trait", "effect", "id_renamed", "solution", "se")) %>% 
-  filter(effect == 1)
-```
-

@@ -41,52 +41,43 @@ options(scipen = 0)
 fixed9_snp1101 <-
   read_table2(here::here("data/derived_data/snp1101/fixed9/out/gwas_ssr_fixed9_bvs_p.txt"))  %>%
   janitor::clean_names() %>%
-  mutate(neglog10p = -log10(p_value),
-         adj_p = gcif(df = ., adjust_p = TRUE, p_col = p_value),
-         neglog10q = -log10(qvalue::qvalue(adj_p)$qvalues),
-         fdr_5 = qvalue::qvalue(adj_p, fdr.level = 0.05)$significant, 
-         fdr_1 = qvalue::qvalue(adj_p, fdr.level = 0.01)$significant)
+  mutate(adj_p = gcif(df = .,
+                      adjust_p = TRUE,
+                      p_col = p_value),
+         q = qvalue::qvalue(adj_p)$qvalues,
+         neglog10q = -log10(q))
   
 ```
 
 ```{r}
-q_fdr5 <-
-  fixed9_snp1101 %>% 
-  filter(fdr_5 == TRUE) %>% 
-  arrange(neglog10q) %>% 
-  slice(1) %>% 
-  pull(neglog10q)
-```
-
-```{r}
-q_fdr1 <-
-  fixed9_snp1101 %>% 
-  filter(fdr_1 == TRUE) %>% 
-  arrange(neglog10q) %>% 
-  slice(1) %>% 
-  pull(neglog10q)
-```
-
-## Passing SNPs & COJO selected SNPs
-
-```{r}
-full_pass <-
-  fixed9_snp1101 %>% 
-  filter(fdr_5 == TRUE) %>% 
-  select(CHR = chr, BP = pos)
+years_metasoft <- 
+  # Use lambda adjusted RE2 p-values 
+  read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years_adj.txt"),
+              col_types = cols(.default = "d", RSID = "c")) %>% 
+  janitor::clean_names() %>% 
+  select(-pvalue_be, -contains("fe")) %>% 
+  left_join(read_table2(here::here("data/derived_data/metasoft/years/metasoft_out.years_adj.txt"),
+                        skip = 1,
+                        col_types = "c---------------dddddddd", 
+                        col_names = c("rsid", "p16", "p17", "p18", "p19", "m16", "m17", "m18", "m19"))) %>% 
+  # Metasoft won't adjust RE1 p-values, do it manually
+  mutate(adj_p_re = gcif(., p_col = pvalue_re, adjust_p = TRUE),
+         neglog10q = -log10(qvalue::qvalue(adj_p_re)$qvalues),
+         chr = as.numeric(str_extract(rsid, "[[:digit:]]{1,2}(?=:)")),
+         pos = as.numeric(str_extract(rsid, "(?<=[[:digit:]]{1,2}:)[[:digit:]]+")))
 ```
 
 ```{r}
 years_jma <- 
-  read_table2(here::here("data/derived_data/cojo/years/years_subset.jma.cojo")) %>% 
+  read_table2(here::here("data/derived_data/cojo/years/years_subset_adj.jma.cojo")) %>% 
   janitor::clean_names() %>% 
   rename(pos = bp)
 ```
 
 ```{r}
-cojo_slct <- 
-  years_jma %>% 
-  select(CHR = chr, BP = pos)
+# I can't remember numbers and have to re-calculate this every time so
+q_fdr5 <- -log10(.05)
+q_fdr1 <- -log10(.01)
 ```
 
 ## GFF and GTF files
@@ -107,82 +98,141 @@ gff <-
 
 ## Genes
 
-### Passing SNPs
-
 ```{r}
-full_gene50k <-
+gene0 <-
   find_genes_qtls_around_markers(db_file = gtf,
-                                 marker_file = full_pass,
+                                 marker_file = fixed9_snp1101 %>% 
+                                   filter(neglog10q >= q_fdr5) %>% 
+                                   select(CHR = chr, BP = pos),
                                  method = c("gene"),
                                  marker = c("snp"),
-                                 interval = 50000) 
+                                 interval = 0) %>% 
+  mutate(which = "fixed9") %>% 
+  bind_rows(find_genes_qtls_around_markers(db_file = gtf,
+                                           marker_file = years_jma %>% 
+                                             select(CHR = chr, BP = pos),
+                                           method = c("gene"),
+                                           marker = c("snp"),
+                                           interval = 0) %>% 
+              mutate(which = "cojo")) %>% 
+  bind_rows(find_genes_qtls_around_markers(db_file = gtf,
+                                           marker_file = years_metasoft %>% 
+                                             filter(neglog10q >= q_fdr5) %>% 
+                                             select(CHR = chr, BP = pos),
+                                           method = c("gene"),
+                                           marker = c("snp"),
+                                           interval = 0) %>% 
+              mutate(which = "metasoft"))
 ```
 
 ```{r}
-full_gene10k <-
+gene10k <-
   find_genes_qtls_around_markers(db_file = gtf,
-                                 marker_file = full_pass,
+                                 marker_file = fixed9_snp1101 %>% 
+                                   filter(neglog10q >= q_fdr5) %>% 
+                                   select(CHR = chr, BP = pos),
                                  method = c("gene"),
                                  marker = c("snp"),
-                                 interval = 10000) 
+                                 interval = 10000) %>% 
+  mutate(which = "fixed9") %>% 
+  bind_rows(find_genes_qtls_around_markers(db_file = gtf,
+                                           marker_file = years_jma %>% 
+                                             select(CHR = chr, BP = pos),
+                                           method = c("gene"),
+                                           marker = c("snp"),
+                                           interval = 10000) %>% 
+              mutate(which = "cojo")) %>% 
+  bind_rows(find_genes_qtls_around_markers(db_file = gtf,
+                                           marker_file = years_metasoft %>% 
+                                             filter(neglog10q >= q_fdr5) %>% 
+                                             select(CHR = chr, BP = pos),
+                                           method = c("gene"),
+                                           marker = c("snp"),
+                                           interval = 10000) %>% 
+              mutate(which = "metasoft"))
 ```
 
 ```{r}
-full_gene0 <-
+gene50k <-
   find_genes_qtls_around_markers(db_file = gtf,
-                                 marker_file = full_pass,
+                                 marker_file = fixed9_snp1101 %>% 
+                                   filter(neglog10q >= q_fdr5) %>% 
+                                   select(CHR = chr, BP = pos),
                                  method = c("gene"),
                                  marker = c("snp"),
-                                 interval = 0) 
-```
-
-### COJO selected SNPs
-
-```{r}
-cojo_gene100k <-
-  find_genes_qtls_around_markers(db_file = gtf,
-                                 marker_file = cojo_slct,
-                                 method = c("gene"),
-                                 marker = c("snp"),
-                                 interval = 100000) 
-```
-
-```{r}
-cojo_gene50k <-
-  find_genes_qtls_around_markers(db_file = gtf,
-                                 marker_file = cojo_slct,
-                                 method = c("gene"),
-                                 marker = c("snp"),
-                                 interval = 50000) 
-```
-
-```{r}
-cojo_gene10k <-
-  find_genes_qtls_around_markers(db_file = gtf,
-                                 marker_file = cojo_slct,
-                                 method = c("gene"),
-                                 marker = c("snp"),
-                                 interval = 10000) 
-```
-
-```{r}
-cojo_gene0 <-
-  find_genes_qtls_around_markers(db_file = gtf,
-                                 marker_file = cojo_slct,
-                                 method = c("gene"),
-                                 marker = c("snp"),
-                                 interval = 0) 
+                                 interval = 50000) %>% 
+  mutate(which = "fixed9") %>% 
+  bind_rows(find_genes_qtls_around_markers(db_file = gtf,
+                                           marker_file = years_jma %>% 
+                                             select(CHR = chr, BP = pos),
+                                           method = c("gene"),
+                                           marker = c("snp"),
+                                           interval = 50000) %>% 
+              mutate(which = "cojo")) %>% 
+  bind_rows(find_genes_qtls_around_markers(db_file = gtf,
+                                           marker_file = years_metasoft %>% 
+                                             filter(neglog10q >= q_fdr5) %>% 
+                                             select(CHR = chr, BP = pos),
+                                           method = c("gene"),
+                                           marker = c("snp"),
+                                           interval = 50000) %>% 
+              mutate(which = "metasoft"))
 ```
 
 ## QTLs
 
 ```{r}
-full_qtl10k <-
+qtl10k <-
   find_genes_qtls_around_markers(db_file = gff,
-                                 marker_file = full_pass,
+                                 marker_file = fixed9_snp1101 %>% 
+                                   filter(neglog10q >= q_fdr5) %>% 
+                                   select(CHR = chr, BP = pos),
                                  method = c("qtl"),
                                  marker = c("snp"),
-                                 interval = 10000) 
+                                 interval = 10000) %>% 
+  mutate(which = "fixed9") %>% 
+  bind_rows(find_genes_qtls_around_markers(db_file = gff,
+                                           marker_file = years_jma %>% 
+                                             select(CHR = chr, BP = pos),
+                                           method = c("qtl"),
+                                           marker = c("snp"),
+                                           interval = 10000) %>% 
+              mutate(which = "cojo")) %>% 
+  bind_rows(find_genes_qtls_around_markers(db_file = gff,
+                                           marker_file = years_metasoft %>% 
+                                             filter(neglog10q >= q_fdr5) %>% 
+                                             select(CHR = chr, BP = pos),
+                                           method = c("qtl"),
+                                           marker = c("snp"),
+                                           interval = 10000) %>% 
+              mutate(which = "metasoft"))
+```
+
+```{r}
+qtl50k <-
+  find_genes_qtls_around_markers(db_file = gff,
+                                 marker_file = fixed9_snp1101 %>% 
+                                   filter(neglog10q >= q_fdr5) %>% 
+                                   select(CHR = chr, BP = pos),
+                                 method = c("qtl"),
+                                 marker = c("snp"),
+                                 interval = 50000) %>% 
+  mutate(which = "fixed9") %>% 
+  bind_rows(find_genes_qtls_around_markers(db_file = gff,
+                                           marker_file = years_jma %>% 
+                                             select(CHR = chr, BP = pos),
+                                           method = c("qtl"),
+                                           marker = c("snp"),
+                                           interval = 50000) %>% 
+              mutate(which = "cojo")) %>% 
+  bind_rows(find_genes_qtls_around_markers(db_file = gff,
+                                           marker_file = years_metasoft %>% 
+                                             filter(neglog10q >= q_fdr5) %>% 
+                                             select(CHR = chr, BP = pos),
+                                           method = c("qtl"),
+                                           marker = c("snp"),
+                                           interval = 50000) %>% 
+              mutate(which = "metasoft"))
 ```
 
 # Calculate enrichments
@@ -191,105 +241,126 @@ full_qtl10k <-
 
 ```{r}
 
-full_gene_enrich10k <-
-  full_gene10k %>% 
-  distinct(gene_id) %>% 
-  pull(gene_id) %>% 
-  gost(organism = "btaurus",
-       significant = TRUE,
-       correction_method = "fdr")
+gene_enrich10k <-
+  c("fixed9", "cojo", "metasoft") %>% 
+  purrr::set_names() %>% 
+  purrr::map(~ gene10k %>%
+               filter(which == .x) %>% 
+               distinct(gene_id) %>% 
+               pull(gene_id) %>% 
+               gost(organism = "btaurus",
+                    significant = TRUE))
+```
+
+```{r}
+gene_result10k <-
+  c("fixed9", "metasoft") %>% 
+  map_dfr(~ gene_enrich10k[[.x]]$result %>% 
+            mutate(which = .x))
 ```
 
 ```{r}
 
-full_gene_enrich50k <-
-  full_gene50k %>% 
-  distinct(gene_id) %>% 
-  pull(gene_id) %>% 
-  gost(organism = "btaurus",
-       significant = TRUE,
-       correction_method = "fdr")
+gene_enrich50k <-
+  c("fixed9", "cojo", "metasoft") %>% 
+  purrr::set_names() %>% 
+  purrr::map(~ gene50k %>%
+               filter(which == .x) %>% 
+               distinct(gene_id) %>% 
+               pull(gene_id) %>% 
+               gost(organism = "btaurus",
+                    significant = TRUE))
+```
+
+```{r}
+gene_result50k <-
+  c("fixed9", "cojo", "metasoft") %>% 
+  map_dfr(~ gene_enrich50k[[.x]]$result %>% 
+            mutate(which = .x))
+```
+
+## QTL
+
+```{r}
+
+qtl_enrich10k <-
+  c("fixed9", "cojo", "metasoft") %>% 
+  purrr::map_dfr(~ qtl_enrich(qtl_db = gff,
+                              qtl_file = qtl10k %>% 
+                                filter(which == .x),
+                              qtl_type = "Name",
+                              enrich_type = "genome",
+                              padj = "BH") %>% 
+                   mutate(which = .x))
+  
 ```
 
 ```{r}
 
-cojo_gene_enrich10k <-
-  cojo_gene10k %>% 
-  distinct(gene_id) %>% 
-  pull(gene_id) %>% 
-  gost(organism = "btaurus",
-       significant = TRUE)
-```
-
-```{r}
-
-cojo_gene_enrich50k <-
-  cojo_gene50k %>% 
-  distinct(gene_id) %>% 
-  pull(gene_id) %>% 
-  gost(organism = "btaurus",
-       significant = TRUE)
-```
-
-## QTLs
-
-```{r}
-
-full_qtl_enrich10k <-
-  qtl_enrich(qtl_db = gff,
-             qtl_file = full_qtl10k,
-             qtl_type = "Name",
-             enrich_type = "genome",
-             padj = "BH")
+qtl_enrich50k <-
+  c("fixed9", "cojo", "metasoft") %>% 
+  purrr::map_dfr(~ qtl_enrich(qtl_db = gff,
+                              qtl_file = qtl50k %>% 
+                                filter(which == .x),
+                              qtl_type = "Name",
+                              enrich_type = "genome",
+                              padj = "BH") %>% 
+                   mutate(which = .x))
+  
 ```
 
 # Gene ontology enrichment results
 
-* term_size - number of genes that are annotated to the term
-* query_size - number of genes that were included in the query. This might be different from the size of the original list if:
+* `term_size` - number of genes that are annotated to the term
+* `query_size` - number of genes that were included in the query. This might be different from the size of the original list if:
     + any genes were mapped to multiple Ensembl gene IDs
     + any genes failed to be mapped to Ensembl gene IDs
     + the parameter ordered_query = TRUE and the optimal cutoff for the term was found before the end of the query
     + the domain_scope was set to “annotated” or “custom”
-* intersection_size - the number of genes in the input query that are annotated to the corresponding term
-* precision - the proportion of genes in the input list that are annotated to the function (defined as intersection_size/query_size)
+* `intersection_size` - the number of genes in the input query that are annotated to the corresponding term
+* `precision` - the proportion of genes in the input list that are annotated to the function (defined as intersection_size/query_size)
 
 ```{r}
-full_gene_enrich10k$result
+listviewer::jsonedit(gene_enrich50k)
 ```
 
 ```{r}
-full_gene_enrich50k$result
+gene_result10k %>% 
+  select(which, term_name, p_value, everything(), -query, -significant) %>% 
+  arrange(p_value)
 ```
 
 # QTL enrichment results
 
 ```{r}
-full_qtl_enrich10k %>%
+qtl_enrich10k %>%
   filter(0.05 > adj.pval) %>% 
+  filter(which == "fixed9") %>% 
   arrange(adj.pval) %>% 
-  select(adj.pval, everything())
+  select(which, adj.pval, everything())
 ```
 
 ## How many SNPs within each QTL?
 
 ```{r, eval = FALSE}
-full_qtl_enrich10k %>% 
+qtl_enrich10k %>% 
+  filter(which == "fixed9") %>% 
   filter(0.05 >= adj.pval) %>% 
   filter(N_QTLs > 1) %>% 
   arrange(adj.pval) %>% 
-  left_join(full_qtl10k %>% 
+  left_join(qtl10k %>% 
               select(CHR, BP, QTL = trait_ID, QTL_ID)) %>% 
   group_by(QTL, N_QTLs, adj.pval) %>% 
-  summarise(n(), n_distinct(QTL_ID))
+  summarise(n_SNP = n(), n_distinct(QTL_ID))
 ```
 
 ```{r,eval=FALSE}
-full_qtl_enrich10k %>% 
+qtl_enrich10k %>% 
+  filter(which == "fixed9") %>% 
   filter(0.05 >= adj.pval) %>% 
   filter(N_QTLs > 1) %>% 
   arrange(adj.pval) %>% 
-  left_join(full_qtl10k %>% 
+  left_join(qtl10k %>% 
               select(CHR, BP, QTL = trait_ID, QTL_ID)) %>% 
   group_by(QTL, N_QTLs, adj.pval) %>% 
   tidyr::nest() %>% 
@@ -306,48 +377,75 @@ full_qtl_enrich10k %>%
 ## White spotting?
 
 ```{r, eval = FALSE}
-full_qtl10k %>% 
-  filter(trait_ID == "White spotting") %>% 
+qtl10k %>% 
+  filter(trait_ID == "White spotting") %>%
+  filter(which == "fixed9") %>% 
   select(-start_pos, -end_pos) %>% 
-  left_join(full_gene0 %>% 
+  left_join(gene0 %>% 
+              filter(which == "fixed9") %>% 
               filter(CHR == 22) %>% 
               select(CHR, BP, gene_name, gene_id, start_pos, end_pos)) %>% 
   filter(between(BP, start_pos, end_pos))
-  
-  
-  
 ```
 
 ## Growth QTL
 
 ```{r, eval = FALSE}
-full_qtl_enrich10k %>% 
+qtl_enrich10k %>% 
+  filter(which == "fixed9") %>% 
   filter(0.05 >= adj.pval) %>% 
   filter(N_QTLs > 1) %>% 
   filter(QTL_type == "Production") %>% 
-  left_join(full_qtl10k %>% 
+  left_join(qtl10k %>% 
+              filter(which == "fixed9") %>% 
               select(CHR, BP, QTL = trait_ID, QTL_ID)) %>% 
-  left_join(full_gene10k %>% 
+  left_join(gene10k %>% 
+              filter(which == "fixed9") %>% 
               select(CHR, BP, gene_id, gene_name)) 
 ```
 
 ```{r, eval = FALSE}
-full_gene10k %>% 
+gene10k %>% 
+  filter(which == "fixed9") %>% 
   filter(str_detect(gene_name, "GH"))
+```
+
+# Positional candidates
+
+```{r}
+gene10k %>% 
+  filter(which == "cojo")
 ```
 
 # Chromosome 5
 
-## Lead peak
+```{r}
+years_jma %>% 
+  filter(chr == 5) %>% 
+  select(CHR = chr, BP = pos) %>% 
+  find_genes_qtls_around_markers(db_file = gtf,
+                                 marker_file = .,
+                                 method = c("gene"),
+                                 marker = c("snp"),
+                                 interval = 500000) %>% 
+  mutate(ds = abs(BP-start_pos),
+         de = abs(BP-end_pos),
+         distance = if_else(de > ds, ds, de)) %>% 
+  select(-ds, -de) %>% 
+  arrange(distance) %>% 
+  select(distance, everything())
+```
+
 
 ```{r, eval = FALSE}
 fixed9_snp1101 %>% 
-  filter(neglog10q > q_fdr1) %>% 
+  filter(neglog10q > q_fdr5) %>% 
   filter(chr == 5) %>% 
   filter(21000000 > pos) %>% 
   arrange(desc(neglog10q)) %>% 
   select(neglog10q, CHR = chr, BP = pos) %>% 
-  left_join(full_gene10k) %>% 
+  left_join(gene10k %>% 
+              filter(which == "fixed9")) %>% 
   group_by(gene_name) %>% 
   tally(sort = TRUE)
 ```
@@ -355,50 +453,48 @@ fixed9_snp1101 %>%
 ### Lead SNP
 
 ```{r, eval = FALSE}
-fixed9_snp1101 %>% 
-  filter(neglog10q > 1) %>% 
+years_metasoft %>% 
   filter(chr == 5) %>% 
-  filter(pos == 18767155) %>% 
+  # SNP(s) with largest neglog10q
+  top_n(1, neglog10q) %>% 
   select(CHR = chr, BP = pos) %>% 
   find_genes_qtls_around_markers(db_file = gtf,
                                  marker_file = .,
                                  method = c("gene"),
                                  marker = c("snp"),
-                                 interval = 415000) 
+                                 interval = 415000) %>% 
+mutate(ds = abs(BP-start_pos),
+         de = abs(BP-end_pos),
+         distance = if_else(de > ds, ds, de)) %>% 
+  select(-ds, -de) %>% 
+  arrange(distance) %>% 
+  select(distance, everything())
 ```
 
-## Second peak
-
-```{r, eval = FALSE}
-fixed9_snp1101 %>% 
-  filter(neglog10q > 1) %>% 
-  filter(chr == 5) %>% 
-  filter(pos > 21000000) %>% 
-  arrange(desc(neglog10q)) %>% 
-  select(neglog10q, CHR = chr, BP = pos) %>% 
-  left_join(full_gene0) 
-
-```
-
-```{r, eval = FALSE}
-fixed9_snp1101 %>% 
-  filter(neglog10q > 1) %>% 
-  filter(chr == 5) %>% 
-  filter(pos > 21000000) %>% 
-  arrange(desc(neglog10q)) %>% 
-  select(neglog10q, CHR = chr, BP = pos) %>% 
-  left_join(full_gene10k) %>% 
-  group_by(gene_id, gene_name) %>% 
-  tally(sort = TRUE)
-
-```
 
 # Chromosome 23
 
+```{r}
+years_jma %>% 
+  filter(chr == 23) %>% 
+  select(CHR = chr, BP = pos) %>% 
+  find_genes_qtls_around_markers(db_file = gtf,
+                                 marker_file = .,
+                                 method = c("gene"),
+                                 marker = c("snp"),
+                                 interval = 100000) %>% 
+  mutate(ds = abs(BP-start_pos),
+         de = abs(BP-end_pos),
+         distance = if_else(de > ds, ds, de)) %>% 
+  select(-ds, -de) %>% 
+  arrange(distance) %>% 
+  select(distance, gene_name, everything())
+```
+
+
 ```{r, eval = FALSE}
-all_gene10k %>% 
+gene0k %>% 
   filter(CHR == 23) %>% 
-  select(dataset, everything(), -strand, -width) %>% 
   filter(gene_name == "PRL") %>% 
   filter(BP>= start_pos & end_pos >= BP)
 ```
