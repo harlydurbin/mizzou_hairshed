@@ -140,25 +140,6 @@ dat %<>%
   assertr::verify(!is.na(mean_day_length))
 
 #'
-#' ## Specified year only, take random record for animals with multiple records within a year
-#'
-## -------------------------------------------------------------------------------------------------
-
-dat <-
-  if(score_year == "random") {
-    dat %>% 
-      group_by(farm_id, temp_id) %>% 
-      sample_n(1) %>% 
-      ungroup()
-  } else {
-    dat %>%
-      filter(year == as.numeric(score_year)) %>%
-      group_by(farm_id, temp_id) %>%
-      sample_n(1) %>%
-      ungroup()
-  }
-
-#'
 #' ## ID matching
 #'
 ## -------------------------------------------------------------------------------------------------
@@ -188,6 +169,25 @@ dat %<>%
   assertr::verify(length(dat$hair_score) >= length(.$hair_score))
 
 #'
+#' ## Specified year only, take random record for animals with multiple records within a year
+#'
+## -------------------------------------------------------------------------------------------------
+
+dat <-
+  if(score_year == "random") {
+    dat %>% 
+      group_by(farm_id, temp_id) %>% 
+      sample_n(1) %>% 
+      ungroup()
+  } else {
+    dat %>%
+      filter(year == as.numeric(score_year)) %>%
+      group_by(farm_id, temp_id) %>%
+      sample_n(1) %>%
+      ungroup()
+  }
+
+#'
 #' # Export
 #'
 #' ## Phenotypes in new `.fam` file
@@ -205,20 +205,6 @@ matched %>%
   write_delim(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/gxe_gwas.{var}.{score_year}.fam")),
             col_names = FALSE,
             delim = " ")
-
-
-#'
-#' ## Design matrix for fixed effects
-#'
-## -------------------------------------------------------------------------------------------------
-# Left join to `matched` to get correct sample order
-matched %>%
-  select(full_reg = X1) %>%
-  mutate(mean = 1) %>%
-  select(mean) %>%
-  write_tsv(here::here(glue("data/derived_data/gxe_gwas/{var}/{score_year}/design_matrix.txt")),
-            col_names = FALSE)
-
 
 #'
 #' ## GxE file

@@ -32,3 +32,15 @@ usage_summary(process = "aireml_varcomp", keyword = "airemlf90")
 ```{r}
 usage_facets(process = "aireml_varcomp", keyword = "airemlf90")
 ```
+
+# `gxe_gwas`
+
+## `gemma`
+
+```{r}
+usage_summary(process = "gxe_gwas", keyword = "gemma")
+```
+
+```{r}
+usage_facets(process = "gxe_gwas", keyword = "gemma")
+```

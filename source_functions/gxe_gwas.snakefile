@@ -51,7 +51,6 @@ rule setup_data:
 		var = "{var}"
 	output:
 		manual_fam = "data/derived_data/gxe_gwas/{var}/{year}/gxe_gwas.{var}.{year}.fam",
-		design_matrix = "data/derived_data/gxe_gwas/{var}/{year}/design_matrix.txt",
 		gxe = "data/derived_data/gxe_gwas/{var}/{year}/gxe.txt"
 	shell:
 		"""
@@ -80,7 +79,6 @@ rule copy_plink:
 rule gemma:
 	input:
 		plink = expand("data/derived_data/gxe_gwas/{{var}}/{{year}}/gxe_gwas.{{var}}.{{year}}.{extension}", prefix = config['geno_prefix'], extension = ['bed', 'bim', 'fam']),
-		design_matrix = "data/derived_data/gxe_gwas/{var}/{year}/design_matrix.txt",
 		gxe = "data/derived_data/gxe_gwas/{var}/{year}/gxe.txt",
 		grm = "data/derived_data/gxe_gwas/gemma_grm.sXX.txt"
 	params:
@@ -93,7 +91,7 @@ rule gemma:
 		assoc = "data/derived_data/gxe_gwas/{var}/{year}/result.assoc.txt"
 	shell:
 		"""
-		psrecord "{params.gemma_path} -bfile {params.plink_prefix} -k {input.grm} -lmm 1 -c {input.design_matrix} -gxe {input.gxe} -outdir {params.out_dir}" --log {params.psrecord} --include-children --interval 5
+		psrecord "{params.gemma_path} -bfile {params.plink_prefix} -k {input.grm} -lmm 1 -gxe {input.gxe} -outdir {params.out_dir}" --log {params.psrecord} --include-children --interval 5
 		"""
 
 rule robust_joint_gxe:
@@ -106,8 +104,7 @@ rule robust_joint_gxe:
 		plink_prefix = "test",
 		covar_file = "test.cov",
 		directory = "data/derived_data/robust_joint_gxe",
-		plink_module = config['plink_module'],
-		r_module = config['r_module']
+		plink_module = config['plink_module']
 	output:
 		"data/derived_data/robust_joint_gxe/plink.auto.R"
 	shell:

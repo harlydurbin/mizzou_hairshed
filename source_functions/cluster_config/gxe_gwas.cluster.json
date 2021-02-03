@@ -30,7 +30,7 @@
     "gemma":
     {
         "t": "48:00:00",
-        "mem" : 100G,
+        "mem" : 5G,
         "mail-type" : "END"
     },
     "robust_joint_gxe":

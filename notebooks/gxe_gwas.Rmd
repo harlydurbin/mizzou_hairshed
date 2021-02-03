@@ -368,9 +368,9 @@ gxe_gwas %>%
 ```
 
 
-# robust joint test using 2018 day length
+# Robust joint test using 2018 day length
 
-1. subset to top 100 significant SNPs, animals with phenotypes
+1. Subset to top 100 significant SNPs, animals with phenotypes
 
 ```{r}
 fixed9_snp1101 %>% 
@@ -393,7 +393,6 @@ read_table2(here::here("data/derived_data/robust_joint_gxe/gxe_gwas.day_length.2
               col_names = FALSE)
 ```
 
-
 plink --bfile data/derived_data/robust_joint_gxe/gxe_gwas.day_length.2018 --cow --double-id --keep data/derived_data/robust_joint_gxe/keep.txt --make-bed --out data/derived_data/robust_joint_gxe/test
 
 ```{r}
@@ -413,19 +412,24 @@ read_table2(here::here("data/derived_data/robust_joint_gxe/test.fam"),
 
 2. Run plugin
 
-R --vanilla < source_functions/load_rserve.R
-plink --bfile data/derived_data/robust_joint_gxe/test --allow-no-sex --cow --double-id --covar data/derived_data/robust_joint_gxe/test.cov --R source_functions/robust-joint-int-plugin.R
+srun -c 12 -t 24:00:00 -p BioCompute --mem=100G --pty bash
+module load r/r-3.6.2-python-2.7.14-tk
+module load plink/plink-high-contig-1.90p
+R --vanilla > source_functions/load_rserve.R
+plink --bfile data/derived_data/robust_joint_gxe/test --threads 12 --allow-no-sex --cow --double-id --covar data/derived_data/robust_joint_gxe/test.cov --R source_functions/robust-joint-int-plugin.R
 
 ```{r}
 gxe_robust <-
-  read_table2(here::here("plink.auto.txt"),
-            col_names = c("chr", "snp_id", "pos", "minor_allele", "p_model", "p_robust")) %>% 
+  c("plink.auto.txt", "plink.auto2.txt") %>% 
+  purrr::map_dfr(~ read_table2(here::here(.x),
+                               col_names = c("chr", "snp_id", "pos", "minor_allele", "p_model", "p_robust"),
+                               n_max = 136958)) %>% 
   mutate(neglog10q = -log10(qvalue::qvalue(p_robust)$qvalues)) %>% 
   arrange(desc(neglog10q))
 ```
 
 ```{r}
-ggqq(gxe_robust$p_model)
+ggqq(gxe_robust$p_robust)
 ```
 
 ```{r}

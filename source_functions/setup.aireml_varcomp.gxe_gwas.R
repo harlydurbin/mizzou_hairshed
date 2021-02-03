@@ -13,6 +13,7 @@ library(dplyr)
 library(glue)
 library(magrittr)
 library(lubridate)
+library(readxl)
 library(tidylog)
 
 source(here::here("source_functions/cg_tallies.R"))
@@ -29,12 +30,24 @@ cleaned <- read_rds(here::here("data/derived_data/import_join_clean/cleaned.rds"
 ## ---- warning=FALSE, message=FALSE--------------------------------------------------------------------------------------------------
 full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 
+
+#'
+#' # Score group
+#'
+## -----------------------------------------------------------------------------------------------------------------------------------
+dat <-
+  cleaned %>%
+  left_join(bind_rows(read_excel(here::here("data/derived_data/ua_score_groups.xlsx")),
+                      read_excel(here::here("data/derived_data/score_groups.xlsx"))) %>%
+              select(farm_id, date_score_recorded, score_group) %>%
+              mutate(date_score_recorded = lubridate::ymd(date_score_recorded))) %>%
+  mutate(score_group = tidyr::replace_na(score_group, 1))
+
 #'
 #' # Remove males
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------
-dat <-
-  cleaned %>% 
+dat %<>%
   filter(sex == "F")
 
 #'
@@ -70,9 +83,7 @@ dat %<>%
   mutate(age_group = case_when(age == 1 ~ "yearling",
                                age %in% c(2, 3) ~ "growing",
                                between(age, 4, 9) ~ "mature",
-                               age >= 10 ~ "old")) %>%
-  filter(!is.na(age_group)) %>%
-  assertr::verify(!is.na(age_group))
+                               age >= 10 ~ "old")) 
 
 
 #'
@@ -91,14 +102,14 @@ dat %<>%
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------
 dat %<>%
-  mutate(cg = glue("{farm_id}{year}{calving_season}{age_group}{toxic_fescue}"),
+  mutate(cg = glue("{farm_id}{year}{score_group}{calving_season}{age_group}{toxic_fescue}"),
          cg_num = as.integer(factor(cg)))
 
 #'
 ## -----------------------------------------------------------------------------------------------------------------------------------
 dat %<>%
   group_by(cg) %>%
-  filter(n() >= 2) %>%
+  filter(n() >= 5) %>%
   ungroup()
 
 #'
