@@ -25,6 +25,10 @@ library(gprofiler2)
 source(here::here("source_functions/gcif.R"))
 
 options(scipen = 0)
+
+# I can't remember numbers and have to re-calculate this every time so
+q_fdr5 <- -log10(.05)
+q_fdr1 <- -log10(.01)
 ```
 
 # Notes & questions
@@ -72,12 +76,6 @@ years_jma <-
   read_table2(here::here("data/derived_data/cojo/years/years_subset_adj.jma.cojo")) %>% 
   janitor::clean_names() %>% 
   rename(pos = bp)
-```
-
-```{r}
-# I can't remember numbers and have to re-calculate this every time so
-q_fdr5 <- -log10(.05)
-q_fdr1 <- -log10(.01)
 ```
 
 ## GFF and GTF files
@@ -417,7 +415,7 @@ gene10k %>%
   filter(which == "cojo")
 ```
 
-# Chromosome 5
+## Chromosome 5
 
 ```{r}
 years_jma %>% 
@@ -472,7 +470,7 @@ mutate(ds = abs(BP-start_pos),
 ```
 
 
-# Chromosome 23
+## Chromosome 23
 
 ```{r}
 years_jma %>% 
@@ -576,5 +574,42 @@ supp1 <-
 write_csv(supp1,
           here::here("talks_articles/s1.genes10kb.csv"),
           na = "")
+```
+
+```{r}
+ortholog <-
+  gene50k %>% 
+  filter(which == "metasoft") %>% 
+  mutate(id = if_else(!is.na(gene_name), gene_name, gene_id)) %>% 
+  distinct(id) %>% 
+  write_tsv(here::here("data/derived_data/annotation/string_test.txt"),
+            col_names = FALSE)
+  pull(gene_id) %>% 
+  gorth(query = .,
+        source_organism = "btaurus",
+        target_organism = "hsapiens",
+        mthreshold = 1,
+        filter_na = TRUE)
+```
+
+```{r}
+gene50k %>% 
+  filter(gene_name == "MITF")
+```
+
+
+```{r}
+ortholog %>% 
+  select(ortholog_ensg) %>% 
+  write_tsv(here::here("data/derived_data/annotation/test_gw.txt"),
+            col_names = FALSE)
+```
+
+srun --mem 20G -c 8 -t 04:00:00 --account deckerlab genewalk --project test --genes test_gw.txt --id_type ensembl_id --base_folder . --nproc 8
+
+```{r}
+read_csv(here::here("data/derived_data/annotation/test/genewalk_results.csv")) %>% 
+  View()
+  filter_at(vars(contains("global_padj")), any_vars(0.05 > .))
 ```
 

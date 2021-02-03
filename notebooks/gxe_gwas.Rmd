@@ -131,7 +131,7 @@ gxe_metasoft <-
 * Fit single contemporary group effect: `{farm_id + year + calving_season + age_group + toxic_fescue}` (include `farm_id` but no `score_group`)
     + This ends up meaning that animals with multiple records in the same year have multiple records in a single contemporary group - should I limit to one record per year by randomly choosing a record? Or, add `score_group` back in?
 
-# Step 1. Fit four year-specific GxE GWAS for each day length and temperature using GEMMA
+# Step 2. Fit four year-specific GxE GWAS for each day length and temperature using GEMMA
 
 * Using results from in step 1, subtract associated CG BLUE from hair score
 * For animals with multiple records in the same year, randomly choose one record
@@ -295,7 +295,7 @@ gxe_gwas %>%
 
 ## Results
 
-```{r}
+```{r, eval=FALSE}
 gxe_gwas %>% 
   filter(year == "2016" & var == "day_length") %>% 
   filter(0.1 > adj_p) %>% 
@@ -308,7 +308,7 @@ gxe_gwas %>%
   geom_hline(yintercept = q_fdr5, color = "blue")
 ```
 
-# Step 2. Meta-analysis of year-specific GxE GWAS using Metasoft
+# Step 3. Meta-analysis of year-specific GxE GWAS using Metasoft
 
 ## Diagnostic 
 
@@ -366,3 +366,70 @@ gxe_gwas %>%
                  color2 = "#7e756d",
                  sigline = 5)
 ```
+
+
+# robust joint test using 2018 day length
+
+1. subset to top 100 significant SNPs, animals with phenotypes
+
+```{r}
+fixed9_snp1101 %>% 
+  top_n(100, neglog10q) %>% 
+  arrange(chr, pos) %>% 
+  mutate(end = pos, set = row_number()) %>% 
+  select(chr, pos, end, set) %>% 
+  write_delim(here::here("data/derived_data/robust_joint_gxe/keep_range.txt"),
+              delim = " ", 
+              col_names = FALSE)
+```
+
+```{r}
+read_table2(here::here("data/derived_data/robust_joint_gxe/gxe_gwas.day_length.2018.fam"),
+            col_names = FALSE) %>% 
+  filter(!is.na(X6)) %>% 
+  select(X1, X2) %>% 
+  write_delim(here::here("data/derived_data/robust_joint_gxe/keep.txt"),
+              delim = " ", 
+              col_names = FALSE)
+```
+
+
+plink --bfile data/derived_data/robust_joint_gxe/gxe_gwas.day_length.2018 --cow --double-id --keep data/derived_data/robust_joint_gxe/keep.txt --make-bed --out data/derived_data/robust_joint_gxe/test
+
+```{r}
+read_table2(here::here("data/derived_data/robust_joint_gxe/test.fam"),
+            col_names = FALSE) %>% 
+  select(FID = X1, IID = X2) %>% 
+  left_join(read_table2(here::here("data/derived_data/robust_joint_gxe/gxe_gwas.day_length.2018.fam"),
+                        col_names = FALSE) %>% 
+              select(FID = X1, IID = X2) %>% 
+              bind_cols(read_table2(here::here("data/derived_data/robust_joint_gxe/gxe.txt"),
+                                    col_names = "C1"))) %>% 
+  assertr::verify(!is.na(C1)) %>% 
+  write_delim(here::here("data/derived_data/robust_joint_gxe/test.cov"),
+              col_names = TRUE,
+              delim = " ")
+```
+
+2. Run plugin
+
+R --vanilla < source_functions/load_rserve.R
+plink --bfile data/derived_data/robust_joint_gxe/test --allow-no-sex --cow --double-id --covar data/derived_data/robust_joint_gxe/test.cov --R source_functions/robust-joint-int-plugin.R
+
+```{r}
+gxe_robust <-
+  read_table2(here::here("plink.auto.txt"),
+            col_names = c("chr", "snp_id", "pos", "minor_allele", "p_model", "p_robust")) %>% 
+  mutate(neglog10q = -log10(qvalue::qvalue(p_robust)$qvalues)) %>% 
+  arrange(desc(neglog10q))
+```
+
+```{r}
+ggqq(gxe_robust$p_model)
+```
+
+```{r}
+gxe_robust %>% 
+  gcif(p_col = p_robust)
+```
+

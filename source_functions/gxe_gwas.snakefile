@@ -1,4 +1,4 @@
-# snakemake -s source_functions/gxe_gwas.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/gxe_gwas.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/gxe_gwas/210201.gxe_gwas.log
+# snakemake -s source_functions/gxe_gwas.snakefile -j 400 --rerun-incomplete --latency-wait 30 --config --cluster-config source_functions/cluster_config/gxe_gwas.cluster.json --cluster "sbatch -p {cluster.p} -o {cluster.o} --account {cluster.account} -t {cluster.t} -c {cluster.c} --mem {cluster.mem} --account {cluster.account} --mail-user {cluster.mail-user} --mail-type {cluster.mail-type}" -p &> log/snakemake_log/gxe_gwas/210203.gxe_gwas.log
 
 import os
 
@@ -13,7 +13,7 @@ os.makedirs("log/psrecord/gxe_gwas", exist_ok = True)
 os.makedirs("log/psrecord/gxe_gwas/gemma", exist_ok = True)
 
 rule all:
-	input: expand("data/derived_data/gxe_gwas/{var}/{year}/result.assoc.txt", var = config['var'], year = config['year'])
+	input: expand("data/derived_data/gxe_gwas/{var}/{year}/result.assoc.txt", var = config['var'], year = config['year']), "data/derived_data/robust_joint_gxe/plink.auto.R"
 
 rule gemma_grm:
 	input:
@@ -94,4 +94,26 @@ rule gemma:
 	shell:
 		"""
 		psrecord "{params.gemma_path} -bfile {params.plink_prefix} -k {input.grm} -lmm 1 -c {input.design_matrix} -gxe {input.gxe} -outdir {params.out_dir}" --log {params.psrecord} --include-children --interval 5
+		"""
+
+rule robust_joint_gxe:
+	input:
+		plink = expand("data/derived_data/robust_joint_gxe/test.{file}", file = ['bed', 'bim', 'fam']),
+		covar = "data/derived_data/robust_joint_gxe/test.cov",
+		script = "source_functions/load_rserve.R",
+		plugin = "/storage/hpc/group/UMAG/WORKING/hjdzpd/mizzou_hairshed/source_functions/robust-joint-int-plugin.R"
+	params:
+		plink_prefix = "test",
+		covar_file = "test.cov",
+		directory = "data/derived_data/robust_joint_gxe",
+		plink_module = config['plink_module'],
+		r_module = config['r_module']
+	output:
+		"data/derived_data/robust_joint_gxe/plink.auto.R"
+	shell:
+		"""
+		module load {params.plink_module}
+		R CMD Rserve --no-save
+		cd {params.directory}
+		plink --bfile {params.plink_prefix} --threads 12 --allow-no-sex --cow --double-id --covar {params.covar_file} --R {input.plugin}
 		"""

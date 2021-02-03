@@ -53,3 +53,5 @@ data/derived_data/aireml_varcomp/acctest/acc_bf90
 gemma_manual.pdf
 *.fam
 *.inb
+*.cov
+*.map

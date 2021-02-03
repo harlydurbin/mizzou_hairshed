@@ -32,5 +32,12 @@
         "t": "48:00:00",
         "mem" : 100G,
         "mail-type" : "END"
+    },
+    "robust_joint_gxe":
+    {
+        "t": "24:00:00",
+        "mem" : 24G,
+        "mail-type" : "END",
+        "c": 12
     }
 }
