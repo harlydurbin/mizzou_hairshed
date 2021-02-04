@@ -23,6 +23,10 @@ library(ggplot2)
 source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
 source(here::here("source_functions/gcif.R"))
+
+# I can't remember numbers and have to re-calculate this every time so
+q_fdr5 <- -log10(.05)
+q_fdr1 <- -log10(.01)
 ```
 
 # Notes & questions
@@ -35,13 +39,21 @@ source(here::here("source_functions/gcif.R"))
     + ~~Phenotype in fam file - make fam manually then use `--keep` to subset genotypes?~~
     + Set animals in GRM but no phenotypes as NA
 
-# Setup
+---  
+    
+Tried [GxE test using robust variance estimates](https://epstein-software.github.io/robust-joint-interaction/) before realizing it didn't fit any sort of relatedness matrix. Could fit PCs instead?
 
-```{r}
-# I can't remember numbers and have to re-calculate this every time so
-q_fdr5 <- -log10(.05)
-q_fdr1 <- -log10(.01)
+* Unlike GEMMA, needs every individual to have a phenotype so subset PLINK files to 2018 day length for testing purposes
+* Installed `Rserve` via conda (otherwise, would have to run in an interactive session on Lewis)
+
 ```
+# Default PLINK module doesn't allow R plugins
+module load plink/plink-high-contig-1.90p
+R CMD Rserve --no-save
+plink --bfile data/derived_data/robust_joint_gxe/test --threads 12 --allow-no-sex --cow --double-id --covar data/derived_data/robust_joint_gxe/test.cov --R source_functions/robust-joint-int-plugin.R
+```
+
+# Setup
 
 ## GEMMA GxE GWAS
 
@@ -366,74 +378,3 @@ gxe_gwas %>%
                  color2 = "#7e756d",
                  sigline = 5)
 ```
-
-
-# Robust joint test using 2018 day length
-
-1. Subset to top 100 significant SNPs, animals with phenotypes
-
-```{r}
-fixed9_snp1101 %>% 
-  top_n(100, neglog10q) %>% 
-  arrange(chr, pos) %>% 
-  mutate(end = pos, set = row_number()) %>% 
-  select(chr, pos, end, set) %>% 
-  write_delim(here::here("data/derived_data/robust_joint_gxe/keep_range.txt"),
-              delim = " ", 
-              col_names = FALSE)
-```
-
-```{r}
-read_table2(here::here("data/derived_data/robust_joint_gxe/gxe_gwas.day_length.2018.fam"),
-            col_names = FALSE) %>% 
-  filter(!is.na(X6)) %>% 
-  select(X1, X2) %>% 
-  write_delim(here::here("data/derived_data/robust_joint_gxe/keep.txt"),
-              delim = " ", 
-              col_names = FALSE)
-```
-
-plink --bfile data/derived_data/robust_joint_gxe/gxe_gwas.day_length.2018 --cow --double-id --keep data/derived_data/robust_joint_gxe/keep.txt --make-bed --out data/derived_data/robust_joint_gxe/test
-
-```{r}
-read_table2(here::here("data/derived_data/robust_joint_gxe/test.fam"),
-            col_names = FALSE) %>% 
-  select(FID = X1, IID = X2) %>% 
-  left_join(read_table2(here::here("data/derived_data/robust_joint_gxe/gxe_gwas.day_length.2018.fam"),
-                        col_names = FALSE) %>% 
-              select(FID = X1, IID = X2) %>% 
-              bind_cols(read_table2(here::here("data/derived_data/robust_joint_gxe/gxe.txt"),
-                                    col_names = "C1"))) %>% 
-  assertr::verify(!is.na(C1)) %>% 
-  write_delim(here::here("data/derived_data/robust_joint_gxe/test.cov"),
-              col_names = TRUE,
-              delim = " ")
-```
-
-2. Run plugin
-
-srun -c 12 -t 24:00:00 -p BioCompute --mem=100G --pty bash
-module load r/r-3.6.2-python-2.7.14-tk
-module load plink/plink-high-contig-1.90p
-R --vanilla > source_functions/load_rserve.R
-plink --bfile data/derived_data/robust_joint_gxe/test --threads 12 --allow-no-sex --cow --double-id --covar data/derived_data/robust_joint_gxe/test.cov --R source_functions/robust-joint-int-plugin.R
-
-```{r}
-gxe_robust <-
-  c("plink.auto.txt", "plink.auto2.txt") %>% 
-  purrr::map_dfr(~ read_table2(here::here(.x),
-                               col_names = c("chr", "snp_id", "pos", "minor_allele", "p_model", "p_robust"),
-                               n_max = 136958)) %>% 
-  mutate(neglog10q = -log10(qvalue::qvalue(p_robust)$qvalues)) %>% 
-  arrange(desc(neglog10q))
-```
-
-```{r}
-ggqq(gxe_robust$p_robust)
-```
-
-```{r}
-gxe_robust %>% 
-  gcif(p_col = p_robust)
-```
-

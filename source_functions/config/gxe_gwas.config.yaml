@@ -1,4 +1,4 @@
-rules: ['gemma_grm', 'setup_data', 'copy_plink', 'gemma', 'robust_joint_gxe']
+rules: ['gemma_grm', 'setup_data', 'copy_plink', 'gemma']
 
 r_module: "r/r-3.6.2-python-2.7.14-tk"
 
@@ -12,6 +12,6 @@ plink_nt: 12
 
 geno_prefix: "data/raw_data/geno_dump/200924_HairShed.850K"
 
-year: ['2016', '2017', '2018', '2019', '2020']
+year: ['2016', '2017', '2018', '2019', 'random']
 
 var: ['day_length', 'temp']

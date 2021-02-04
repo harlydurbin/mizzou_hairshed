@@ -176,13 +176,13 @@ dat %<>%
 dat <-
   if(score_year == "random") {
     dat %>% 
-      group_by(farm_id, temp_id) %>% 
+      group_by(full_reg) %>% 
       sample_n(1) %>% 
       ungroup()
   } else {
     dat %>%
       filter(year == as.numeric(score_year)) %>%
-      group_by(farm_id, temp_id) %>%
+      group_by(full_reg) %>%
       sample_n(1) %>%
       ungroup()
   }
