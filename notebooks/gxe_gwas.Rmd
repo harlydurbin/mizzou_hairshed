@@ -32,7 +32,7 @@ q_fdr1 <- -log10(.01)
 # Notes & questions
 
 * ~~Fit fixed effects directly in GEMMA, dummy coded~~ Calculate breeding values using AIREML, subtract estimated CG BLUE from phenotype --> use that adjusted phenotype in GEMMA
-    + Column of 1s for mean in GEMMA
+    + ~~Column of 1s for mean in GEMMA~~
     + ~~Calving season, age group, fescue~~
 * Okay that I calculated CG effect in one go with all years data rather than 4 separate analyses? Figured it would be more accurate as more information included
 * Need to have phenotype file and genotype file in same order
@@ -57,8 +57,7 @@ plink --bfile data/derived_data/robust_joint_gxe/test --threads 12 --allow-no-se
 
 ## GEMMA GxE GWAS
 
-```{r}
-
+```{r, warning=FALSE, message = FALSE}
 gxe_gwas <-
   purrr::map2_dfr(.x = rep(c("temp", "day_length"), each = 4),
                  .y = rep(c(2016, 2017, 2018, 2019), times = 2),
@@ -68,6 +67,7 @@ gxe_gwas <-
                                         year = .y,
                                         adj_p = gcif(.,
                                                      adjust_p = TRUE),
+                                        neglog10p = -log10(adj_p),
                                         q = qvalue::qvalue(adj_p)$qvalues,
                                         neglog10q = -log10(q)))
 ```
@@ -91,10 +91,6 @@ purrr::map(.x = c(2016, 2017, 2018, 2019),
             col_names = FALSE)
 ```
 
-```
-srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/day_length/metasoft_in.day_length.txt -output data/derived_data/metasoft/day_length/metasoft_out.day_length.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/day_length/metasoft.day_length.log
-```
-
 ```{r, warning=FALSE, message=FALSE, eval=FALSE}
 purrr::map(.x = c(2016, 2017, 2018, 2019),
            ~ gxe_gwas %>%
@@ -110,38 +106,32 @@ purrr::map(.x = c(2016, 2017, 2018, 2019),
             col_names = FALSE)
 ```
 
-```
-srun --account animalsci java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/temp/metasoft_in.temp.txt -output data/derived_data/metasoft/temp/metasoft_out.temp.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/temp/metasoft.temp.log
-```
-
 * Output files
 
-```{r, eval=FALSE, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE}
 gxe_metasoft <- 
   c("temp", "day_length") %>% 
   purrr::set_names() %>% 
-  purrr::map_dfr(~ read_table2(here::here(glue("data/derived_data/metasoft/{.x}/metasoft_out.{.x}.txt")),
+  purrr::map_dfr(~ read_table2(here::here(glue("data/derived_data/metasoft/{.x}/metasoft_out.{.x}_adj.txt")),
                                col_types = cols(.default = "d", RSID = "c")) %>% 
                    janitor::clean_names() %>% 
                    select(-pvalue_be, -contains("fe")) %>%
-                   left_join(read_table2(here::here(glue("data/derived_data/metasoft/{.x}/metasoft_out.{.x}.txt")),
+                   left_join(read_table2(here::here(glue("data/derived_data/metasoft/{.x}/metasoft_out.{.x}_adj.txt")),
                                          skip = 1,
                                          col_types = "c---------------dddddddd", 
                                          col_names = c("rsid", "p16", "p17", "p18", "p19", "m16", "m17", "m18", "m19"))) %>% 
-                   mutate(neglog10q_re2 = -log10(qvalue::qvalue(pvalue_re2)$qvalues),
-                          neglog10q_re = -log10(qvalue::qvalue(pvalue_re)$qvalues),
-                          chr = as.numeric(str_extract(rsid, "^[[:digit:]]{1,2}(?=:)")),
-                          pos = as.numeric(str_extract(rsid, "(?<=[[:digit:]]{1,2}:)[[:digit:]]+(?=:)"))),
+                   mutate(chr = as.numeric(str_extract(rsid, "[[:digit:]]{1,2}(?=:)")),
+                          pos = as.numeric(str_extract(rsid, "(?<=[[:digit:]]{1,2}:)[[:digit:]]+")),
+                          neglog10q_re2 = -log10(qvalue::qvalue(pvalue_re2)$qvalues)),
                  .id = "var")
   
-
 ```
 
 # Step 1. Calculate contemporary group BLUEs to pre-adjust hair shedding scores
 
 * One single evaluation using all data 2012-2020
-* Fit single contemporary group effect: `{farm_id + year + calving_season + age_group + toxic_fescue}` (include `farm_id` but no `score_group`)
-    + This ends up meaning that animals with multiple records in the same year have multiple records in a single contemporary group - should I limit to one record per year by randomly choosing a record? Or, add `score_group` back in?
+* Fit single contemporary group effect: `{farm_id + year + calving_season + age_group + toxic_fescue + score_group}` ~~(include `farm_id` but no `score_group`)~~
+    + ~~This ends up meaning that animals with multiple records in the same year have multiple records in a single contemporary group - should I limit to one record per year by randomly choosing a record? Or, add `score_group` back in?~~ Added `score_group` back in
 
 # Step 2. Fit four year-specific GxE GWAS for each day length and temperature using GEMMA
 
@@ -286,7 +276,7 @@ qq %>%
   pull(post)
 ```
 
-### Inflation factors pre- and post-genomic control
+### Inflation factors pre-genomic control
 
 ```{r}
 gxe_gwas %>% 
@@ -295,10 +285,7 @@ gxe_gwas %>%
   nest() %>% 
   mutate(`Pre-GC inflation factor` = purrr::map_dbl(.x = data,
                                               ~ .x %>% 
-                                                gcif()),
-         `Post-GC inflation factor` = purrr::map_dbl(.x = data,
-                                              ~ .x %>% 
-                                                gcif(p_col = adj_p))) %>% 
+                                                gcif())) %>% 
   rename(`Variable` = var,
          Year = year) %>% 
   select(-data) %>% 
@@ -307,74 +294,114 @@ gxe_gwas %>%
 
 ## Results
 
-```{r, eval=FALSE}
+```{r, fig.width = 8, fig.height=9}
 gxe_gwas %>% 
-  filter(year == "2016" & var == "day_length") %>% 
+  filter(var == "day_length") %>% 
   filter(0.1 > adj_p) %>% 
-  mutate(neglog10p = -log10(adj_p)) %>% 
-  hair_manhattan(y_var = neglog10q, 
-                 y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
-                 sigline = q_fdr1,
+  hair_manhattan(y_var = neglog10p, 
+                 y_lab = "-log_10(Adj. p-value)",
+                 plot_title = "Day length",
                  color1 = "#b9aa97",
-                 color2 = "#7e756d") +
-  geom_hline(yintercept = q_fdr5, color = "blue")
+                 color2 = "#7e756d",
+                 facet = TRUE,
+                 nfacets = 4,
+                 desc = year)
+```
+
+```{r, fig.width = 8, fig.height=9}
+gxe_gwas %>% 
+  filter(var == "temp") %>% 
+  filter(0.1 > adj_p) %>% 
+  hair_manhattan(y_var = neglog10p, 
+                 y_lab = "-log_10(Adj. p-value)",
+                 plot_title = "Temperature",
+                 color1 = "#b9aa97",
+                 color2 = "#7e756d",
+                 facet = TRUE,
+                 nfacets = 4,
+                 desc = year)
 ```
 
 # Step 3. Meta-analysis of year-specific GxE GWAS using Metasoft
 
+* Day length, initial run:
+
+```
+srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/day_length/metasoft_in.day_length.txt -output data/derived_data/metasoft/day_length/metasoft_out.day_length.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/day_length/metasoft.day_length.log
+```
+
+* Day length, second run adjusting RE2 p-values for 
+    + `-lambda_mean 1.401986`
+    + `-lambda_hetero 0.332300`:
+
+```
+srun java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/day_length/metasoft_in.day_length.txt -output data/derived_data/metasoft/day_length/metasoft_out.day_length_adj.txt -mvalue -mvalue_p_thres 0.01 -lambda_mean 1.401986 -lambda_hetero 0.332300 -log data/derived_data/metasoft/day_length/metasoft.day_length_adj.log
+```
+
+* Temperature, initial run:
+
+```
+srun --account animalsci java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/temp/metasoft_in.temp.txt -output data/derived_data/metasoft/temp/metasoft_out.temp.txt -mvalue -mvalue_p_thres 0.01 -log data/derived_data/metasoft/temp/metasoft.temp.log
+```
+
+* Temperature, second run adjusting RE2 p-values for 
+    + `-lambda_mean 1.101779`
+    + `-lambda_hetero 0.470108`:
+
+```
+srun --account animalsci java -jar source_functions/Metasoft/Metasoft.jar -pvalue_table source_functions/Metasoft/HanEskinPvalueTable.txt -input data/derived_data/metasoft/temp/metasoft_in.temp.txt -output data/derived_data/metasoft/temp/metasoft_out.temp_adj.txt -mvalue -mvalue_p_thres 0.01 -lambda_mean 1.101779 -lambda_hetero 0.470108 -log data/derived_data/metasoft/temp/metasoft.temp_adj.log
+```
+
 ## Diagnostic 
 
-> Temperature
+* Day length
+    + $\lambda$ inflation factor = `r gxe_metasoft %>% filter(var == "day_length") %>% filter(!is.na(pvalue_re2)) %>% gcif(p_col = pvalue_re2)`
 
-```{r, eval = FALSE}
-ggqq(pvector = gxe_metasoft %>% 
-       filter(var == "temp") %>% 
-       pull(pvalue_re))
-```
-
-```{r, eval = FALSE}
-gxe_metasoft %>% 
-  filter(var == "temp") %>% 
-  filter(!is.na(pvalue_re)) %>% 
-  select(p_wald = pvalue_re) %>% 
-  gcif()
-```
-
-> Day length
-
-```{r, eval = FALSE}
-gxe_metasoft %>% 
-  filter(var == "day_length") %>% 
-  filter(!is.na(pvalue_re)) %>% 
-  select(p_wald = pvalue_re) %>% 
-  gcif()
-```
-
-```{r, eval=FALSE}
-ggqq(pvector = gxe_metasoft %>% 
+```{r}
+ggqq(pvector = gxe_metasoft %>%
        filter(var == "day_length") %>% 
-       pull(pvalue_re))
+       filter(!is.na(pvalue_re2)) %>% 
+       pull(pvalue_re2)) +
+  ggtitle("Metasoft RE2 p-valules (day length)")
+```
+
+* Temperature
+    + $\lambda$ inflation factor = `r gxe_metasoft %>% filter(var == "temp") %>% filter(!is.na(pvalue_re2)) %>% gcif(p_col = pvalue_re2)`
+
+```{r}
+ggqq(pvector = gxe_metasoft %>%
+       filter(var == "temp") %>% 
+       filter(!is.na(pvalue_re2)) %>% 
+       pull(pvalue_re2)) +
+  ggtitle("Metasoft RE2 p-valules (temperature)")
 ```
 
 ## Results
 
-```{r, eval=FALSE}
+```{r, fig.width=8, fig.height=3}
 gxe_metasoft %>% 
   filter(var == "day_length") %>% 
-  filter(0.5 > pvalue_re) %>% 
-  hair_manhattan(y_var = neglog10q_re,
+  filter(0.5 > pvalue_re2) %>% 
+  hair_manhattan(y_var = neglog10q_re2,
                  color1 = "#b9aa97",
                  color2 = "#7e756d",
-                 sigline = 1)
+                 y_lab = latex2exp::TeX("$-log_{10}(RE2 q-value)$"),
+                 plot_title = "Day length",
+                 sigline = q_fdr1) +
+  geom_hline(yintercept = q_fdr5,
+             color = "blue")
 ```
 
-```{r, eval=FALSE}
-gxe_gwas %>% 
-  filter(0.1 > adj_p) %>% 
-  filter(var == "day_length" & year == "2019") %>% 
-  mutate(neglog10p = -log10(adj_p)) %>% 
-  hair_manhattan(y_var = neglog10p,
+```{r, fig.width=8, fig.height=3}
+gxe_metasoft %>% 
+  filter(var == "temp") %>% 
+  filter(0.5 > pvalue_re2) %>% 
+  hair_manhattan(y_var = neglog10q_re2,
                  color1 = "#b9aa97",
                  color2 = "#7e756d",
-                 sigline = 5)
+                 y_lab = latex2exp::TeX("$-log_{10}(RE2 q-value)$"),
+                 plot_title = "Temperature",
+                 sigline = q_fdr1) +
+  geom_hline(yintercept = q_fdr5,
+             color = "blue")
 ```

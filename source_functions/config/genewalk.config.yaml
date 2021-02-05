@@ -1,0 +1,7 @@
+rules: ['genewalk']
+
+dataset: ['fixed9_50k_fdr1', 'cojo_50k_fdr1', 'gxe_50k_fdr1']
+
+nproc: '12'
+
+fdr: '1'

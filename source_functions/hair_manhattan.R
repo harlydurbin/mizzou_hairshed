@@ -64,7 +64,15 @@ hair_manhattan <-
                                     chr %in% c(seq(from = 2,
                                                    to = 29,
                                                    by = 2)) ~ "#538797"))
-      }
+    }
+    
+    if(facet == TRUE){
+      
+      df <-
+        df %>% 
+        rename(facetvar := !!desc)
+      
+    }
     
     
     gg <- 
@@ -126,7 +134,9 @@ hair_manhattan <-
     gg <-
       if (facet == TRUE) {
         gg +
-          facet_wrap(~ !!desc, nrow = nfacets, scales = "free_x")
+          facet_wrap(~ facetvar,
+                     nrow = nfacets,
+                     scales = "free_x")
       } else {
         gg
       }
@@ -134,7 +144,7 @@ hair_manhattan <-
     gg <-
       if (!is.null(sigline)) {
         gg +
-          geom_hline(yintercept = sigline,#-log10(1e-5),
+          geom_hline(yintercept = sigline,
                      color = "red",
                      size = 0.25)
         } else {

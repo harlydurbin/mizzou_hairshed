@@ -1,0 +1,20 @@
+{
+    "__default__":
+    {
+        "p" : "BioCompute,htc4,hpc5",
+        "account" : "animalsci",
+        "mem" : 1G,
+        "c": 1,
+        "t": "01:00:00",
+        "o": "log/slurm_out/genewalk/{rule}/{wildcards}.%j.out",
+        "mail-user" : "hjdurbin@mail.missouri.edu",
+        "mail-type" : "NONE"
+    },
+    "genewalk":
+    {
+        "t": "6:00:00",
+        "mem" : 24G,
+        "c": 12,
+        "mail-type" : "END"
+    }
+}

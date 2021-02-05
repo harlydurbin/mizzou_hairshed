@@ -215,6 +215,14 @@ ggqq(years_metasoft$adj_p_re) +
   ggplot2::ggtitle("Metasoft RE model p-values (post-GC)")
 ```
 
+* Random effects 2 model, p-values adjusted within Metasoft
+    + Inflation factor = `r years_metasoft %>% gcif(p_col = pvalue_re2)`
+
+```{r}
+ggqq(years_metasoft$pvalue_re2) +
+  ggplot2::ggtitle("Metasoft-adjusted RE2 model p-values")
+```
+
 ### Should I use meta-analysis results or p-values from SNP1101 using DEBVs? 
 
 * What's the correlation between adjusted RE and adjusted SNP1101 p-values? Between RE2 and adjusted SNP1101 p-values? Between RE2 and adjusted RE p-values?

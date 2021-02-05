@@ -23,6 +23,7 @@ data/derived_data/snp1101/*
 data/derived_data/cojo/*
 data/derived_data/annotation/*
 data/derived_data/breed_key/*.csv
+data/derived_data/genewalk/*
 data/raw_data/*
 management/*.xlsx
 */gxe_gwas_cache/*
