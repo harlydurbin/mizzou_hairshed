@@ -17,13 +17,16 @@ library(ggplot2)
 library(purrr)
 library(magrittr)
 library(stringr)
-library(tidylog)
 library(glue)
 library(patchwork)
 
 source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
 source(here::here("source_functions/gcif.R"))
+
+# I can't remember numbers and have to re-calculate this every time so
+q_fdr5 <- -log10(.05)
+q_fdr1 <- -log10(.01)
 
 options(scipen = 0)
 ```
@@ -46,12 +49,6 @@ fixed9_snp1101 <-
          q = qvalue::qvalue(adj_p)$qvalues,
          neglog10q = -log10(q))
   
-```
-
-```{r}
-# I can't remember numbers and have to re-calculate this every time so
-q_fdr5 <- -log10(.05)
-q_fdr1 <- -log10(.01)
 ```
 
 ## Year-by-year GWAS
@@ -317,14 +314,14 @@ srun --account animalsci -p BioCompute,htc4,hpc5 -t 12:00:00 --mem 48G -c 56 sou
 
 ## Selected SNPs
 
-> All manhattan plots below projected on Metasoft results, not results from SNP1101 using DEBVs
+> All manhattan plots below projected on SNP1101 results using DEBVs, not Metasoft results
 
 ### Whole-genome
 
 ```{r, fig.width=8, fig.height=3}
 slct_wg <-
-  years_metasoft %>% 
-  filter(0.1 > adj_p_re) %>% 
+  fixed9_snp1101 %>% 
+  filter(0.1 > adj_p) %>% 
   left_join(years_jma %>% 
               select(chr, pos) %>% 
               mutate(clr = TRUE)) %>% 
@@ -343,6 +340,17 @@ slct_wg <-
 ```{r, fig.width=8, fig.height=3}
 slct_wg
 ```
+
+* Selected SNPs per chromosome
+
+```{r}
+years_jma %>% 
+  group_by(chr) %>% 
+  tally() %>% 
+  ungroup() %>% 
+  mutate(pct = n/sum(n)) %>% 
+  arrange(desc(pct))
+``` 
 
 * How many COJO SNPs also significant at FDR = 5% in the meta-analysis?
 
@@ -376,7 +384,7 @@ years_jma %>%
 
 ```{r, fig.width=8, fig.height=3}
 slct_5 <-
-  years_metasoft %>% 
+  fixed9_snp1101 %>% 
   filter(chr == 5) %>%
   filter(30000000 >= pos) %>% 
   filter(pos >= 10000000) %>% 
@@ -389,7 +397,7 @@ slct_5 <-
   geom_point(data = years_jma %>% 
                filter(chr == 5) %>% 
                select(chr, pos) %>% 
-               left_join(years_metasoft %>% 
+               left_join(fixed9_snp1101 %>% 
                            select(chr, pos, neglog10q)),
              aes(x = pos,
                  y = neglog10q),
@@ -397,6 +405,7 @@ slct_5 <-
              fill = "black") +
   scale_x_continuous(breaks = c(10000000, 15000000, 20000000, 25000000, 30000000),
                      labels = c("10 Mb", "15 Mb", "20 Mb", "25 Mb", "30 Mb")) +
+  scale_y_continuous(breaks = c(0, 2, 4, 6, 8)) +
   theme_classic() +
   theme(axis.title = element_text(size = 18),
         axis.title.y = element_text(margin = margin(t = 0,
@@ -435,7 +444,7 @@ slct_5
 
 ```{r, fig.width=8, fig.height=3}
 slct_23 <-
-  years_metasoft %>% 
+  fixed9_snp1101 %>% 
   filter(chr == 23) %>%
   filter(pos > 20000000) %>%
   filter(50000000 > pos) %>%
@@ -448,7 +457,7 @@ slct_23 <-
   geom_point(data = years_jma %>% 
                filter(chr == 23) %>% 
                select(chr, pos) %>% 
-               left_join(years_metasoft %>% 
+               left_join(fixed9_snp1101 %>% 
                            select(chr, pos, neglog10q)),
              aes(x = pos,
                  y = neglog10q),
@@ -456,6 +465,7 @@ slct_23 <-
              fill = "black") +
   scale_x_continuous(breaks = c(20000000, 25000000, 30000000, 35000000, 40000000, 45000000, 50000000),
                      labels = c("20 Mb", "25 Mb", "30 Mb", "35 Mb", "40 Mb", "45 Mb", "50 Mb")) +
+  ylim(c(0, 8)) +
   theme_classic() +
   theme(axis.title = element_text(size = 18),
         axis.title.y = element_text(margin = margin(t = 0,
@@ -499,6 +509,6 @@ slct_wg/slct_5/slct_23 + plot_annotation(tag_levels = c("a")) &
   theme(plot.tag = element_text(size = 24),
         plot.margin = margin(t = 0, b = 0, l = 0.75, r = 1, unit = "mm"))
 
-ggsave(filename = here::here("figures/cojo/metasoft.q.cojo_panel.png"), height = 9, width = 8) 
+ggsave(filename = here::here("figures/cojo/fixed9.q.cojo_panel.png"), height = 9, width = 8) 
 
 ```

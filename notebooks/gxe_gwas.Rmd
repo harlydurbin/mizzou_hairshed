@@ -19,6 +19,7 @@ library(glue)
 library(magrittr)
 library(lubridate)
 library(ggplot2)
+library(patchwork)
 
 source(here::here("source_functions/hair_manhattan.R"))
 source(here::here("source_functions/ggqq.R"))
@@ -378,30 +379,61 @@ ggqq(pvector = gxe_metasoft %>%
 
 ## Results
 
-```{r, fig.width=8, fig.height=3}
+### How many passing variants?
+
+```{r}
 gxe_metasoft %>% 
+  filter(neglog10q_re2 >= q_fdr1) %>% 
+  group_by(var) %>% 
+  tally(name = "FDR = 1%") %>% 
+  ungroup() %>% 
+  left_join(gxe_metasoft %>% 
+              filter(neglog10q_re2 >= q_fdr5) %>% 
+              group_by(var) %>% 
+              tally(name = "FDR = 5%"))
+```
+
+### Manhattan plots
+
+```{r, fig.width=8, fig.height=3}
+man_dl <-
+  gxe_metasoft %>% 
   filter(var == "day_length") %>% 
-  filter(0.5 > pvalue_re2) %>% 
   hair_manhattan(y_var = neglog10q_re2,
-                 color1 = "#b9aa97",
-                 color2 = "#7e756d",
-                 y_lab = latex2exp::TeX("$-log_{10}(RE2 q-value)$"),
-                 plot_title = "Day length",
+                 color1 = "#638b66", 
+                 color2 = "#a2ceaa",
+                 y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
                  sigline = q_fdr1) +
   geom_hline(yintercept = q_fdr5,
              color = "blue")
 ```
 
 ```{r, fig.width=8, fig.height=3}
-gxe_metasoft %>% 
+man_t <-
+  gxe_metasoft %>% 
   filter(var == "temp") %>% 
-  filter(0.5 > pvalue_re2) %>% 
   hair_manhattan(y_var = neglog10q_re2,
-                 color1 = "#b9aa97",
-                 color2 = "#7e756d",
-                 y_lab = latex2exp::TeX("$-log_{10}(RE2 q-value)$"),
-                 plot_title = "Temperature",
+                 color1 = "#638b66", 
+                 color2 = "#a2ceaa",
                  sigline = q_fdr1) +
+  ylim(c(0, 8)) +
   geom_hline(yintercept = q_fdr5,
              color = "blue")
+```
+
+```{r, fig.width=8, fig.height=3}
+man_t
+```
+
+### Panel figure
+
+```{r, fig.width=8, fig.height=6, eval = TRUE}
+
+
+man_t/man_dl + plot_annotation(tag_levels = c("a")) & 
+  theme(plot.tag = element_text(size = 24),
+        plot.margin = margin(t = 0, b = 0, l = 0.75, r = 1, unit = "mm"))
+
+ggsave(filename = here::here("figures/gxe_gwas/gxe_metasoft.panel.png"), height = 6, width = 8) 
+
 ```
