@@ -4,16 +4,21 @@ import os
 
 configfile: "source_functions/config/gxe_gwas.config.yaml"
 
-# Make log directories if they don't exist
+# This makes SLURM log directories if they don't exist
+# Have to make the SLURM log directories beforehand or your jobs will fail without an error
 os.makedirs("log/slurm_out/gxe_gwas", exist_ok = True)
 for x in expand("log/slurm_out/gxe_gwas/{rules}", rules = config['rules']):
 	os.makedirs(x, exist_ok = True)
 
+# This makes the psrecord log directories
 os.makedirs("log/psrecord/gxe_gwas", exist_ok = True)
 os.makedirs("log/psrecord/gxe_gwas/gemma", exist_ok = True)
 
+# Your "all" rule sets the expected final output
+# This is how it figures to pull the {var} and {year} wildcards from the config file "source_functions/config/gxe_gwas.config.yaml"
+# "Expand" means "All possible combinations of {var} and {year}"
 rule all:
-	input: expand("data/derived_data/gxe_gwas/{var}/{year}/result.assoc.txt", var = config['var'], year = config['year']), "data/derived_data/robust_joint_gxe/plink.auto.R"
+	input: expand("data/derived_data/gxe_gwas/{var}/{year}/result.assoc.txt", var = config['var'], year = config['year'])
 
 rule gemma_grm:
 	input:
@@ -21,6 +26,7 @@ rule gemma_grm:
 		bim = expand("{geno_prefix}.qc.bim", geno_prefix = config['geno_prefix']),
 		fam = expand("{geno_prefix}.qc.fam", geno_prefix = config['geno_prefix'])
 	params:
+		# Pull "gemma_path" and "geno_prefix" from the config file "source_functions/config/gxe_gwas.config.yaml"
 		gemma_path = config['gemma_path'],
 		in_prefix = config['geno_prefix'] + ".qc",
 		out_prefix = "gemma_grm",
@@ -52,6 +58,7 @@ rule setup_data:
 	output:
 		manual_fam = "data/derived_data/gxe_gwas/{var}/{year}/gxe_gwas.{var}.{year}.fam",
 		gxe = "data/derived_data/gxe_gwas/{var}/{year}/gxe.txt"
+	# Gives current "year" and "var" as command line arguments to the R script
 	shell:
 		"""
 		module load {params.r_module}
@@ -90,6 +97,7 @@ rule gemma:
 	output:
 		assoc = "data/derived_data/gxe_gwas/{var}/{year}/result.assoc.txt"
 	shell:
+		# Note the psrecord
 		"""
 		psrecord "{params.gemma_path} -bfile {params.plink_prefix} -k {input.grm} -lmm 1 -gxe {input.gxe} -outdir {params.out_dir}" --log {params.psrecord} --include-children --interval 5
 		"""
