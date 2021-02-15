@@ -17,6 +17,8 @@ iter <- as.numeric(commandArgs(trailingOnly = TRUE)[2])
 
 pct_excl <- as.numeric(commandArgs(trailingOnly = TRUE)[3])
 
+hair_col <- as.numeric(commandArgs(trailingOnly = TRUE)[4])
+
 in_path <- glue("data/derived_data/aireml_varcomp/{model}/data.txt")
 
 out_path <- glue("data/derived_data/estimate_bias/{model}/{iter}")
@@ -33,7 +35,9 @@ full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
 ## Data from full AIREML run
 full_dat <-
   read_table2(here::here(in_path),
-              col_names = c("full_reg", "cg_num", "hair_score"))
+              col_names = FALSE) %>% 
+  rename(full_reg = 1,
+         hair_score = hair_col)
 
 ## Function to set a fraction of phenotypes to missing
 choose_validation_set <-

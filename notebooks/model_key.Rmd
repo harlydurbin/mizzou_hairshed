@@ -73,7 +73,7 @@ Organized by goal/motivation
 
 ## `fixed15`
 
-* Exact same as `fixed14` model, but use add correction for PC 1 and PC 2
+* Exact same as `fixed14` model, but add correction for PC 1 and PC 2
 * Trying to solve issues potentially caused by population structure
 
 ## `fixed10`

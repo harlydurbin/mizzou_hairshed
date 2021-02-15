@@ -26,7 +26,8 @@ rule setup_data:
 		r_module = config['r_module'],
 		model = "{model}",
 		iter = "{iter}",
-		pct_excl = config['pct_excl']
+		pct_excl = config['pct_excl'],
+		hair_col = lambda wildcards: expand("{hair_col}", hair_col = config['hair_col'][wildcards.model]),
 	output:
 		subset_dat = "data/derived_data/estimate_bias/{model}/{iter}/data.txt",
 		ped = "data/derived_data/estimate_bias/{model}/{iter}/ped.txt",
@@ -34,7 +35,7 @@ rule setup_data:
 	shell:
 		"""
 		module load {params.r_module}
-		Rscript --vanilla {input.script} {params.model} {params.iter} {params.pct_excl}
+		Rscript --vanilla {input.script} {params.model} {params.iter} {params.pct_excl} {params.hair_col}
 		"""
 
 rule pull_genotypes:
@@ -51,11 +52,16 @@ rule pull_genotypes:
 
 rule copy_par:
 	input:
-		par = "source_functions/par/estimate_bias.par",
+		par = "source_functions/par/aireml_varcomp.{model}.par",
 	output:
 		par = "data/derived_data/estimate_bias/{model}/{iter}/estimate_bias.par",
+	# Replace map file path in original parameter file
+	# Can't use absolute path: renumf90 has a character limit and it gets cut off
 	shell:
-		"cp {input.par} {output.par}"
+		"""
+		grep -v "OPTION chrinfo" {input.par} > {output.par}
+		echo "OPTION chrinfo ../../../../raw_data/geno_dump/200924_HairShed.850K.chrinfo.txt" >> {output.par}
+		"""
 
 rule renumf90:
 	input:
