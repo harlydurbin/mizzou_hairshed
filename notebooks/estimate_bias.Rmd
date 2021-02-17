@@ -10,8 +10,10 @@ output:
     df_print: paged
     code_folding: hide
 params:
-  model: "fixed9"
-  keyword: "Full"
+  model: "fixed15"
+  keyword: "PC-adjusted"
+  hair_col: 5
+  effect_num: 4
 title: "`r glue::glue('Estimation of bias ({params$keyword} dataset)')`"
 ---
 
@@ -28,6 +30,7 @@ library(tidylog)
 
 source(here::here("source_functions/bias_functions.R"))
 source(here::here("source_functions/melt_aireml.R"))
+source(here::here("source_functions/calculate_heritability.R"))
 
 model <- params$model
 keyword <- params$keyword
@@ -42,9 +45,53 @@ keyword <- params$keyword
 ```{r, message=FALSE, warning=FALSE}
 bias <-
   c(1:10) %>% 
-  purrr::map(~ read_bias(iter = .x, model = model)) %>% 
+  purrr::map(~ read_bias(iter = .x, model = model, hair_col = params$hair_col, effect_num = params$effect_num)) %>% 
   reduce(bind_rows) %>% 
   mutate(iter = forcats::fct_inorder(as.factor(iter)))
+```
+
+# Sanity check: heritability and repeatability across iterations
+
+```{r, rows.print = 11}
+# This is a lazy way to change stuff for the PC-adjusted model and I don't care
+varcov <-
+  if(params$effect_num == 4) {
+    purrr::map_dfr(.x = c(1:10),
+                   ~ melt_aireml(path = here::here(glue("data/derived_data/estimate_bias/{model}/{.x}/airemlf90.{model}.{.x}.log")),
+                                 effect4 = c("hair_dir"),
+                                 effect5 = c("hair_pe"),
+                                 resids = c("hair_res")) %>% 
+                     univ_heritability(abbrv = "hair",
+                                       desc = as.character(.x),
+                                       pe = TRUE)) %>%
+      bind_rows(melt_aireml(path = here::here(glue("data/derived_data/aireml_varcomp/{model}/airemlf90.{model}.log")),
+                            effect4 = c("hair_dir"),
+                            effect5 = c("hair_pe"),
+                            resids = c("hair_res")) %>% 
+                univ_heritability(abbrv = "hair",
+                                  desc = "Full dataset",
+                                  pe = TRUE))
+    } else if(params$effect_num == 2) {
+      purrr::map_dfr(.x = c(1:10),
+                     ~ melt_aireml(path = here::here(glue("data/derived_data/estimate_bias/{model}/{.x}/airemlf90.{model}.{.x}.log")),
+                                   effect2 = c("hair_dir"),
+                                   effect3 = c("hair_pe"),
+                                   resids = c("hair_res")) %>% 
+                       univ_heritability(abbrv = "hair",
+                                         desc = as.character(.x),
+                                         pe = TRUE)) %>%
+        bind_rows(melt_aireml(path = here::here(glue("data/derived_data/aireml_varcomp/{model}/airemlf90.{model}.log")),
+                              effect2 = c("hair_dir"),
+                              effect3 = c("hair_pe"),
+                              resids = c("hair_res")) %>% 
+                  univ_heritability(abbrv = "hair",
+                                    desc = "Full dataset",
+                                    pe = TRUE))  
+      }
+```
+
+```{r, rows.print = 11}
+varcov
 ```
 
 # Bias: difference between reduced and full breeding values ($\mu_p - \mu_w$; $d_{p,w}$) {.tabset}
@@ -365,6 +412,7 @@ bias %>%
 # Prediction accuracy ($\hat{acc}_{LR}$)
 
 $$\hat{acc}_{LR}=\sqrt{\frac{cov(\hat{u}_w, \hat{u}_p)}{(1-F)\hat{\sigma}^2_u}}$$
+
 ```{r}
 
 pred_acc <-
@@ -372,13 +420,11 @@ pred_acc <-
   group_by(iter) %>% 
   nest() %>% 
   ungroup() %>% 
-  mutate(gen_var = purrr::map_dbl(.x = iter,
-                                   ~ melt_aireml(path = here::here(glue("data/derived_data/estimate_bias/{model}/{.x}/airemlf90.{model}.{.x}.log")),
-                                                 effect2 = c("hs"),
-                                                 resids = c("hs_res")) %>% 
-                                     filter_at(vars(contains("val")), all_vars(. == "hs")) %>% 
-                                     pull(var_cov)),
-         f = purrr::map2_dbl(.x = data,
+  left_join(varcov %>% 
+              filter(key != "Full dataset") %>% 
+              mutate(gen_var = `Direct h2`*`Total variance`) %>% 
+              select(gen_var, iter = key)) %>% 
+  mutate(f = purrr::map2_dbl(.x = data,
                              .y = iter,
                              ~ .x %>% 
                                filter(group == "dropped") %>% 

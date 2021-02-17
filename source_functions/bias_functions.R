@@ -1,7 +1,7 @@
 
 
 read_bias <-
-  function(model, iter){
+  function(model, iter, hair_col, effect_num){
     
     # Path to full AIREML run
     full_path <- glue::glue("data/derived_data/aireml_varcomp/{model}")
@@ -12,7 +12,9 @@ read_bias <-
     # Animals with phenotypes excluded in the given iteration
     dropped <-
       readr::read_table2(here::here(glue("{subset_path}/data.txt")),
-                  col_names = c("full_reg", "cg", "hair_score")) %>%
+                  col_names = FALSE) %>%
+      select(full_reg = 1,
+             hair_score = hair_col) %>% 
       dplyr::filter(hair_score == -999) %>%
       dplyr::pull(full_reg) %>%
       unique()
@@ -23,12 +25,12 @@ read_bias <-
       purrr::imap(~ readr::read_table2(here::here(glue("{.x}/solutions")),
                                        skip = 1,
                                        col_names = c("trait", "effect", "id_renamed", "solution")) %>%
-                    dplyr::left_join(readr::read_table2(here::here(glue::glue("{.x}/renadd02.ped")),
+                    dplyr::left_join(readr::read_table2(here::here(glue::glue("{.x}/renadd0{effect_num}.ped")),
                                                         col_names = FALSE) %>%
                                        dplyr::select(id_renamed = 1, full_reg = 10)) %>%
                     dplyr::mutate(analysis = .y)) %>%
       purrr::reduce(bind_rows) %>%
-      dplyr::filter(effect == 2) %>%
+      dplyr::filter(effect == effect_num) %>%
       dplyr::select(-trait, -effect, -id_renamed) %>%
       tidyr::pivot_wider(values_from = solution,
                          names_from = analysis,
