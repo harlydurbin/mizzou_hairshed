@@ -126,7 +126,7 @@ hair_manhattan <-
                                                         l = 0)),
             axis.text = element_text(size = 14),
             legend.text = element_text(size = 14),
-            strip.text = element_text(size = 14)) +
+            strip.text = element_text(size = 18)) +
       labs(x = NULL,
            y = y_lab,
            title = plot_title)

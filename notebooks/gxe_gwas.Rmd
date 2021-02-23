@@ -415,6 +415,7 @@ man_t <-
   hair_manhattan(y_var = neglog10q_re2,
                  color1 = "#638b66", 
                  color2 = "#a2ceaa",
+                 y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
                  sigline = q_fdr1) +
   ylim(c(0, 8)) +
   geom_hline(yintercept = q_fdr5,
@@ -436,4 +437,36 @@ man_t/man_dl + plot_annotation(tag_levels = c("a")) &
 
 ggsave(filename = here::here("figures/gxe_gwas/gxe_metasoft.panel.png"), height = 6, width = 8) 
 
+```
+
+```{r, fig.width=8, fig.height=6}
+gxe_metasoft %>% 
+  mutate(var = if_else(var == "temp", "Temperature", "Day length")) %>% 
+  filter(0.1 > pvalue_re2) %>% 
+  hair_manhattan(y_var = neglog10q_re2,
+                 facet = TRUE,
+                 nfacets = 2,
+                 desc = var,
+                 color1 = "#638b66", 
+                 color2 = "#a2ceaa",
+                 y_lab = latex2exp::TeX("$-log_{10}(q-value)$"),
+                 sigline = q_fdr1) +
+  ylim(c(0, 8)) +
+  geom_hline(yintercept = q_fdr5,
+             color = "blue") +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "transparent",
+                                    colour = NA),
+        panel.border = element_rect(colour = "black",
+                                    fill = "transparent"),
+        plot.background = element_rect(fill = "transparent",
+                                   colour = NA),
+        strip.background = element_rect(fill = "transparent",
+                                   colour = "black"))
+```
+
+
+```{r, fig.width=8, fig.height=6}
+ggsave(filename = here::here("figures/gxe_gwas/gxe_metasoft.panel_transparent.png"), height = 6, width = 8, bg = "transparent") 
 ```

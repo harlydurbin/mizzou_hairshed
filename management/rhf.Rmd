@@ -40,7 +40,6 @@ post %>%
 
 ```
 
-
 # Get test dataset together for Helen
 
 ```{r}
@@ -145,7 +144,6 @@ read_excel(
   arrange(animal_id) %>% 
   writexl::write_xlsx(here::here("data/derived_data/190312.practice_ped.xlsx"))
 ```
-
 
 # Three association transfer 7/8/19
 
@@ -256,7 +254,6 @@ c("~/Box Sync/HairShedding/ReportedData/SendToBreedAssociations/20190708.ANR.xls
   distinct()
 ```
 
-
 # Assign registration numbers to new heifers 9/17/20
 
 ```{r}
@@ -268,7 +265,6 @@ library(dplyr)
 no_reg <-
   read_excel("~/Box Sync/HairShedding/ReportedData/2020/DataRecording_RHF_2020.xlsx", sheet = 2)
 ```
-
 
 ```{r}
 anr <-
@@ -425,5 +421,137 @@ rhf_breed %>%
   mutate(brd_source = "RHF") %>% 
   select(farm_id, animal_id, registration_number, Lab_ID, temp_id, cross, an, ar, sim, brd_source) %>% 
   write_rds(here::here("data/raw_data/201005.rhf_breed.rds"))
+```
+
+# Calculate percentile rankings & pull out EPDs for RHF 2/18/21
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(dplyr)
+library(glue)
+library(purrr)
+library(tidyr)
+library(DRP)
+library(magrittr)
+library(stringr)
+
+source(here::here("source_functions/calculate_acc.R"))
+```
+
+## Setup
+
+```{r}
+full_ped <- read_rds(here::here("data/derived_data/3gen/full_ped.rds"))
+```
+
+```{r}
+epds <-
+  purrr::pmap_dfr(.l = list(model = c("fixed9", "igs1"), animal_effect = c(2, 2), gen_var = c(0.33133, 0.39053)),
+                  .f = function(model, animal_effect, gen_var) {
+                    
+                    df <-
+                      read_table2(here::here(glue("data/derived_data/aireml_varcomp/{model}/renadd0{animal_effect}.ped")),
+                                col_names = FALSE) %>%
+                      select(id_new = X1, sire_id = X2, dam_id = X3, full_reg = X10)
+                  
+                    df %<>%
+                      left_join(df %>%
+                                  select(sire_id = id_new,
+                                         sire_reg = full_reg)) %>%
+                      left_join(df %>%
+                                  select(dam_id = id_new,
+                                         dam_reg = full_reg)) %>%
+                      select(id_new, full_reg, sire_reg, dam_reg) %>%
+                      filter(!is.na(full_reg)) %>%
+                      mutate_at(vars(contains("reg")), ~ replace_na(., "0")) %>% 
+                      filter(full_reg != "0")
+  
+                    df %<>%
+                      left_join(full_ped %>%
+                                  select(full_reg, sex)) %>%
+                      mutate(sex = case_when(full_reg %in% df$sire_reg ~ "M",
+                                             full_reg %in% df$dam_reg ~ "F",
+                                             TRUE ~ sex))
+                    
+                    df %<>% 
+                      left_join(read_table2(here::here(glue("data/derived_data/aireml_varcomp/{model}/renf90.inb")),
+                                                                         col_names = FALSE) %>% 
+                                                               select(full_reg = X1, f = X2)) %>% 
+                      left_join(read_table2(here::here(glue("data/derived_data/aireml_varcomp/{model}/solutions")),
+                                            col_names = c("trait", "effect", "id_new", "solution", "se"),
+                                            skip = 1) %>%
+                                # limit to animal effect
+                                filter(effect == animal_effect) %>%
+                                select(id_new, solution, se))
+                    
+                    df %<>%
+                      arrange(solution) %>% 
+                      mutate(bif_acc = purrr::map2_dbl(.x = se,
+                                                   .y = f,
+                                                  ~ calculate_acc(u = gen_var,
+                                                                  se = .x,
+                                                                  f = .y,
+                                                                  option = "bif")),
+                             epd = solution/2,
+                             percentile = percent_rank(solution),
+                             percentile = round(percentile, digits = 3)*100,
+                             model = model)
+                    
+                    df %<>%
+                      left_join(read_csv(here::here(glue("data/derived_data/aireml_varcomp/{model}/sanity_key.csv"))))
+                    
+                })
+```
+
+## Pull out EPDs for RHF
+
+```{r}
+epds %>% 
+  filter(farm_id == "RHF") %>% 
+  select(full_reg, percentile, model) %>% 
+  pivot_wider(id_cols = "full_reg", 
+              names_from = "model", 
+              values_from = "percentile") %>% 
+  summarise(cor(fixed9, igs1, use = "pairwise.complete.obs"))
+
+```
+
+```{r}
+rhf_epds <-
+  epds %>% 
+  filter(farm_id == "RHF")
+```
+
+```{r}
+rhf_epds %<>% 
+  bind_rows(epds %>% 
+              filter(full_reg %in% rhf_epds$sire_reg)) %>% 
+  distinct() %>% 
+  mutate(sex = case_when(is.na(sex) & !is.na(animal_id) ~ "F",
+                         TRUE ~ sex),
+         full_reg = if_else(str_detect(full_reg, "^RHF"), "0", full_reg),
+         bif_acc = round(bif_acc, digits = 2),
+         epd = round(epd, digits = 2)) %>% 
+  select(full_reg, sire_reg, dam_reg, sex, animal_id, epd, bif_acc, percentile, model) 
+```
+
+```{r}
+fixed9 <-
+  rhf_epds %>% 
+  filter(model == "fixed9") %>% 
+  select(-model)
+```
+
+```{r}
+igs1 <-
+  rhf_epds %>% 
+  filter(model == "igs1") %>% 
+  select(-model)
+```
+
+```{r}
+writexl::write_xlsx(list("Full" = fixed9, "IGS" = igs1), path = here::here("management/210218.rhf_epd.xlsx"))
 ```
 
